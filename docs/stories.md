@@ -71,6 +71,8 @@ As a DM, I persist worlds and later entities locally so closing the app does not
 
 **v1:** Room at `~/.worldweaver/worldweaver.db` with destructive alpha migrations.
 
+**Status:** Done — Room at `~/.worldweaver/ww.db`, schema version 1, exported migrations from day one.
+
 ### WW-FND-02 Dependency wiring
 
 As a developer, I construct repositories and use cases outside the UI so screens stay MVI-only.
@@ -81,6 +83,8 @@ As a developer, I construct repositories and use cases outside the UI so screens
 - UI composables do not call repositories or use cases.
 
 **v1:** Koin `@ComponentScan`.
+
+**Status:** Done — explicit Koin module; ViewModels receive use cases.
 
 ### WW-FND-03 Active context
 
@@ -94,6 +98,8 @@ As a DM, I have an active World and optional active Campaign that all feature sc
 
 **v1:** `AppSettings` stored the active campaign id.
 
+**Status:** Done — `active_world_id` and optional `active_campaign_id` in Preferences.
+
 ### WW-FND-04 Feature navigation
 
 As a DM, I open Campaigns, Locations, Lore, Characters, Sessions, Encounters, and Settings from the shell once those screens exist.
@@ -104,7 +110,7 @@ As a DM, I open Campaigns, Locations, Lore, Characters, Sessions, Encounters, an
 - Current destination is highlighted.
 - Destinations that are not built yet are not shown as working.
 
-**Today:** Home / Worlds / Settings only (`Screen.kt`).
+**Today:** Home / Worlds / Campaigns / Settings (`Screen.kt`). Later destinations stay hidden.
 
 ### WW-FND-05 Empty and error states
 
@@ -141,7 +147,7 @@ As a DM, I create a world with a name, description, and default game system (sta
 - Default mechanics is 5E.
 - New world becomes listable and can be set active.
 
-**Status:** Partial — Home and Worlds show a “New world” CTA that navigates and shows “not implemented yet.”
+**Status:** Done — create dialog on Worlds; new world is persisted and set active.
 
 ### WW-WLD-02 List, open, and set active world
 
@@ -170,6 +176,8 @@ As a DM, I delete a world I no longer need, with a single consistent rule for ca
 
 - Pick one rule and keep it: block delete while campaigns exist, or cascade delete campaigns and their play data after confirm.
 - Confirm is required (WW-FND-06).
+
+**Status:** Done — delete is blocked while any campaigns exist. Confirm is required.
 
 ### WW-CMP-01 Create campaign
 
@@ -836,21 +844,21 @@ As a DM, I import an old `~/.worldweaver/worldweaver.db` into the new World/Camp
 
 | ID | Phase | Title | Owner | Status |
 |---|---|---|---|---|
-| WW-FND-01 | 0 | Persistence | App | Not started |
-| WW-FND-02 | 0 | Dependency wiring | App | Not started |
-| WW-FND-03 | 0 | Active context | App | Not started |
+| WW-FND-01 | 0 | Persistence | App | Done |
+| WW-FND-02 | 0 | Dependency wiring | App | Done |
+| WW-FND-03 | 0 | Active context | App | Done |
 | WW-FND-04 | 0 | Feature navigation | App | Partial |
-| WW-FND-05 | 0 | Empty and error states | App | Not started |
-| WW-FND-06 | 0 | Confirm destructive actions | App | Not started |
-| WW-WLD-01 | 1 | Create world | World | Partial |
-| WW-WLD-02 | 1 | List / open / set active world | World | Not started |
-| WW-WLD-03 | 1 | Edit world details | World | Not started |
-| WW-WLD-04 | 1 | Delete world | World | Not started |
-| WW-CMP-01 | 1 | Create campaign | Campaign | Not started |
-| WW-CMP-02 | 1 | List campaigns / set active | Campaign | Not started |
-| WW-CMP-03 | 1 | Edit / archive / complete / delete campaign | Campaign | Not started |
-| WW-CMP-04 | 1 | Campaign overview | Campaign | Not started |
-| WW-HOME-01 | 1 | Home continue card | App | Partial |
+| WW-FND-05 | 0 | Empty and error states | App | Done |
+| WW-FND-06 | 0 | Confirm destructive actions | App | Done |
+| WW-WLD-01 | 1 | Create world | World | Done |
+| WW-WLD-02 | 1 | List / open / set active world | World | Done |
+| WW-WLD-03 | 1 | Edit world details | World | Done |
+| WW-WLD-04 | 1 | Delete world | World | Done |
+| WW-CMP-01 | 1 | Create campaign | Campaign | Done |
+| WW-CMP-02 | 1 | List campaigns / set active | Campaign | Done |
+| WW-CMP-03 | 1 | Edit / archive / complete / delete campaign | Campaign | Done |
+| WW-CMP-04 | 1 | Campaign overview | Campaign | Done |
+| WW-HOME-01 | 1 | Home continue card | App | Done |
 | WW-LOC-01 | 2 | Create location | World | Not started |
 | WW-LOC-02 | 2 | Browse as a tree | World | Not started |
 | WW-LOC-03 | 2 | Edit location metadata | World | Not started |
