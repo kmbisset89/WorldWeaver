@@ -1,8 +1,11 @@
 package net.tactware.worldweaver.ui.worlds
 
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -11,11 +14,14 @@ import net.tactware.worldweaver.core.AppCoroutineScope
 import net.tactware.worldweaver.domain.ActiveContext
 import net.tactware.worldweaver.domain.CreateWorldUseCase
 import net.tactware.worldweaver.domain.DeleteWorldUseCase
+import net.tactware.worldweaver.domain.ExportWorldBundleUseCase
+import net.tactware.worldweaver.domain.ImportWorldBundleUseCase
 import net.tactware.worldweaver.domain.ObserveActiveContextUseCase
 import net.tactware.worldweaver.domain.ObserveWorldsUseCase
 import net.tactware.worldweaver.domain.SetActiveWorldUseCase
 import net.tactware.worldweaver.domain.UpdateWorldUseCase
 import net.tactware.worldweaver.domain.World
+import java.io.File
 
 internal class WorldsViewModel(
     private val appScope: AppCoroutineScope,
@@ -25,9 +31,14 @@ internal class WorldsViewModel(
     private val updateWorld: UpdateWorldUseCase,
     private val deleteWorld: DeleteWorldUseCase,
     private val setActiveWorld: SetActiveWorldUseCase,
+    private val exportWorldBundle: ExportWorldBundleUseCase,
+    private val importWorldBundle: ImportWorldBundleUseCase,
 ) {
     private val _state = MutableStateFlow<WorldsViewState>(WorldsViewState.Loading)
     val state: StateFlow<WorldsViewState> = _state.asStateFlow()
+
+    private val _effects = MutableSharedFlow<WorldsViewEffect>(extraBufferCapacity = 1)
+    val effects: SharedFlow<WorldsViewEffect> = _effects.asSharedFlow()
 
     private var observeJob: Job? = null
     private var openCreateOnNextLoad = false
@@ -55,6 +66,10 @@ internal class WorldsViewModel(
             WorldsInteraction.EditorSaved -> saveEditor()
             WorldsInteraction.EditorDismissed -> updateEditor { null }
             WorldsInteraction.BlockReasonDismissed -> updateContentOverlays(blockDeleteReason = null)
+            is WorldsInteraction.ExportWorldSelected -> Unit
+            is WorldsInteraction.ExportPathChosen -> exportWorld(interaction.worldId, interaction.path)
+            WorldsInteraction.ImportWorldSelected -> Unit
+            is WorldsInteraction.ImportPathChosen -> importWorld(interaction.path)
         }
     }
 
@@ -91,8 +106,9 @@ internal class WorldsViewModel(
         } else {
             editorFrom(current)
         }
+        val transferring = isTransferringFrom(current)
         _state.value = if (worlds.isEmpty()) {
-            WorldsViewState.Empty(editor = editor)
+            WorldsViewState.Empty(editor = editor, isTransferring = transferring)
         } else {
             WorldsViewState.Content(
                 worlds = worlds,
@@ -100,6 +116,7 @@ internal class WorldsViewModel(
                 editor = editor,
                 pendingDelete = pendingDeleteFrom(current),
                 blockDeleteReason = blockReasonFrom(current),
+                isTransferring = transferring,
             )
         }
     }
@@ -210,6 +227,66 @@ internal class WorldsViewModel(
         }
     }
 
+    private fun exportWorld(worldId: String, path: String) {
+        if (isTransferringFrom(_state.value)) {
+            return
+        }
+        val worldName = worldsFrom(_state.value).firstOrNull { it.id == worldId }?.name ?: "World"
+        setTransferring(true)
+        appScope.scope.launch {
+            when (val result = exportWorldBundle(worldId, File(path))) {
+                ExportWorldBundleUseCase.Result.Written -> {
+                    _effects.tryEmit(WorldsViewEffect.Exported(worldName))
+                }
+                ExportWorldBundleUseCase.Result.WorldNotFound -> {
+                    _effects.tryEmit(WorldsViewEffect.Failed("That world no longer exists"))
+                }
+                is ExportWorldBundleUseCase.Result.Failed -> {
+                    _effects.tryEmit(WorldsViewEffect.Failed(result.message))
+                }
+            }
+            setTransferring(false)
+        }
+    }
+
+    private fun importWorld(path: String) {
+        if (isTransferringFrom(_state.value)) {
+            return
+        }
+        setTransferring(true)
+        appScope.scope.launch {
+            when (val result = importWorldBundle(File(path))) {
+                is ImportWorldBundleUseCase.Result.Imported -> {
+                    _effects.tryEmit(WorldsViewEffect.Imported(result.world.name))
+                }
+                ImportWorldBundleUseCase.Result.UnsupportedVersion -> {
+                    _effects.tryEmit(
+                        WorldsViewEffect.Failed("This backup was made with a newer WorldWeaver version")
+                    )
+                }
+                ImportWorldBundleUseCase.Result.InvalidArchive -> {
+                    _effects.tryEmit(WorldsViewEffect.Failed("That file is not a valid world backup"))
+                }
+                is ImportWorldBundleUseCase.Result.Failed -> {
+                    _effects.tryEmit(WorldsViewEffect.Failed(result.message))
+                }
+            }
+            setTransferring(false)
+        }
+    }
+
+    private fun setTransferring(isTransferring: Boolean) {
+        when (val current = _state.value) {
+            is WorldsViewState.Empty -> {
+                _state.value = current.copy(isTransferring = isTransferring)
+            }
+            is WorldsViewState.Content -> {
+                _state.value = current.copy(isTransferring = isTransferring)
+            }
+            else -> Unit
+        }
+    }
+
     private fun updateContentOverlays(
         pendingDelete: WorldsViewState.PendingDelete? = pendingDeleteFrom(_state.value),
         blockDeleteReason: String? = blockReasonFrom(_state.value),
@@ -250,5 +327,13 @@ internal class WorldsViewModel(
 
     private fun worldsFrom(state: WorldsViewState): List<World> {
         return (state as? WorldsViewState.Content)?.worlds.orEmpty()
+    }
+
+    private fun isTransferringFrom(state: WorldsViewState): Boolean {
+        return when (state) {
+            is WorldsViewState.Empty -> state.isTransferring
+            is WorldsViewState.Content -> state.isTransferring
+            else -> false
+        }
     }
 }

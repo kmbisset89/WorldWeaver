@@ -14,21 +14,27 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SettingsBrightness
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,23 +59,20 @@ internal fun Sidebar(
     currentScreen: Screen,
     activeWorldName: String? = null,
     activeCampaignName: String? = null,
-    notificationCount: Int = 0,
-    showNotifications: Boolean = false,
-    notifications: List<ShellNotification> = emptyList(),
     themeMode: ThemeMode = ThemeMode.SYSTEM,
+    expanded: Boolean = true,
     onCycleThemeMode: () -> Unit = {},
+    onToggleExpanded: () -> Unit = {},
     onNavigate: (Screen) -> Unit,
     onLogout: () -> Unit,
-    onToggleNotifications: () -> Unit = {},
-    onDismissNotifications: () -> Unit = {},
-    onNotificationClick: (ShellNotification) -> Unit = {},
 ) {
+    val railWidth = if (expanded) 240.dp else 72.dp
     Column(
         modifier = Modifier
-            .width(240.dp)
+            .width(railWidth)
             .fillMaxHeight()
             .background(DarkNavy)
-            .padding(16.dp)
+            .padding(if (expanded) 16.dp else 8.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -77,91 +80,67 @@ internal fun Sidebar(
         ) {
             Icon(
                 Icons.Default.AutoStories,
-                contentDescription = "World Weaver logo",
+                contentDescription = activeContextLabel(activeWorldName, activeCampaignName),
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
-                Text(
-                    text = "World Weaver",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = activeContextLabel(activeWorldName, activeCampaignName),
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        NavItem(
-            icon = Icons.Default.Home,
-            label = "Home",
-            contentDescription = "Navigate to Home",
-            isSelected = currentScreen == Screen.HOME,
-            onClick = { onNavigate(Screen.HOME) }
-        )
-
-        NavItem(
-            icon = Icons.Default.Public,
-            label = "Worlds",
-            contentDescription = "Navigate to Worlds",
-            isSelected = currentScreen == Screen.WORLDS,
-            onClick = { onNavigate(Screen.WORLDS) }
-        )
-
-        NavItem(
-            icon = Icons.Default.Flag,
-            label = "Campaigns",
-            contentDescription = "Navigate to Campaigns",
-            isSelected = currentScreen == Screen.CAMPAIGNS,
-            onClick = { onNavigate(Screen.CAMPAIGNS) }
-        )
-
-        NavItem(
-            icon = Icons.Default.Settings,
-            label = "Settings",
-            contentDescription = "Navigate to Settings",
-            isSelected = currentScreen == Screen.SETTINGS,
-            onClick = { onNavigate(Screen.SETTINGS) }
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        if (showNotifications) {
-            NotificationPanel(
-                notifications = notifications,
-                onDismiss = onDismissNotifications,
-                onNotificationClick = onNotificationClick
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onToggleNotifications) {
-                BadgedBox(
-                    badge = {
-                        if (notificationCount > 0) {
-                            Badge { Text(notificationCount.toString()) }
-                        }
-                    }
-                ) {
-                    Icon(
-                        Icons.Default.Notifications,
-                        contentDescription = "Notifications, $notificationCount unread",
-                        tint = Color.White.copy(alpha = 0.8f)
+            if (expanded) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "World Weaver",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = activeContextLabel(activeWorldName, activeCampaignName),
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 }
             }
+        }
+
+        IconButton(
+            onClick = onToggleExpanded,
+            modifier = Modifier.align(if (expanded) Alignment.End else Alignment.CenterHorizontally)
+        ) {
+            Icon(
+                imageVector = if (expanded) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
+                contentDescription = if (expanded) {
+                    "Collapse navigation"
+                } else {
+                    "Expand navigation"
+                },
+                tint = Color.White.copy(alpha = 0.8f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        NavDestination.entries.forEach { destination ->
+            NavItem(
+                icon = destination.icon,
+                label = destination.label,
+                contentDescription = destination.contentDescription,
+                isSelected = currentScreen == destination.screen,
+                expanded = expanded,
+                onClick = { onNavigate(destination.screen) }
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = if (expanded) {
+                Arrangement.SpaceBetween
+            } else {
+                Arrangement.Center
+            },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             IconButton(onClick = onCycleThemeMode) {
                 Icon(
                     imageVector = when (themeMode) {
@@ -180,100 +159,87 @@ internal fun Sidebar(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center
         ) {
             Icon(
                 Icons.Default.AccountCircle,
-                contentDescription = "User account",
+                contentDescription = currentUser.displayName,
                 tint = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.size(32.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = currentUser.displayName,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-                Text(
-                    text = currentUser.email,
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.6f)
-                )
+            if (expanded) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = currentUser.displayName,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                    Text(
+                        text = currentUser.email,
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        TextButton(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.Logout,
-                contentDescription = "Sign out",
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                "Sign Out",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 13.sp
-            )
+        if (expanded) {
+            TextButton(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = "Sign out",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Sign Out",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 13.sp
+                )
+            }
+        } else {
+            IconButton(
+                onClick = onLogout,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = "Sign out",
+                    tint = Color.White.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }
 
-@Composable
-private fun NotificationPanel(
-    notifications: List<ShellNotification>,
-    onDismiss: () -> Unit,
-    onNotificationClick: (ShellNotification) -> Unit
+private enum class NavDestination(
+    val screen: Screen,
+    val icon: ImageVector,
+    val label: String,
+    val contentDescription: String,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Notifications",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-                TextButton(onClick = onDismiss) {
-                    Text("Clear", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
-                }
-            }
-            if (notifications.isEmpty()) {
-                Text(
-                    text = "No new notifications",
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.6f)
-                )
-            } else {
-                notifications.take(5).forEach { notification ->
-                    Text(
-                        text = notification.message,
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onNotificationClick(notification) }
-                            .padding(vertical = 4.dp)
-                    )
-                }
-            }
-        }
-    }
+    Home(Screen.HOME, Icons.Default.Home, "Home", "Navigate to Home"),
+    Worlds(Screen.WORLDS, Icons.Default.Public, "Worlds", "Navigate to Worlds"),
+    Campaigns(Screen.CAMPAIGNS, Icons.Default.Flag, "Campaigns", "Navigate to Campaigns"),
+    Locations(Screen.LOCATIONS, Icons.Default.Place, "Locations", "Navigate to Locations"),
+    Lore(Screen.LORE, Icons.AutoMirrored.Filled.MenuBook, "Lore", "Navigate to Lore"),
+    Calendar(Screen.CALENDAR, Icons.Default.CalendarMonth, "Calendar", "Navigate to Calendar"),
+    Characters(Screen.CHARACTERS, Icons.Default.Groups, "Characters", "Navigate to Characters"),
+    Quests(Screen.QUESTS, Icons.AutoMirrored.Filled.Assignment, "Quests", "Navigate to Quests"),
+    Sessions(Screen.SESSIONS, Icons.Default.Event, "Sessions", "Navigate to Sessions"),
+    Encounters(Screen.ENCOUNTERS, Icons.Default.Security, "Encounters", "Navigate to Encounters"),
+    Maps(Screen.MAPS, Icons.Default.Map, "Maps", "Navigate to Maps"),
+    Dice(Screen.DICE, Icons.Default.Casino, "Dice", "Navigate to Dice"),
+    Settings(Screen.SETTINGS, Icons.Default.Settings, "Settings", "Navigate to Settings"),
 }
 
 private fun activeContextLabel(
@@ -295,6 +261,7 @@ private fun NavItem(
     label: String,
     contentDescription: String,
     isSelected: Boolean,
+    expanded: Boolean,
     onClick: () -> Unit
 ) {
     val bgColor = if (isSelected) Color.White.copy(alpha = 0.15f) else Color.Transparent
@@ -306,8 +273,12 @@ private fun NavItem(
             .padding(vertical = 2.dp)
             .background(bgColor, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(
+                horizontal = if (expanded) 12.dp else 8.dp,
+                vertical = 10.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center
     ) {
         Icon(
             icon,
@@ -315,13 +286,15 @@ private fun NavItem(
             tint = textColor,
             modifier = Modifier.size(20.dp)
         )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-            color = textColor,
-            modifier = Modifier.weight(1f)
-        )
+        if (expanded) {
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                color = textColor,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }

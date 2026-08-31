@@ -2,6 +2,8 @@ package net.tactware.worldweaver.domain
 
 internal class CreateWorldUseCase(
     private val worldRepository: WorldRepository,
+    private val worldCalendarRepository: WorldCalendarRepository,
+    private val defaultCalendarFactory: DefaultWorldCalendarFactory,
     private val entityIdFactory: EntityIdFactory,
     private val instantProvider: InstantProvider,
     private val setActiveWorld: SetActiveWorldUseCase,
@@ -29,6 +31,7 @@ internal class CreateWorldUseCase(
             updatedAt = now,
         )
         worldRepository.insert(world)
+        worldCalendarRepository.insert(defaultCalendarFactory.create(world.id, now))
         setActiveWorld(world.id)
         return Result.Created(world)
     }

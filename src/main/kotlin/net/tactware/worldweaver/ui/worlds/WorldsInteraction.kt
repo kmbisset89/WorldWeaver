@@ -14,4 +14,8 @@ internal sealed interface WorldsInteraction {
     data object EditorSaved : WorldsInteraction
     data object EditorDismissed : WorldsInteraction
     data object BlockReasonDismissed : WorldsInteraction
+    data class ExportWorldSelected(val worldId: String) : WorldsInteraction
+    data class ExportPathChosen(val worldId: String, val path: String) : WorldsInteraction
+    data object ImportWorldSelected : WorldsInteraction
+    data class ImportPathChosen(val path: String) : WorldsInteraction
 }

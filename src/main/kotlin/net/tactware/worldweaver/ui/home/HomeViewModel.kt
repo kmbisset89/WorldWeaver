@@ -12,15 +12,17 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import net.tactware.worldweaver.core.AppCoroutineScope
 import net.tactware.worldweaver.domain.ObserveActiveContextDetailsUseCase
+import net.tactware.worldweaver.domain.ObserveDashboardCountsUseCase
 import net.tactware.worldweaver.domain.ObserveWorldsUseCase
 import net.tactware.worldweaver.domain.SetActiveWorldUseCase
-import net.tactware.worldweaver.ui.session.LocalUser
+import net.tactware.worldweaver.ui.settings.ShellSettingsStore
 
 internal class HomeViewModel(
-    private val localUser: LocalUser,
+    private val shellSettingsStore: ShellSettingsStore,
     private val appScope: AppCoroutineScope,
     private val observeWorlds: ObserveWorldsUseCase,
     private val observeActiveContextDetails: ObserveActiveContextDetailsUseCase,
+    private val observeDashboardCounts: ObserveDashboardCountsUseCase,
     private val setActiveWorld: SetActiveWorldUseCase,
 ) {
     private val _state = MutableStateFlow<HomeViewState>(HomeViewState.Loading)
@@ -42,6 +44,9 @@ internal class HomeViewModel(
             HomeInteraction.NewWorldSelected -> emitEffect(HomeViewEffect.OpenWorldCreator)
             is HomeInteraction.WorldSelected -> selectWorld(interaction.worldId)
             HomeInteraction.ContinueCampaignSelected -> emitEffect(HomeViewEffect.OpenCampaigns)
+            HomeInteraction.WorldsCountSelected -> emitEffect(HomeViewEffect.OpenWorlds)
+            HomeInteraction.CampaignsCountSelected -> emitEffect(HomeViewEffect.OpenCampaigns)
+            HomeInteraction.PeopleCountSelected -> emitEffect(HomeViewEffect.OpenCharacters)
         }
     }
 
@@ -52,14 +57,16 @@ internal class HomeViewModel(
             combine(
                 observeWorlds(),
                 observeActiveContextDetails(),
-            ) { worlds, details ->
+                observeDashboardCounts(),
+                shellSettingsStore.settings,
+            ) { worlds, details, counts, settings ->
                 if (worlds.isEmpty()) {
-                    HomeViewState.Empty(displayName = localUser.displayName)
+                    HomeViewState.Empty(displayName = settings.displayName)
                 } else {
                     val campaign = details.campaign
                     val world = details.world
                     HomeViewState.Content(
-                        displayName = localUser.displayName,
+                        displayName = settings.displayName,
                         recentWorlds = worlds.take(RECENT_WORLD_LIMIT),
                         continueCampaign = if (campaign != null && world != null) {
                             HomeViewState.ContinueCampaign(
@@ -69,6 +76,9 @@ internal class HomeViewModel(
                         } else {
                             null
                         },
+                        worldCount = counts.worlds,
+                        campaignCount = counts.campaigns,
+                        peopleCount = counts.people,
                     )
                 }
             }

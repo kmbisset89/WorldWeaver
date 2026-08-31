@@ -22,6 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +39,9 @@ import net.tactware.worldweaver.ui.theme.NavyBlue
 import net.tactware.worldweaver.ui.theme.SurfaceCard
 import net.tactware.worldweaver.ui.theme.TextPrimary
 import net.tactware.worldweaver.ui.theme.TextSecondary
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
 
 @Composable
 internal fun WorldsScreen(
@@ -52,7 +56,10 @@ internal fun WorldsScreen(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        WorldsHeader(onInteraction = onInteraction)
+        WorldsHeader(
+            isTransferring = isTransferring(viewState),
+            onInteraction = onInteraction,
+        )
 
         when (viewState) {
             WorldsViewState.Loading -> {
@@ -71,6 +78,13 @@ internal fun WorldsScreen(
                     actionLabel = "New world",
                     onAction = { onInteraction(WorldsInteraction.NewWorldSelected) },
                 )
+                Spacer(modifier = Modifier.padding(top = 4.dp))
+                TextButton(
+                    onClick = { chooseImportPath(onInteraction) },
+                    enabled = !viewState.isTransferring,
+                ) {
+                    Text("Import world")
+                }
                 viewState.editor?.let { editor ->
                     WorldEditorDialog(editor = editor, onInteraction = onInteraction)
                 }
@@ -87,6 +101,7 @@ internal fun WorldsScreen(
 
 @Composable
 private fun WorldsHeader(
+    isTransferring: Boolean,
     onInteraction: (WorldsInteraction) -> Unit,
 ) {
     Row(
@@ -107,13 +122,22 @@ private fun WorldsHeader(
                 color = TextSecondary
             )
         }
-        Button(
-            onClick = { onInteraction(WorldsInteraction.NewWorldSelected) },
-            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-            Text("New world")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { chooseImportPath(onInteraction) },
+                enabled = !isTransferring,
+            ) {
+                Text("Import world")
+            }
+            Button(
+                onClick = { onInteraction(WorldsInteraction.NewWorldSelected) },
+                enabled = !isTransferring,
+                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                Text("New world")
+            }
         }
     }
 }
@@ -147,6 +171,7 @@ private fun WorldsContent(
             WorldRow(
                 world = world,
                 isActive = world.id == state.activeWorldId,
+                isTransferring = state.isTransferring,
                 onInteraction = onInteraction,
             )
         }
@@ -170,6 +195,7 @@ private fun WorldsContent(
 private fun WorldRow(
     world: World,
     isActive: Boolean,
+    isTransferring: Boolean,
     onInteraction: (WorldsInteraction) -> Unit,
 ) {
     Card(
@@ -225,12 +251,79 @@ private fun WorldRow(
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            TextButton(onClick = { onInteraction(WorldsInteraction.EditWorldSelected(world.id)) }) {
+            TextButton(
+                onClick = {
+                    chooseExportPath(world.name)?.let { path ->
+                        onInteraction(WorldsInteraction.ExportPathChosen(world.id, path))
+                    }
+                },
+                enabled = !isTransferring,
+            ) {
+                Text("Export")
+            }
+            TextButton(
+                onClick = { onInteraction(WorldsInteraction.EditWorldSelected(world.id)) },
+                enabled = !isTransferring,
+            ) {
                 Text("Edit")
             }
-            TextButton(onClick = { onInteraction(WorldsInteraction.DeleteWorldSelected(world.id)) }) {
+            TextButton(
+                onClick = { onInteraction(WorldsInteraction.DeleteWorldSelected(world.id)) },
+                enabled = !isTransferring,
+            ) {
                 Text("Delete")
             }
         }
     }
 }
+
+private fun isTransferring(state: WorldsViewState): Boolean {
+    return when (state) {
+        is WorldsViewState.Empty -> state.isTransferring
+        is WorldsViewState.Content -> state.isTransferring
+        else -> false
+    }
+}
+
+private fun chooseImportPath(onInteraction: (WorldsInteraction) -> Unit) {
+    chooseBundlePath(title = "Import world", mode = FileDialog.LOAD)?.let { path ->
+        onInteraction(WorldsInteraction.ImportPathChosen(path))
+    }
+}
+
+private fun chooseExportPath(worldName: String): String? {
+    return chooseBundlePath(
+        title = "Export world",
+        mode = FileDialog.SAVE,
+        defaultFileName = sanitizedBundleFileName(worldName),
+    )
+}
+
+private fun chooseBundlePath(
+    title: String,
+    mode: Int,
+    defaultFileName: String? = null,
+): String? {
+    val dialog = FileDialog(null as Frame?, title, mode)
+    dialog.setFilenameFilter { _, name -> name.endsWith(BUNDLE_EXTENSION, ignoreCase = true) }
+    if (defaultFileName != null) {
+        dialog.file = defaultFileName
+    }
+    dialog.isVisible = true
+    val fileName = dialog.file ?: return null
+    val directory = dialog.directory ?: return null
+    val file = File(directory, fileName)
+    return if (mode == FileDialog.SAVE && !file.name.endsWith(BUNDLE_EXTENSION, ignoreCase = true)) {
+        File(directory, file.name + BUNDLE_EXTENSION).absolutePath
+    } else {
+        file.absolutePath
+    }
+}
+
+private fun sanitizedBundleFileName(worldName: String): String {
+    val cleaned = worldName.replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_')
+    val base = cleaned.ifBlank { "world" }
+    return base + BUNDLE_EXTENSION
+}
+
+private const val BUNDLE_EXTENSION = ".wwbundle"

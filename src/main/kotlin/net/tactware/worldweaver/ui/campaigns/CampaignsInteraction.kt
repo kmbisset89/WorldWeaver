@@ -8,6 +8,7 @@ internal sealed interface CampaignsInteraction {
     data object CreateWorldSelected : CampaignsInteraction
     data object NewCampaignSelected : CampaignsInteraction
     data class CampaignSelected(val campaignId: String) : CampaignsInteraction
+    data class CampaignOpened(val campaignId: String) : CampaignsInteraction
     data class EditCampaignSelected(val campaignId: String) : CampaignsInteraction
     data class DeleteCampaignSelected(val campaignId: String) : CampaignsInteraction
     data object DeleteConfirmed : CampaignsInteraction
@@ -19,4 +20,7 @@ internal sealed interface CampaignsInteraction {
     data class EditorNotesChanged(val notes: String) : CampaignsInteraction
     data object EditorSaved : CampaignsInteraction
     data object EditorDismissed : CampaignsInteraction
+    data object OpenCharactersSelected : CampaignsInteraction
+    data object OpenQuestsSelected : CampaignsInteraction
+    data object OpenSessionsSelected : CampaignsInteraction
 }

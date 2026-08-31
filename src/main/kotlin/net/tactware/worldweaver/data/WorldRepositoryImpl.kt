@@ -15,6 +15,10 @@ internal class WorldRepositoryImpl(
         }
     }
 
+    override fun observeCount(): Flow<Int> {
+        return worldDao.observeCount()
+    }
+
     override fun observeById(id: String): Flow<World?> {
         return worldDao.observeById(id).map { entity ->
             entity?.let { converter.toWorld(it) }
@@ -23,6 +27,10 @@ internal class WorldRepositoryImpl(
 
     override suspend fun getById(id: String): World? {
         return worldDao.getById(id)?.let { converter.toWorld(it) }
+    }
+
+    override suspend fun search(query: String): List<World> {
+        return worldDao.searchLike(query).map { converter.toWorld(it) }
     }
 
     override suspend fun insert(world: World) {

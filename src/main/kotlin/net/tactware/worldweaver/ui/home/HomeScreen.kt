@@ -3,6 +3,7 @@ package net.tactware.worldweaver.ui.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -122,6 +123,32 @@ private fun HomeContent(
     ) {
         item { HomeGreeting(state.displayName) }
 
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CountCard(
+                    title = "Worlds",
+                    count = state.worldCount,
+                    onSelected = { onInteraction(HomeInteraction.WorldsCountSelected) },
+                    modifier = Modifier.weight(1f),
+                )
+                CountCard(
+                    title = "Campaigns",
+                    count = state.campaignCount,
+                    onSelected = { onInteraction(HomeInteraction.CampaignsCountSelected) },
+                    modifier = Modifier.weight(1f),
+                )
+                CountCard(
+                    title = "People",
+                    count = state.peopleCount,
+                    onSelected = { onInteraction(HomeInteraction.PeopleCountSelected) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
         if (state.continueCampaign != null) {
             item {
                 ContinueCard(
@@ -144,6 +171,36 @@ private fun HomeContent(
             RecentWorldCard(
                 world = world,
                 onSelected = { onInteraction(HomeInteraction.WorldSelected(world.id)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CountCard(
+    title: String,
+    count: Int,
+    onSelected: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.clickable(onClick = onSelected),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                color = TextSecondary
+            )
+            Text(
+                text = count.toString(),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
     }

@@ -12,6 +12,7 @@ internal sealed class WorldsViewState {
 
     data class Empty(
         val editor: WorldEditorState?,
+        val isTransferring: Boolean = false,
     ) : WorldsViewState()
 
     data class Content(
@@ -20,6 +21,7 @@ internal sealed class WorldsViewState {
         val editor: WorldEditorState?,
         val pendingDelete: PendingDelete?,
         val blockDeleteReason: String?,
+        val isTransferring: Boolean = false,
     ) : WorldsViewState()
 
     data class WorldEditorState(

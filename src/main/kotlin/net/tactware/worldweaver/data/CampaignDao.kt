@@ -17,8 +17,25 @@ internal interface CampaignDao {
     @Query("SELECT * FROM campaigns WHERE id = :id")
     suspend fun getById(id: String): CampaignEntity?
 
+    @Query("SELECT * FROM campaigns WHERE worldId = :worldId ORDER BY updatedAtEpochMillis DESC")
+    suspend fun getByWorld(worldId: String): List<CampaignEntity>
+
     @Query("SELECT COUNT(*) FROM campaigns WHERE worldId = :worldId")
     suspend fun countByWorld(worldId: String): Int
+
+    @Query("SELECT COUNT(*) FROM campaigns")
+    fun observeCount(): Flow<Int>
+
+    @Query(
+        """
+        SELECT * FROM campaigns
+        WHERE name LIKE '%' || :query || '%'
+           OR description LIKE '%' || :query || '%'
+           OR notes LIKE '%' || :query || '%'
+        ORDER BY name ASC
+        """
+    )
+    suspend fun searchLike(query: String): List<CampaignEntity>
 
     @Insert
     suspend fun insert(entity: CampaignEntity)

@@ -214,6 +214,10 @@ private fun CampaignsContent(
         if (state.selectedCampaign != null) {
             CampaignOverviewPane(
                 campaign = state.selectedCampaign,
+                partyMembers = state.partyMembers,
+                activeQuests = state.activeQuests,
+                lastSession = state.lastSession,
+                nextSessionHint = state.nextSessionHint,
                 onInteraction = onInteraction,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )

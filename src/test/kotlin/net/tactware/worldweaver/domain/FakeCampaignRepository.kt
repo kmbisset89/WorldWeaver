@@ -21,8 +21,24 @@ internal class FakeCampaignRepository : CampaignRepository {
         return campaigns.value.firstOrNull { it.id == id }
     }
 
+    override suspend fun getByWorld(worldId: String): List<Campaign> {
+        return campaigns.value.filter { it.worldId == worldId }
+    }
+
+    override suspend fun search(query: String): List<Campaign> {
+        return campaigns.value.filter { campaign ->
+            campaign.name.contains(query, ignoreCase = true) ||
+                campaign.description.contains(query, ignoreCase = true) ||
+                campaign.notes.contains(query, ignoreCase = true)
+        }
+    }
+
     override suspend fun countByWorld(worldId: String): Int {
         return campaigns.value.count { it.worldId == worldId }
+    }
+
+    override fun observeCount(): Flow<Int> {
+        return campaigns.map { it.size }
     }
 
     override suspend fun insert(campaign: Campaign) {

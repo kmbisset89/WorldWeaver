@@ -25,8 +25,20 @@ internal class CampaignRepositoryImpl(
         return campaignDao.getById(id)?.let { converter.toCampaign(it) }
     }
 
+    override suspend fun getByWorld(worldId: String): List<Campaign> {
+        return campaignDao.getByWorld(worldId).map { converter.toCampaign(it) }
+    }
+
+    override suspend fun search(query: String): List<Campaign> {
+        return campaignDao.searchLike(query).map { converter.toCampaign(it) }
+    }
+
     override suspend fun countByWorld(worldId: String): Int {
         return campaignDao.countByWorld(worldId)
+    }
+
+    override fun observeCount(): Flow<Int> {
+        return campaignDao.observeCount()
     }
 
     override suspend fun insert(campaign: Campaign) {

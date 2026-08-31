@@ -23,9 +23,31 @@ internal sealed class CampaignsViewState {
         val campaigns: List<Campaign>,
         val selectedCampaign: Campaign?,
         val showRetired: Boolean,
+        val partyMembers: List<PartyMember>,
+        val activeQuests: List<OverviewQuest>,
+        val lastSession: OverviewSession?,
+        val nextSessionHint: String,
         val editor: CampaignEditorState?,
         val pendingDelete: PendingDelete?,
     ) : CampaignsViewState()
+
+    data class PartyMember(
+        val id: String,
+        val name: String,
+        val summary: String,
+    )
+
+    data class OverviewQuest(
+        val id: String,
+        val title: String,
+    )
+
+    data class OverviewSession(
+        val id: String,
+        val name: String,
+        val recap: String,
+        val dateLabel: String?,
+    )
 
     data class CampaignEditorState(
         val campaignId: String?,

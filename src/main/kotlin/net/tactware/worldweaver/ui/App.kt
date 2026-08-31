@@ -1,7 +1,10 @@
 package net.tactware.worldweaver.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -16,10 +19,30 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowState
+import net.tactware.worldweaver.ui.calendar.CalendarScreen
 import net.tactware.worldweaver.ui.campaigns.CampaignsScreen
+import net.tactware.worldweaver.ui.characters.CharactersScreen
 import net.tactware.worldweaver.ui.components.Sidebar
 import net.tactware.worldweaver.ui.home.HomeScreen
+import net.tactware.worldweaver.ui.locations.LocationsScreen
+import net.tactware.worldweaver.ui.lore.LoreScreen
+import net.tactware.worldweaver.ui.maps.BattleMapTokenOverlay
+import net.tactware.worldweaver.ui.maps.BattleMapViewerComposeWidget
+import net.tactware.worldweaver.ui.maps.MapsInteraction
+import net.tactware.worldweaver.ui.maps.MapsScreen
+import net.tactware.worldweaver.ui.maps.MapsViewState
 import net.tactware.worldweaver.ui.navigation.Screen
+import net.tactware.worldweaver.ui.search.SearchBar
+import net.tactware.worldweaver.ui.dice.DiceScreen
+import net.tactware.worldweaver.ui.encounters.EncountersInteraction
+import net.tactware.worldweaver.ui.encounters.EncountersScreen
+import net.tactware.worldweaver.ui.encounters.EncountersViewState
+import net.tactware.worldweaver.ui.quests.QuestsScreen
+import net.tactware.worldweaver.ui.sessions.SessionsScreen
 import net.tactware.worldweaver.ui.settings.SettingsScreen
 import net.tactware.worldweaver.ui.theme.ErrorRed
 import net.tactware.worldweaver.ui.theme.SuccessGreen
@@ -30,7 +53,78 @@ import net.tactware.worldweaver.ui.worlds.WorldsScreen
 internal fun App(
     viewModel: AppViewModel,
 ) {
-    WorldWeaverTheme(themeMode = viewModel.themeMode) {
+    WorldWeaverTheme(
+        themeMode = viewModel.themeMode,
+        themeSkin = viewModel.themeSkin,
+    ) {
+        val mapsState by viewModel.mapsViewModel.state.collectAsState()
+        val encountersState by viewModel.encountersViewModel.state.collectAsState()
+        val mapsPlayerMapState = viewModel.mapsViewModel.playerMapState
+        val encounterPlayerMapState = viewModel.encountersViewModel.playerMapState
+        val mapsPlayerContent = mapsState as? MapsViewState.Content
+        val encounterPlayerContent = encountersState as? EncountersViewState.Running
+        val playerMapState = when {
+            encounterPlayerContent != null && encounterPlayerContent.playerViewOpen -> encounterPlayerMapState
+            mapsPlayerContent != null && mapsPlayerContent.playerViewOpen -> mapsPlayerMapState
+            else -> null
+        }
+        val playerTitle = encounterPlayerContent?.battleMapName
+            ?: mapsPlayerContent?.selectedMap?.name
+            ?: "Battle map"
+        if (playerMapState != null) {
+            val playerWindowState = remember {
+                WindowState(size = DpSize(1024.dp, 768.dp))
+            }
+            Window(
+                title = playerTitle,
+                onCloseRequest = {
+                    if (encounterPlayerContent != null && encounterPlayerContent.playerViewOpen) {
+                        viewModel.encountersViewModel.onInteraction(
+                            EncountersInteraction.PlayerViewClosed
+                        )
+                    } else {
+                        viewModel.mapsViewModel.onInteraction(MapsInteraction.PlayerViewClosed)
+                    }
+                },
+                state = playerWindowState,
+            ) {
+                WorldWeaverTheme(
+                    themeMode = viewModel.themeMode,
+                    themeSkin = viewModel.themeSkin,
+                ) {
+                    BattleMapViewerComposeWidget(
+                        mapState = playerMapState,
+                        modifier = Modifier.fillMaxSize(),
+                        onMapTapped = { x, y ->
+                            if (encounterPlayerContent != null && encounterPlayerContent.playerViewOpen) {
+                                viewModel.encountersViewModel.onInteraction(
+                                    EncountersInteraction.MapCellSelected(x, y)
+                                )
+                            } else {
+                                viewModel.mapsViewModel.onInteraction(
+                                    MapsInteraction.MapCellSelected(x, y)
+                                )
+                            }
+                        },
+                        onMarkerClicked = { markerId ->
+                            BattleMapTokenOverlay.participantIdFrom(markerId)?.let { participantId ->
+                                if (encounterPlayerContent != null &&
+                                    encounterPlayerContent.playerViewOpen
+                                ) {
+                                    viewModel.encountersViewModel.onInteraction(
+                                        EncountersInteraction.TokenSelected(participantId)
+                                    )
+                                } else {
+                                    viewModel.mapsViewModel.onInteraction(
+                                        MapsInteraction.TokenSelected(participantId)
+                                    )
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+        }
         val snackbarHostState = remember { SnackbarHostState() }
 
         LaunchedEffect(viewModel.uiEvent) {
@@ -70,12 +164,13 @@ internal fun App(
                     currentScreen = viewModel.navigation.currentScreen,
                     activeWorldName = viewModel.activeWorldName,
                     activeCampaignName = viewModel.activeCampaignName,
-                    notificationCount = viewModel.notifications.size,
-                    showNotifications = viewModel.showNotifications,
-                    notifications = viewModel.notifications,
                     themeMode = viewModel.themeMode,
+                    expanded = viewModel.navExpanded,
                     onCycleThemeMode = {
                         viewModel.onInteraction(AppInteraction.ThemeModeCycled)
+                    },
+                    onToggleExpanded = {
+                        viewModel.onInteraction(AppInteraction.NavDensityToggled)
                     },
                     onNavigate = { screen ->
                         viewModel.onInteraction(AppInteraction.ScreenSelected(screen))
@@ -83,18 +178,20 @@ internal fun App(
                     onLogout = {
                         viewModel.onInteraction(AppInteraction.SignOutSelected)
                     },
-                    onToggleNotifications = {
-                        viewModel.onInteraction(AppInteraction.NotificationsToggled)
-                    },
-                    onDismissNotifications = {
-                        viewModel.onInteraction(AppInteraction.NotificationsDismissed)
-                    },
-                    onNotificationClick = { notification ->
-                        viewModel.onInteraction(AppInteraction.NotificationSelected(notification.id))
-                    }
                 )
 
-                when (viewModel.navigation.currentScreen) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    val searchState by viewModel.searchViewModel.state.collectAsState()
+                    SearchBar(
+                        viewState = searchState,
+                        onInteraction = viewModel.searchViewModel::onInteraction,
+                    )
+                    Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                    when (viewModel.navigation.currentScreen) {
                     Screen.HOME -> {
                         val homeState by viewModel.homeViewModel.state.collectAsState()
                         HomeScreen(
@@ -119,12 +216,86 @@ internal fun App(
                         )
                     }
 
+                    Screen.LOCATIONS -> {
+                        val locationsState by viewModel.locationsViewModel.state.collectAsState()
+                        LocationsScreen(
+                            viewState = locationsState,
+                            onInteraction = viewModel.locationsViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.LORE -> {
+                        val loreState by viewModel.loreViewModel.state.collectAsState()
+                        LoreScreen(
+                            viewState = loreState,
+                            onInteraction = viewModel.loreViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.CALENDAR -> {
+                        val calendarState by viewModel.calendarViewModel.state.collectAsState()
+                        CalendarScreen(
+                            viewState = calendarState,
+                            onInteraction = viewModel.calendarViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.CHARACTERS -> {
+                        val charactersState by viewModel.charactersViewModel.state.collectAsState()
+                        CharactersScreen(
+                            viewState = charactersState,
+                            onInteraction = viewModel.charactersViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.QUESTS -> {
+                        val questsState by viewModel.questsViewModel.state.collectAsState()
+                        QuestsScreen(
+                            viewState = questsState,
+                            onInteraction = viewModel.questsViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.SESSIONS -> {
+                        val sessionsState by viewModel.sessionsViewModel.state.collectAsState()
+                        SessionsScreen(
+                            viewState = sessionsState,
+                            onInteraction = viewModel.sessionsViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.ENCOUNTERS -> {
+                        EncountersScreen(
+                            viewState = encountersState,
+                            mapState = viewModel.encountersViewModel.mapState,
+                            onInteraction = viewModel.encountersViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.MAPS -> {
+                        MapsScreen(
+                            viewState = mapsState,
+                            mapState = viewModel.mapsViewModel.mapState,
+                            onInteraction = viewModel.mapsViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.DICE -> {
+                        val diceState by viewModel.diceViewModel.state.collectAsState()
+                        DiceScreen(
+                            viewState = diceState,
+                            onInteraction = viewModel.diceViewModel::onInteraction
+                        )
+                    }
+
                     Screen.SETTINGS -> {
                         val settingsState by viewModel.settingsViewModel.state.collectAsState()
                         SettingsScreen(
                             viewState = settingsState,
                             onInteraction = viewModel.settingsViewModel::onInteraction
                         )
+                    }
+                    }
                     }
                 }
             }

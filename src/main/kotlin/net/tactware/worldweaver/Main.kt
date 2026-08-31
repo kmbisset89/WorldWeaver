@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.window.application
 import net.tactware.worldweaver.core.AppCoroutineScope
 import net.tactware.worldweaver.di.appModule
@@ -22,6 +23,13 @@ fun main() {
     val viewModel = koin.get<AppViewModel>()
 
     application {
+        LaunchedEffect(viewModel.exitRequested) {
+            if (viewModel.exitRequested) {
+                appScope.cancel()
+                stopKoin()
+                exitApplication()
+            }
+        }
         Window(
             onCloseRequest = {
                 appScope.cancel()

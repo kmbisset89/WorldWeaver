@@ -27,6 +27,10 @@ import net.tactware.worldweaver.ui.theme.TextSecondary
 @Composable
 internal fun CampaignOverviewPane(
     campaign: Campaign,
+    partyMembers: List<CampaignsViewState.PartyMember>,
+    activeQuests: List<CampaignsViewState.OverviewQuest>,
+    lastSession: CampaignsViewState.OverviewSession?,
+    nextSessionHint: String,
     onInteraction: (CampaignsInteraction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -93,22 +97,83 @@ internal fun CampaignOverviewPane(
             }
         }
 
-        OverviewSection(
-            title = "Party",
-            emptyMessage = "There are no PCs yet.",
-        )
+        PartySection(partyMembers = partyMembers, onInteraction = onInteraction)
         OverviewSection(
             title = "Active quests",
             emptyMessage = "There are no quests yet.",
+            items = activeQuests.map { it.title },
+            actionLabel = "Open Quests",
+            onAction = { onInteraction(CampaignsInteraction.OpenQuestsSelected) },
         )
         OverviewSection(
             title = "Last session",
             emptyMessage = "There are no sessions yet.",
+            items = lastSession?.let { session ->
+                listOfNotNull(
+                    session.name,
+                    session.dateLabel,
+                    session.recap.takeIf { it.isNotBlank() },
+                )
+            }.orEmpty(),
+            actionLabel = "Open Sessions",
+            onAction = { onInteraction(CampaignsInteraction.OpenSessionsSelected) },
         )
         OverviewSection(
             title = "Next session",
-            emptyMessage = "No next-session hint yet. Add a session when you are ready to run.",
+            emptyMessage = nextSessionHint,
+            items = emptyList(),
+            actionLabel = "Open Sessions",
+            onAction = { onInteraction(CampaignsInteraction.OpenSessionsSelected) },
         )
+    }
+}
+
+@Composable
+private fun PartySection(
+    partyMembers: List<CampaignsViewState.PartyMember>,
+    onInteraction: (CampaignsInteraction) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = "Party",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+            if (partyMembers.isEmpty()) {
+                Text(
+                    text = "There are no PCs yet.",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            } else {
+                partyMembers.forEach { member ->
+                    Text(
+                        text = member.name,
+                        fontSize = 13.sp,
+                        color = TextPrimary,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                    if (member.summary.isNotBlank()) {
+                        Text(
+                            text = member.summary,
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+            TextButton(onClick = { onInteraction(CampaignsInteraction.OpenCharactersSelected) }) {
+                Text("Open Characters")
+            }
+        }
     }
 }
 
@@ -116,6 +181,9 @@ internal fun CampaignOverviewPane(
 private fun OverviewSection(
     title: String,
     emptyMessage: String,
+    items: List<String>,
+    actionLabel: String,
+    onAction: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -130,12 +198,26 @@ private fun OverviewSection(
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary
             )
-            Text(
-                text = emptyMessage,
-                fontSize = 13.sp,
-                color = TextSecondary,
-                modifier = Modifier.padding(top = 6.dp)
-            )
+            if (items.isEmpty()) {
+                Text(
+                    text = emptyMessage,
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            } else {
+                items.forEach { item ->
+                    Text(
+                        text = item,
+                        fontSize = 13.sp,
+                        color = TextPrimary,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+            }
+            TextButton(onClick = onAction) {
+                Text(actionLabel)
+            }
         }
     }
 }

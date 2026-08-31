@@ -11,12 +11,23 @@ internal class FakeWorldRepository : WorldRepository {
 
     override fun observeAll(): Flow<List<World>> = worlds
 
+    override fun observeCount(): Flow<Int> {
+        return worlds.map { it.size }
+    }
+
     override fun observeById(id: String): Flow<World?> {
         return worlds.map { list -> list.firstOrNull { it.id == id } }
     }
 
     override suspend fun getById(id: String): World? {
         return worlds.value.firstOrNull { it.id == id }
+    }
+
+    override suspend fun search(query: String): List<World> {
+        return worlds.value.filter { world ->
+            world.name.contains(query, ignoreCase = true) ||
+                world.description.contains(query, ignoreCase = true)
+        }
     }
 
     override suspend fun insert(world: World) {

@@ -16,9 +16,25 @@ import net.tactware.worldweaver.domain.Campaign
 import net.tactware.worldweaver.domain.CampaignStatus
 import net.tactware.worldweaver.domain.CreateCampaignUseCase
 import net.tactware.worldweaver.domain.DeleteCampaignUseCase
+import net.tactware.worldweaver.domain.CampaignPerson
+import net.tactware.worldweaver.domain.Location
+import net.tactware.worldweaver.domain.LocationOverlay
 import net.tactware.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import net.tactware.worldweaver.domain.ObserveCampaignsForActiveWorldUseCase
+import net.tactware.worldweaver.domain.ObserveLocationOverlaysForActiveCampaignUseCase
+import net.tactware.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
+import net.tactware.worldweaver.domain.ObservePeopleForActiveContextUseCase
+import net.tactware.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
+import net.tactware.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
+import net.tactware.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
+import net.tactware.worldweaver.domain.PeopleSnapshot
+import net.tactware.worldweaver.domain.PersonKind
+import net.tactware.worldweaver.domain.Quest
+import net.tactware.worldweaver.domain.QuestStatus
+import net.tactware.worldweaver.domain.Session
 import net.tactware.worldweaver.domain.SetActiveCampaignUseCase
+import net.tactware.worldweaver.domain.WorldCalendar
+import net.tactware.worldweaver.domain.WorldDateFormatter
 import net.tactware.worldweaver.domain.SetCampaignStatusUseCase
 import net.tactware.worldweaver.domain.UpdateCampaignUseCase
 
@@ -26,11 +42,18 @@ internal class CampaignsViewModel(
     private val appScope: AppCoroutineScope,
     private val observeActiveContextDetails: ObserveActiveContextDetailsUseCase,
     private val observeCampaigns: ObserveCampaignsForActiveWorldUseCase,
+    private val observePeople: ObservePeopleForActiveContextUseCase,
+    private val observeQuests: ObserveQuestsForActiveCampaignUseCase,
+    private val observeSessions: ObserveSessionsForActiveCampaignUseCase,
+    private val observeLocations: ObserveLocationsForActiveWorldUseCase,
+    private val observeOverlays: ObserveLocationOverlaysForActiveCampaignUseCase,
+    private val observeCalendar: ObserveWorldCalendarForActiveWorldUseCase,
     private val createCampaign: CreateCampaignUseCase,
     private val updateCampaign: UpdateCampaignUseCase,
     private val setCampaignStatus: SetCampaignStatusUseCase,
     private val deleteCampaign: DeleteCampaignUseCase,
     private val setActiveCampaign: SetActiveCampaignUseCase,
+    private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
 ) {
     private val _state = MutableStateFlow<CampaignsViewState>(CampaignsViewState.Loading)
     val state: StateFlow<CampaignsViewState> = _state.asStateFlow()
@@ -54,7 +77,9 @@ internal class CampaignsViewModel(
                 _effects.tryEmit(CampaignsViewEffect.OpenWorlds)
             }
             CampaignsInteraction.NewCampaignSelected -> openCreateEditor()
-            is CampaignsInteraction.CampaignSelected -> selectCampaign(interaction.campaignId)
+            is CampaignsInteraction.CampaignSelected,
+            is CampaignsInteraction.CampaignOpened,
+            -> selectCampaign(campaignIdFrom(interaction))
             is CampaignsInteraction.EditCampaignSelected -> openEditEditor(interaction.campaignId)
             is CampaignsInteraction.DeleteCampaignSelected -> requestDelete(interaction.campaignId)
             CampaignsInteraction.DeleteConfirmed -> confirmDelete()
@@ -81,6 +106,15 @@ internal class CampaignsViewModel(
             }
             CampaignsInteraction.EditorSaved -> saveEditor()
             CampaignsInteraction.EditorDismissed -> updateEditor { null }
+            CampaignsInteraction.OpenCharactersSelected -> {
+                _effects.tryEmit(CampaignsViewEffect.OpenCharacters)
+            }
+            CampaignsInteraction.OpenQuestsSelected -> {
+                _effects.tryEmit(CampaignsViewEffect.OpenQuests)
+            }
+            CampaignsInteraction.OpenSessionsSelected -> {
+                _effects.tryEmit(CampaignsViewEffect.OpenSessions)
+            }
         }
     }
 
@@ -89,10 +123,24 @@ internal class CampaignsViewModel(
         _state.value = CampaignsViewState.Loading
         observeJob = appScope.scope.launch {
             combine(
-                observeActiveContextDetails(),
-                observeCampaigns(),
-            ) { details, campaigns ->
-                details to campaigns
+                combine(
+                    observeActiveContextDetails(),
+                    observeCampaigns(),
+                    observePeople(),
+                ) { details, campaigns, people ->
+                    Triple(details, campaigns, people)
+                },
+                combine(
+                    observeQuests(),
+                    observeSessions(),
+                    observeLocations(),
+                    observeOverlays(),
+                    observeCalendar(),
+                ) { quests, sessions, locations, overlays, calendar ->
+                    OverviewBundle(quests, sessions, locations, overlays, calendar)
+                },
+            ) { core, overview ->
+                LoadedSnapshot(core.first, core.second, core.third, overview)
             }
                 .catch { error ->
                     _state.value = CampaignsViewState.Error(
@@ -100,8 +148,13 @@ internal class CampaignsViewModel(
                         canRetry = true,
                     )
                 }
-                .collect { (details, campaigns) ->
-                    applyLoaded(details, campaigns)
+                .collect { snapshot ->
+                    applyLoaded(
+                        snapshot.details,
+                        snapshot.campaigns,
+                        snapshot.people,
+                        snapshot.overview,
+                    )
                 }
         }
     }
@@ -109,6 +162,8 @@ internal class CampaignsViewModel(
     private fun applyLoaded(
         details: ActiveContextDetails,
         campaigns: List<Campaign>,
+        people: PeopleSnapshot,
+        overview: OverviewBundle,
     ) {
         val world = details.world
         if (world == null) {
@@ -135,6 +190,14 @@ internal class CampaignsViewModel(
             campaigns = campaigns,
             selectedCampaign = selected,
             showRetired = showRetired,
+            partyMembers = partyMembers(people.campaignPeople),
+            activeQuests = overview.quests
+                .filter { it.status == QuestStatus.Active }
+                .map { quest ->
+                    CampaignsViewState.OverviewQuest(id = quest.id, title = quest.title)
+                },
+            lastSession = lastSession(overview.sessions, overview.calendar),
+            nextSessionHint = nextSessionHint(overview),
             editor = editor,
             pendingDelete = pendingDeleteFrom(current),
         )
@@ -167,6 +230,14 @@ internal class CampaignsViewModel(
         when (val current = _state.value) {
             is CampaignsViewState.Content -> _state.value = current.copy(editor = editor)
             else -> Unit
+        }
+    }
+
+    private fun campaignIdFrom(interaction: CampaignsInteraction): String {
+        return when (interaction) {
+            is CampaignsInteraction.CampaignSelected -> interaction.campaignId
+            is CampaignsInteraction.CampaignOpened -> interaction.campaignId
+            else -> ""
         }
     }
 
@@ -278,9 +349,90 @@ internal class CampaignsViewModel(
         return (state as? CampaignsViewState.Content)?.pendingDelete
     }
 
+    private fun partyMembers(
+        campaignPeople: List<CampaignPerson>,
+    ): List<CampaignsViewState.PartyMember> {
+        return campaignPeople
+            .filter { it.kind == PersonKind.PlayerCharacter }
+            .sortedBy { it.name.lowercase() }
+            .map { person ->
+                val classes = if (person.sheet.classLevels.isEmpty()) {
+                    "Level ${person.sheet.totalLevel()}"
+                } else {
+                    person.sheet.classLevels.joinToString(", ") { level ->
+                        "${level.className} ${level.level}"
+                    }
+                }
+                CampaignsViewState.PartyMember(
+                    id = person.id,
+                    name = person.name,
+                    summary = listOfNotNull(
+                        person.sheet.race.takeIf { it.isNotBlank() },
+                        classes,
+                    ).joinToString(" · "),
+                )
+            }
+    }
+
     private fun campaignFrom(campaignId: String): Campaign? {
         return (_state.value as? CampaignsViewState.Content)
             ?.campaigns
             ?.firstOrNull { it.id == campaignId }
     }
+
+    private fun lastSession(
+        sessions: List<Session>,
+        calendar: WorldCalendar?,
+    ): CampaignsViewState.OverviewSession? {
+        val session = sessions.maxByOrNull { it.updatedAt } ?: return null
+        val dateLabel = if (calendar != null && session.inWorldDate != null) {
+            dateFormatter.format(calendar, session.inWorldDate)
+        } else {
+            null
+        }
+        return CampaignsViewState.OverviewSession(
+            id = session.id,
+            name = session.name,
+            recap = session.notes.lineSequence().firstOrNull().orEmpty(),
+            dateLabel = dateLabel,
+        )
+    }
+
+    private fun nextSessionHint(overview: OverviewBundle): String {
+        val activeCount = overview.quests.count { it.status == QuestStatus.Active }
+        val partyLocations = overview.overlays
+            .filter { it.hasPartyPresence }
+            .mapNotNull { overlay ->
+                overview.locations.firstOrNull { it.id == overlay.locationId }?.name
+            }
+        val parts = buildList {
+            if (overview.sessions.isEmpty()) {
+                add("Create a session to run next")
+            }
+            if (activeCount > 0) {
+                add("$activeCount active quest${if (activeCount == 1) "" else "s"}")
+            }
+            if (partyLocations.isNotEmpty()) {
+                add("Party at ${partyLocations.joinToString(", ")}")
+            }
+        }
+        return parts.joinToString(" · ").ifBlank {
+            "No next-session hint yet. Add a session when you are ready to run."
+        }
+    }
+
+    private data class OverviewBundle(
+        val quests: List<Quest>,
+        val sessions: List<Session>,
+        val locations: List<Location>,
+        val overlays: List<LocationOverlay>,
+        val calendar: WorldCalendar?,
+    )
+
+    private data class LoadedSnapshot(
+        val details: ActiveContextDetails,
+        val campaigns: List<Campaign>,
+        val people: PeopleSnapshot,
+        val overview: OverviewBundle,
+    )
 }

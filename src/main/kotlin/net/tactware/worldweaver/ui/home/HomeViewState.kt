@@ -18,6 +18,9 @@ internal sealed class HomeViewState {
         val displayName: String,
         val recentWorlds: List<World>,
         val continueCampaign: ContinueCampaign?,
+        val worldCount: Int,
+        val campaignCount: Int,
+        val peopleCount: Int,
     ) : HomeViewState()
 
     data class ContinueCampaign(

@@ -6,4 +6,7 @@ internal sealed interface HomeInteraction {
     data object NewWorldSelected : HomeInteraction
     data class WorldSelected(val worldId: String) : HomeInteraction
     data object ContinueCampaignSelected : HomeInteraction
+    data object WorldsCountSelected : HomeInteraction
+    data object CampaignsCountSelected : HomeInteraction
+    data object PeopleCountSelected : HomeInteraction
 }
