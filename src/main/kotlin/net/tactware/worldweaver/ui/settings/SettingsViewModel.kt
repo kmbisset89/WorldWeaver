@@ -133,13 +133,14 @@ internal class SettingsViewModel(
         appScope.scope.launch {
             when (val result = exportAppBackup(File(path))) {
                 ExportAppBackupUseCase.Result.Written -> {
+                    setTransferring(false)
                     _effects.tryEmit(SettingsViewEffect.Exported)
                 }
                 is ExportAppBackupUseCase.Result.Failed -> {
+                    setTransferring(false)
                     _effects.tryEmit(SettingsViewEffect.Failed(result.message))
                 }
             }
-            setTransferring(false)
         }
     }
 
@@ -170,21 +171,21 @@ internal class SettingsViewModel(
                     _effects.tryEmit(SettingsViewEffect.RestoreReadyToQuit)
                 }
                 RestoreAppBackupUseCase.Result.UnsupportedVersion -> {
+                    setTransferring(false)
+                    clearPendingRestore()
                     _effects.tryEmit(
                         SettingsViewEffect.Failed("This backup was made with a newer WorldWeaver version")
                     )
-                    setTransferring(false)
-                    clearPendingRestore()
                 }
                 RestoreAppBackupUseCase.Result.InvalidArchive -> {
-                    _effects.tryEmit(SettingsViewEffect.Failed("That file is not a valid WorldWeaver backup"))
                     setTransferring(false)
                     clearPendingRestore()
+                    _effects.tryEmit(SettingsViewEffect.Failed("That file is not a valid WorldWeaver backup"))
                 }
                 is RestoreAppBackupUseCase.Result.Failed -> {
-                    _effects.tryEmit(SettingsViewEffect.Failed(result.message))
                     setTransferring(false)
                     clearPendingRestore()
+                    _effects.tryEmit(SettingsViewEffect.Failed(result.message))
                 }
             }
         }
@@ -212,16 +213,18 @@ internal class SettingsViewModel(
                     updateContent { current ->
                         current.copy(srdStatus = statusFrom(result.catalog))
                     }
+                    setTransferring(false)
                     _effects.tryEmit(SettingsViewEffect.SrdImported)
                 }
                 ImportSrdCatalogUseCase.Result.InvalidFile -> {
+                    setTransferring(false)
                     _effects.tryEmit(SettingsViewEffect.Failed("That file is not a valid WorldWeaver SRD catalog"))
                 }
                 is ImportSrdCatalogUseCase.Result.Failed -> {
+                    setTransferring(false)
                     _effects.tryEmit(SettingsViewEffect.Failed(result.message))
                 }
             }
-            setTransferring(false)
         }
     }
 
@@ -246,9 +249,9 @@ internal class SettingsViewModel(
             updateContent { current ->
                 current.copy(srdStatus = SettingsViewState.SrdStatus.BundledPickers)
             }
-            _effects.tryEmit(SettingsViewEffect.SrdCleared)
             setTransferring(false)
             clearPendingClearSrd()
+            _effects.tryEmit(SettingsViewEffect.SrdCleared)
         }
     }
 
