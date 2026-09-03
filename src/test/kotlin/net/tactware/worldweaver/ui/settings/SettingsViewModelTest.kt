@@ -2,6 +2,7 @@ package net.tactware.worldweaver.ui.settings
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
@@ -137,12 +138,12 @@ internal class SettingsViewModelTest {
         val effect = async { viewModel.effects.first() }
         yield()
         viewModel.onInteraction(SettingsInteraction.ExportPathChosen(dest.absolutePath))
-        val transferring = assertIs<SettingsViewState.Content>(viewModel.state.value)
+        val transferring = viewModel.state.filterIsInstance<SettingsViewState.Content>().first { it.isTransferring }
         assertTrue(transferring.isTransferring)
 
         gate.complete(Unit)
         assertIs<SettingsViewEffect.Exported>(withTimeout(2_000) { effect.await() })
-        val done = assertIs<SettingsViewState.Content>(viewModel.state.value)
+        val done = viewModel.state.filterIsInstance<SettingsViewState.Content>().first { !it.isTransferring }
         assertEquals(false, done.isTransferring)
     }
 
