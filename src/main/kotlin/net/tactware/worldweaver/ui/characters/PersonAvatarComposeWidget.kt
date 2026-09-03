@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -19,7 +20,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.tactware.worldweaver.ui.theme.NavyBlue
-import net.tactware.worldweaver.ui.theme.TextPrimary
 import java.io.File
 import javax.imageio.ImageIO
 
@@ -52,7 +52,7 @@ internal fun PersonAvatarComposeWidget(
             .size(size)
             .then(border)
             .clip(CircleShape)
-            .background(NavyBlue.copy(alpha = 0.18f)),
+            .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
@@ -67,7 +67,7 @@ internal fun PersonAvatarComposeWidget(
                 text = initials(name),
                 fontSize = (size.value * 0.35f).sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }

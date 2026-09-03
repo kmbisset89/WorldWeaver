@@ -1,8 +1,7 @@
 package net.tactware.worldweaver.domain
 
-import kotlin.math.abs
+import java.util.ArrayDeque
 import kotlin.math.floor
-import kotlin.math.max
 
 internal class CalculateReachableCellsUseCase {
 
@@ -12,6 +11,9 @@ internal class CalculateReachableCellsUseCase {
         unitsPerTile: Double,
         columns: Int,
         rows: Int,
+        blockedCells: Set<GridCell> = emptySet(),
+        difficultCells: Set<GridCell> = emptySet(),
+        occupiedCells: Set<GridCell> = emptySet(),
     ): List<GridCell> {
         if (columns < 1 || rows < 1) {
             return emptyList()
@@ -24,15 +26,47 @@ internal class CalculateReachableCellsUseCase {
         } else {
             0
         }
-        val cells = mutableListOf<GridCell>()
-        for (column in 0 until columns) {
-            for (row in 0 until rows) {
-                val distance = max(abs(column - origin.column), abs(row - origin.row))
-                if (distance <= budget) {
-                    cells.add(GridCell(column = column, row = row))
+        val impassable = blockedCells + occupiedCells - origin
+        val reachable = linkedSetOf(origin)
+        val cost = mutableMapOf(origin to 0)
+        val queue = ArrayDeque<GridCell>()
+        queue.add(origin)
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            val spent = cost.getValue(current)
+            if (spent >= budget) {
+                continue
+            }
+            for (columnOffset in -1..1) {
+                for (rowOffset in -1..1) {
+                    if (columnOffset == 0 && rowOffset == 0) {
+                        continue
+                    }
+                    val next = GridCell(
+                        column = current.column + columnOffset,
+                        row = current.row + rowOffset,
+                    )
+                    if (next.column !in 0 until columns || next.row !in 0 until rows) {
+                        continue
+                    }
+                    if (next in impassable) {
+                        continue
+                    }
+                    val stepCost = if (next in difficultCells) 2 else 1
+                    val nextCost = spent + stepCost
+                    if (nextCost > budget) {
+                        continue
+                    }
+                    val previous = cost[next]
+                    if (previous != null && previous <= nextCost) {
+                        continue
+                    }
+                    cost[next] = nextCost
+                    reachable.add(next)
+                    queue.add(next)
                 }
             }
         }
-        return cells
+        return reachable.toList()
     }
 }

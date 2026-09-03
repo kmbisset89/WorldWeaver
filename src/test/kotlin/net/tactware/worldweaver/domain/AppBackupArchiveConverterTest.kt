@@ -24,6 +24,8 @@ internal class AppBackupArchiveConverterTest {
             File(maps, "map-1/original.png").also { it.parentFile.mkdirs(); it.writeBytes(byteArrayOf(3, 4, 5)) }
             val voices = File(temp, "voices")
             File(voices, "location/loc-1.wav").also { it.parentFile.mkdirs(); it.writeBytes(byteArrayOf(6, 7)) }
+            val srd = File(temp, "srd")
+            File(srd, "5e.json").also { it.parentFile.mkdirs(); it.writeBytes(byteArrayOf(8, 9)) }
             val dest = File(temp, "app.wwbackup")
             val extractTo = File(temp, "extract")
 
@@ -35,6 +37,7 @@ internal class AppBackupArchiveConverterTest {
                 avatarsDir = avatars,
                 mapsDir = maps,
                 voicesDir = voices,
+                srdDir = srd,
             )
 
             val result = converter.read(dest, extractTo)
@@ -53,6 +56,10 @@ internal class AppBackupArchiveConverterTest {
             assertEquals(
                 byteArrayOf(6, 7).toList(),
                 File(ready.extractedDataDir, "voices/location/loc-1.wav").readBytes().toList(),
+            )
+            assertEquals(
+                byteArrayOf(8, 9).toList(),
+                File(ready.extractedDataDir, "srd/5e.json").readBytes().toList(),
             )
         } finally {
             temp.deleteRecursively()
@@ -74,6 +81,47 @@ internal class AppBackupArchiveConverterTest {
             )
             val result = converter.read(dest, File(temp, "extract"))
             assertIs<AppBackupArchiveConverter.ReadResult.UnsupportedVersion>(result)
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun newerDatabaseSchemaVersionIsRejected() {
+        val temp = Files.createTempDirectory("ww-backup-future-schema").toFile()
+        try {
+            val dest = File(temp, "future-schema.wwbackup")
+            writeRawArchive(
+                dest = dest,
+                manifestJson = Json.encodeToString(
+                    AppBackupManifest.serializer(),
+                    sampleManifest().copy(dbSchemaVersion = AppBackupManifest.DB_SCHEMA_VERSION + 1),
+                ),
+                prefsJson = Json.encodeToString(AppBackupPrefs.serializer(), samplePrefs()),
+            )
+            val result = converter.read(dest, File(temp, "extract"))
+            assertIs<AppBackupArchiveConverter.ReadResult.UnsupportedVersion>(result)
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun olderDatabaseSchemaVersionIsAccepted() {
+        val temp = Files.createTempDirectory("ww-backup-old-schema").toFile()
+        try {
+            val dest = File(temp, "old-schema.wwbackup")
+            writeRawArchive(
+                dest = dest,
+                manifestJson = Json.encodeToString(
+                    AppBackupManifest.serializer(),
+                    sampleManifest().copy(dbSchemaVersion = 16),
+                ),
+                prefsJson = Json.encodeToString(AppBackupPrefs.serializer(), samplePrefs()),
+            )
+            val result = converter.read(dest, File(temp, "extract"))
+            val ready = assertIs<AppBackupArchiveConverter.ReadResult.Ready>(result)
+            assertEquals(16, ready.manifest.dbSchemaVersion)
         } finally {
             temp.deleteRecursively()
         }

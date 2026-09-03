@@ -214,6 +214,7 @@ private fun CampaignsContent(
         if (state.selectedCampaign != null) {
             CampaignOverviewPane(
                 campaign = state.selectedCampaign,
+                worldDefaultGameSystem = state.worldDefaultGameSystem,
                 partyMembers = state.partyMembers,
                 activeQuests = state.activeQuests,
                 lastSession = state.lastSession,

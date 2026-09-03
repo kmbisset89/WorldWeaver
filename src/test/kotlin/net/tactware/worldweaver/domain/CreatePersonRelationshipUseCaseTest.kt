@@ -13,12 +13,13 @@ internal class CreatePersonRelationshipUseCaseTest {
         val harness = Harness()
         val worldPerson = harness.insertWorldPerson("Bram")
         val campaignPerson = harness.insertCampaignPerson("Aelar")
+        val faction = harness.insertFaction("Harpers")
 
         val result = harness.createRelationship(
             from = PersonRef.World(worldPerson.id),
             to = PersonRef.Campaign(campaignPerson.id),
             type = RelationshipType.Ally,
-            factionLean = "Harpers",
+            factionId = faction.id,
         )
 
         val created = assertIs<CreatePersonRelationshipUseCase.Result.Created>(result)
@@ -26,7 +27,7 @@ internal class CreatePersonRelationshipUseCaseTest {
         assertIs<PersonRef.World>(created.relationship.from)
         assertEquals(campaignPerson.id, created.relationship.to.id)
         assertIs<PersonRef.Campaign>(created.relationship.to)
-        assertEquals("Harpers", created.relationship.factionLean)
+        assertEquals(faction.id, created.relationship.factionId)
         assertEquals(1, harness.relationships.all().size)
     }
 
@@ -59,9 +60,28 @@ internal class CreatePersonRelationshipUseCaseTest {
         assertIs<CreatePersonRelationshipUseCase.Result.InvalidTarget>(result)
     }
 
+    @Test
+    fun factionFromAnotherWorldIsRejected() = runTest {
+        val harness = Harness()
+        val from = harness.insertWorldPerson("Bram")
+        val to = harness.insertWorldPerson("Cora")
+        val faction = harness.insertFaction("Harpers", worldId = "world-2")
+
+        val result = harness.createRelationship(
+            from = PersonRef.World(from.id),
+            to = PersonRef.World(to.id),
+            type = RelationshipType.Ally,
+            factionId = faction.id,
+        )
+
+        assertIs<CreatePersonRelationshipUseCase.Result.WrongWorld>(result)
+    }
+
     private class Harness {
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
+        val campaigns = FakeCampaignRepository()
+        val factions = FakeFactionRepository()
         val relationships = FakePersonRelationshipRepository()
         private var nextId = 0
         private val ids = EntityIdFactory { "rel-${++nextId}" }
@@ -69,6 +89,8 @@ internal class CreatePersonRelationshipUseCaseTest {
             relationships,
             worldPeople,
             campaignPeople,
+            campaigns,
+            factions,
             ids,
         )
         private val now = Instant.parse("2026-08-29T12:00:00Z")
@@ -89,6 +111,19 @@ internal class CreatePersonRelationshipUseCaseTest {
         }
 
         suspend fun insertCampaignPerson(name: String): CampaignPerson {
+            campaigns.insert(
+                Campaign(
+                    id = "campaign-1",
+                    worldId = "world-1",
+                    name = "Main",
+                    description = "",
+                    notes = "",
+                    gameSystem = GameSystem.FifthEdition,
+                    status = CampaignStatus.Active,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+            )
             val person = CampaignPerson(
                 id = "campaign-person-${++nextId}",
                 campaignId = "campaign-1",
@@ -106,18 +141,33 @@ internal class CreatePersonRelationshipUseCaseTest {
             return person
         }
 
+        suspend fun insertFaction(name: String, worldId: String = "world-1"): Faction {
+            val faction = Faction(
+                id = "fac-${++nextId}",
+                worldId = worldId,
+                name = name,
+                description = "",
+                goals = "",
+                notes = "",
+                createdAt = now,
+                updatedAt = now,
+            )
+            factions.insert(faction)
+            return faction
+        }
+
         suspend fun createRelationship(
             from: PersonRef,
             to: PersonRef,
             type: RelationshipType,
-            factionLean: String = "",
+            factionId: String? = null,
         ): CreatePersonRelationshipUseCase.Result {
             return createPersonRelationship(
                 from = from,
                 to = to,
                 type = type,
                 description = "",
-                factionLean = factionLean,
+                factionId = factionId,
             )
         }
     }

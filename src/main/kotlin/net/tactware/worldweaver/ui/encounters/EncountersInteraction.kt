@@ -6,6 +6,7 @@ import net.tactware.worldweaver.domain.EncounterParticipantSource
 import net.tactware.worldweaver.domain.EncounterStatus
 import net.tactware.worldweaver.domain.EncounterTurnDirection
 import net.tactware.worldweaver.domain.FifthEditionCondition
+import net.tactware.worldweaver.ui.maps.TerrainPaintKind
 
 internal sealed interface EncountersInteraction {
     data object ScreenStarted : EncountersInteraction
@@ -32,6 +33,10 @@ internal sealed interface EncountersInteraction {
         val direction: EncounterTurnDirection,
     ) : EncountersInteraction
     data class ParticipantSelected(val participantId: String) : EncountersInteraction
+    data class SheetSelected(
+        val source: EncounterParticipantSource,
+        val sourceId: String?,
+    ) : EncountersInteraction
     data class CombatAmountChanged(val amount: String) : EncountersInteraction
     data class DamageApplied(val encounterId: String, val participantId: String) : EncountersInteraction
     data class HealApplied(val encounterId: String, val participantId: String) : EncountersInteraction
@@ -137,6 +142,11 @@ internal sealed interface EncountersInteraction {
     data object FogHideBrushSelected : EncountersInteraction
     data object FogRevealAllSelected : EncountersInteraction
     data object FogHideAllSelected : EncountersInteraction
+    data class TerrainPaintSelected(val kind: TerrainPaintKind?) : EncountersInteraction
+    data object ItemDropToggled : EncountersInteraction
+    data class ItemNameChanged(val name: String) : EncountersInteraction
+    data class ItemSelected(val itemId: String) : EncountersInteraction
+    data object ItemRemoved : EncountersInteraction
     data object PlayerViewSelected : EncountersInteraction
     data object PlayerViewClosed : EncountersInteraction
 }

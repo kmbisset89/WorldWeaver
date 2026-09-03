@@ -19,11 +19,25 @@ import net.tactware.worldweaver.ui.characters.CharactersViewEffect
 import net.tactware.worldweaver.ui.characters.CharactersViewModel
 import net.tactware.worldweaver.ui.characters.CharactersViewState
 import net.tactware.worldweaver.ui.characters.PersonMembership
+import net.tactware.worldweaver.ui.sheet.CharacterSheetInteraction
+import net.tactware.worldweaver.ui.sheet.CharacterSheetViewEffect
+import net.tactware.worldweaver.ui.sheet.CharacterSheetViewModel
+import net.tactware.worldweaver.ui.sheet.CharacterSheetViewState
 import net.tactware.worldweaver.ui.dice.DiceViewModel
+import net.tactware.worldweaver.ui.factions.FactionsInteraction
+import net.tactware.worldweaver.ui.factions.FactionsViewEffect
+import net.tactware.worldweaver.ui.factions.FactionsViewModel
+import net.tactware.worldweaver.ui.links.LinksViewEffect
+import net.tactware.worldweaver.ui.links.LinksViewModel
+import net.tactware.worldweaver.domain.EncounterParticipantSource
+import net.tactware.worldweaver.ui.encounters.EncountersInteraction
 import net.tactware.worldweaver.ui.encounters.EncountersViewEffect
 import net.tactware.worldweaver.ui.encounters.EncountersViewModel
 import net.tactware.worldweaver.ui.home.HomeViewEffect
 import net.tactware.worldweaver.ui.home.HomeViewModel
+import net.tactware.worldweaver.ui.oneshot.OneShotWizardInteraction
+import net.tactware.worldweaver.ui.oneshot.OneShotWizardViewEffect
+import net.tactware.worldweaver.ui.oneshot.OneShotWizardViewModel
 import net.tactware.worldweaver.ui.locations.LocationsInteraction
 import net.tactware.worldweaver.ui.locations.LocationsViewEffect
 import net.tactware.worldweaver.ui.locations.LocationsViewModel
@@ -35,6 +49,9 @@ import net.tactware.worldweaver.ui.maps.MapsViewEffect
 import net.tactware.worldweaver.ui.maps.MapsViewModel
 import net.tactware.worldweaver.ui.navigation.NavigationState
 import net.tactware.worldweaver.ui.navigation.Screen
+import net.tactware.worldweaver.ui.run.RunViewEffect
+import net.tactware.worldweaver.ui.run.RunViewModel
+import net.tactware.worldweaver.ui.dice.DiceInteraction
 import net.tactware.worldweaver.ui.search.SearchViewEffect
 import net.tactware.worldweaver.ui.search.SearchViewModel
 import net.tactware.worldweaver.ui.quests.QuestsInteraction
@@ -54,15 +71,20 @@ import net.tactware.worldweaver.ui.worlds.WorldsViewModel
 internal class AppViewModel(
     val homeViewModel: HomeViewModel,
     val worldsViewModel: WorldsViewModel,
+    val oneShotWizardViewModel: OneShotWizardViewModel,
     val campaignsViewModel: CampaignsViewModel,
     val locationsViewModel: LocationsViewModel,
     val loreViewModel: LoreViewModel,
     val calendarViewModel: CalendarViewModel,
+    val factionsViewModel: FactionsViewModel,
+    val linksViewModel: LinksViewModel,
     val charactersViewModel: CharactersViewModel,
+    val characterSheetViewModel: CharacterSheetViewModel,
     val questsViewModel: QuestsViewModel,
     val sessionsViewModel: SessionsViewModel,
     val encountersViewModel: EncountersViewModel,
     val mapsViewModel: MapsViewModel,
+    val runViewModel: RunViewModel,
     val diceViewModel: DiceViewModel,
     val searchViewModel: SearchViewModel,
     val settingsViewModel: SettingsViewModel,
@@ -108,15 +130,18 @@ internal class AppViewModel(
             homeViewModel.effects.collect { effect ->
                 when (effect) {
                     HomeViewEffect.OpenWorldCreator -> openWorldCreator()
+                    HomeViewEffect.OpenOneShotWizard -> openOneShotWizard()
                     HomeViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
                     HomeViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
                     HomeViewEffect.OpenCharacters -> navigation.navigateToRoot(Screen.CHARACTERS)
+                    HomeViewEffect.OpenRun -> navigation.navigateTo(Screen.RUN)
                 }
             }
         }
         appScope.scope.launch {
             worldsViewModel.effects.collect { effect ->
                 when (effect) {
+                    WorldsViewEffect.OpenOneShotWizard -> openOneShotWizard()
                     is WorldsViewEffect.Exported -> emitUiEvent(
                         UiEvent.Success("Exported “${effect.worldName}”")
                     )
@@ -128,10 +153,24 @@ internal class AppViewModel(
             }
         }
         appScope.scope.launch {
+            oneShotWizardViewModel.effects.collect { effect ->
+                when (effect) {
+                    OneShotWizardViewEffect.Completed -> navigation.navigateToRoot(Screen.HOME)
+                    OneShotWizardViewEffect.Dismissed -> navigation.goBack()
+                }
+            }
+        }
+        appScope.scope.launch {
             campaignsViewModel.effects.collect { effect ->
                 when (effect) {
                     CampaignsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
                     CampaignsViewEffect.OpenCharacters -> navigation.navigateToRoot(Screen.CHARACTERS)
+                    CampaignsViewEffect.CreatePlayerCharacter -> {
+                        navigation.navigateToRoot(Screen.CHARACTERS)
+                        charactersViewModel.onInteraction(
+                            CharactersInteraction.NewPlayerCharacterSelected,
+                        )
+                    }
                     CampaignsViewEffect.OpenQuests -> navigation.navigateToRoot(Screen.QUESTS)
                     CampaignsViewEffect.OpenSessions -> navigation.navigateToRoot(Screen.SESSIONS)
                 }
@@ -167,6 +206,32 @@ internal class AppViewModel(
             }
         }
         appScope.scope.launch {
+            factionsViewModel.effects.collect { effect ->
+                when (effect) {
+                    FactionsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                }
+            }
+        }
+        appScope.scope.launch {
+            linksViewModel.effects.collect { effect ->
+                when (effect) {
+                    LinksViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    is LinksViewEffect.OpenPerson -> {
+                        navigation.navigateToRoot(Screen.CHARACTERS)
+                        charactersViewModel.onInteraction(
+                            CharactersInteraction.PersonOpened(effect.key),
+                        )
+                    }
+                    is LinksViewEffect.OpenFaction -> {
+                        navigation.navigateToRoot(Screen.FACTIONS)
+                        factionsViewModel.onInteraction(
+                            FactionsInteraction.FactionOpened(effect.factionId),
+                        )
+                    }
+                }
+            }
+        }
+        appScope.scope.launch {
             charactersViewModel.effects.collect { effect ->
                 when (effect) {
                     CharactersViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
@@ -177,6 +242,23 @@ internal class AppViewModel(
                     is CharactersViewEffect.OpenQuest -> {
                         navigation.navigateToRoot(Screen.QUESTS)
                         questsViewModel.onInteraction(QuestsInteraction.QuestOpened(effect.questId))
+                    }
+                    is CharactersViewEffect.OpenSheet -> {
+                        characterSheetViewModel.onInteraction(
+                            CharacterSheetInteraction.SheetOpened(sheetKeyFrom(effect.key)),
+                        )
+                    }
+                }
+            }
+        }
+        appScope.scope.launch {
+            characterSheetViewModel.effects.collect { effect ->
+                when (effect) {
+                    is CharacterSheetViewEffect.OpenEditor -> {
+                        navigation.navigateToRoot(Screen.CHARACTERS)
+                        charactersViewModel.onInteraction(
+                            CharactersInteraction.EditPersonSelected(characterKeyFrom(effect.key)),
+                        )
                     }
                 }
             }
@@ -221,6 +303,7 @@ internal class AppViewModel(
                         navigation.navigateToRoot(Screen.MAPS)
                         mapsViewModel.onInteraction(MapsInteraction.MapOpened(effect.battleMapId))
                     }
+                    is EncountersViewEffect.OpenSheet -> openEncounterSheet(effect)
                 }
             }
         }
@@ -229,6 +312,34 @@ internal class AppViewModel(
                 when (effect) {
                     MapsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
                     MapsViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
+                }
+            }
+        }
+        appScope.scope.launch {
+            runViewModel.effects.collect { effect ->
+                when (effect) {
+                    RunViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    RunViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
+                    RunViewEffect.OpenSessions -> navigation.navigateToRoot(Screen.SESSIONS)
+                    RunViewEffect.OpenEncounters -> navigation.navigateToRoot(Screen.ENCOUNTERS)
+                    RunViewEffect.OpenMaps -> navigation.navigateToRoot(Screen.MAPS)
+                    RunViewEffect.OpenPlayerView -> {
+                        navigation.navigateToRoot(Screen.ENCOUNTERS)
+                        encountersViewModel.onInteraction(EncountersInteraction.PlayerViewSelected)
+                    }
+                    RunViewEffect.OpenDiceTray -> {
+                        diceViewModel.onInteraction(DiceInteraction.FloatingOpened)
+                    }
+                    is RunViewEffect.OpenPersonSheet -> {
+                        characterSheetViewModel.onInteraction(
+                            CharacterSheetInteraction.SheetOpened(
+                                CharacterSheetViewState.PersonKey(
+                                    membership = effect.membership,
+                                    id = effect.personId,
+                                )
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -248,6 +359,12 @@ internal class AppViewModel(
                     SettingsViewEffect.RestoreReadyToQuit -> {
                         exitRequested = true
                     }
+                    SettingsViewEffect.SrdImported -> emitUiEvent(
+                        UiEvent.Success("Imported 5E SRD catalog")
+                    )
+                    SettingsViewEffect.SrdCleared -> emitUiEvent(
+                        UiEvent.Success("Cleared imported SRD")
+                    )
                     is SettingsViewEffect.Failed -> emitUiEvent(UiEvent.Error(effect.message))
                 }
             }
@@ -280,6 +397,11 @@ internal class AppViewModel(
         worldsViewModel.onInteraction(WorldsInteraction.NewWorldSelected)
     }
 
+    private fun openOneShotWizard() {
+        oneShotWizardViewModel.onInteraction(OneShotWizardInteraction.ScreenStarted)
+        navigation.navigateTo(Screen.ONE_SHOT_WIZARD)
+    }
+
     private fun openSearchHit(effect: SearchViewEffect.RecordOpened) {
         val hit = effect.hit
         appScope.scope.launch {
@@ -303,6 +425,11 @@ internal class AppViewModel(
                     hit.worldId?.let { setActiveWorld(it) }
                     navigation.navigateToRoot(Screen.LORE)
                     loreViewModel.onInteraction(LoreInteraction.LoreOpened(hit.id))
+                }
+                SearchKind.Faction -> {
+                    hit.worldId?.let { setActiveWorld(it) }
+                    navigation.navigateToRoot(Screen.FACTIONS)
+                    factionsViewModel.onInteraction(FactionsInteraction.FactionOpened(hit.id))
                 }
                 SearchKind.WorldPerson -> {
                     hit.worldId?.let { setActiveWorld(it) }
@@ -340,6 +467,45 @@ internal class AppViewModel(
                 }
             }
         }
+    }
+
+    private fun openEncounterSheet(effect: EncountersViewEffect.OpenSheet) {
+        val sourceId = effect.sourceId
+        if (sourceId == null || effect.source == EncounterParticipantSource.Nameless) {
+            characterSheetViewModel.onInteraction(CharacterSheetInteraction.UnavailableOpened)
+            return
+        }
+        val membership = when (effect.source) {
+            EncounterParticipantSource.WorldPerson -> PersonMembership.WorldLibrary
+            EncounterParticipantSource.CampaignPerson -> PersonMembership.ThisCampaign
+            EncounterParticipantSource.Nameless -> return
+        }
+        characterSheetViewModel.onInteraction(
+            CharacterSheetInteraction.SheetOpened(
+                CharacterSheetViewState.PersonKey(
+                    membership = membership,
+                    id = sourceId,
+                )
+            )
+        )
+    }
+
+    private fun sheetKeyFrom(
+        key: CharactersViewState.PersonKey,
+    ): CharacterSheetViewState.PersonKey {
+        return CharacterSheetViewState.PersonKey(
+            membership = key.membership,
+            id = key.id,
+        )
+    }
+
+    private fun characterKeyFrom(
+        key: CharacterSheetViewState.PersonKey,
+    ): CharactersViewState.PersonKey {
+        return CharactersViewState.PersonKey(
+            membership = key.membership,
+            id = key.id,
+        )
     }
 
     private fun applyShellSettings(settings: ShellSettings) {

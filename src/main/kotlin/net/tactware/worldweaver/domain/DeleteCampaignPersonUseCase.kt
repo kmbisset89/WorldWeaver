@@ -3,6 +3,7 @@ package net.tactware.worldweaver.domain
 internal class DeleteCampaignPersonUseCase(
     private val campaignPersonRepository: CampaignPersonRepository,
     private val personRelationshipRepository: PersonRelationshipRepository,
+    private val factionMembershipRepository: FactionMembershipRepository,
     private val personCompanionRepository: PersonCompanionRepository,
     private val questRepository: QuestRepository,
     private val avatarFileStore: PersonAvatarFileStore,
@@ -16,6 +17,7 @@ internal class DeleteCampaignPersonUseCase(
     suspend operator fun invoke(personId: String): Result {
         campaignPersonRepository.getById(personId) ?: return Result.NotFound
         personRelationshipRepository.deleteByPerson(PersonRef.Campaign(personId))
+        factionMembershipRepository.deleteByPerson(PersonRef.Campaign(personId))
         personCompanionRepository.deleteByPerson(PersonRef.Campaign(personId))
         questRepository.deleteLinksByTarget(QuestLinkKind.CAMPAIGN_PERSON, personId)
         avatarFileStore.delete(PersonRef.Campaign(personId))

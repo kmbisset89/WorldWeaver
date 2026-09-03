@@ -54,6 +54,31 @@ internal class CreateWorldPersonUseCaseTest {
         assertEquals(1, harness.worldPeople.all().size)
     }
 
+    @Test
+    fun createPersistsPathfinderSheet() = runTest {
+        val harness = Harness()
+        harness.context.setActiveWorldId("world-1")
+        val sheet = Pathfinder2ESheet.empty().copy(
+            ancestry = "Goblin",
+            className = "Rogue",
+        )
+
+        val result = harness.createWorldPerson(
+            WorldPersonDraft(
+                kind = PersonKind.Npc,
+                name = "Rixi",
+                description = "",
+                sheet = sheet,
+            )
+        )
+
+        val created = assertIs<CreateWorldPersonUseCase.Result.Created>(result)
+        val persisted = assertIs<Pathfinder2ESheet>(created.person.sheet)
+        assertEquals("Goblin", persisted.ancestry)
+        assertEquals("Rogue", persisted.className)
+        assertEquals(GameSystem.Pathfinder2E, persisted.gameSystem())
+    }
+
     private class Harness {
         val worldPeople = FakeWorldPersonRepository()
         val context = FakeActiveContextRepository()

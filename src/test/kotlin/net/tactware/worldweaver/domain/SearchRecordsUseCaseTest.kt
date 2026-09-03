@@ -62,6 +62,7 @@ internal class SearchRecordsUseCaseTest {
         val campaigns = FakeCampaignRepository()
         val locations = FakeLocationRepository()
         val lore = FakeLoreRepository()
+        val factions = FakeFactionRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
         val quests = FakeQuestRepository()
@@ -71,6 +72,7 @@ internal class SearchRecordsUseCaseTest {
             campaigns,
             locations,
             lore,
+            factions,
             worldPeople,
             campaignPeople,
             quests,

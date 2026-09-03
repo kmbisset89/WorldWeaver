@@ -35,7 +35,7 @@ internal class BattleMapTokenOverlay {
                     conditions = token.conditions,
                     selected = token.selected || token.isCurrentTurn,
                     hiddenFromPlayers = !token.visibleToPlayers,
-                    size = if (token.selected || token.isCurrentTurn) 56.dp else 48.dp,
+                    size = ((if (token.selected || token.isCurrentTurn) 56 else 48) * token.span).dp,
                 )
             }
             ids.add(id)

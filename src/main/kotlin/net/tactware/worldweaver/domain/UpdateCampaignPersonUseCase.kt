@@ -3,6 +3,7 @@ package net.tactware.worldweaver.domain
 internal class UpdateCampaignPersonUseCase(
     private val campaignPersonRepository: CampaignPersonRepository,
     private val instantProvider: InstantProvider,
+    private val sheetFactory: PersonSheetFactory = PersonSheetFactory(),
 ) {
     sealed interface Result {
         data object Updated : Result
@@ -27,10 +28,7 @@ internal class UpdateCampaignPersonUseCase(
             existing.copy(
                 name = name,
                 description = draft.description.trim(),
-                sheet = draft.sheet.copy(
-                    race = draft.sheet.race.trim(),
-                    notes = draft.sheet.notes.trim(),
-                ),
+                sheet = sheetFactory.sanitize(draft.sheet),
                 overlayHitPoints = draft.overlayHitPoints,
                 overlayNotes = draft.overlayNotes.trim(),
                 updatedAt = instantProvider.now(),
@@ -39,11 +37,17 @@ internal class UpdateCampaignPersonUseCase(
         return Result.Updated
     }
 
-    private fun classLevelsMatch(sheet: FifthEditionSheet): Boolean {
-        val classLevels = sheet.classLevels.filter { it.className.isNotBlank() }
-        if (classLevels.isEmpty()) {
-            return true
+    private fun classLevelsMatch(sheet: PersonSheet): Boolean {
+        return when (sheet) {
+            is FifthEditionSheet -> {
+                val classLevels = sheet.classLevels.filter { it.className.isNotBlank() }
+                if (classLevels.isEmpty()) {
+                    true
+                } else {
+                    classLevels.sumOf { it.level } == sheet.totalLevel()
+                }
+            }
+            is Pathfinder2ESheet -> true
         }
-        return classLevels.sumOf { it.level } == sheet.totalLevel()
     }
 }

@@ -49,6 +49,7 @@ import net.tactware.worldweaver.domain.Session
 import net.tactware.worldweaver.domain.SessionDraft
 import net.tactware.worldweaver.domain.SessionNpcDraftDestination
 import net.tactware.worldweaver.domain.SessionScene
+import net.tactware.worldweaver.domain.SetActiveSessionUseCase
 import net.tactware.worldweaver.domain.UpdatePlotThreadUseCase
 import net.tactware.worldweaver.domain.UpdateReferenceDocUseCase
 import net.tactware.worldweaver.domain.UpdateSessionUseCase
@@ -78,6 +79,7 @@ internal class SessionsViewModel(
     private val deleteReferenceDoc: DeleteReferenceDocUseCase,
     private val generateRandomNpc: GenerateRandomNpcUseCase,
     private val saveSessionNpcDraft: SaveSessionNpcDraftUseCase,
+    private val setActiveSession: SetActiveSessionUseCase,
     private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
 ) {
     private val _state = MutableStateFlow<SessionsViewState>(SessionsViewState.Loading)
@@ -438,6 +440,9 @@ internal class SessionsViewModel(
             return
         }
         selectedSessionId = sessionId
+        appScope.scope.launch {
+            setActiveSession(sessionId)
+        }
         refreshContent()
     }
 

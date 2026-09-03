@@ -17,6 +17,8 @@ import androidx.room.RoomDatabase
         LoreHintEntity::class,
         WorldPersonEntity::class,
         CampaignPersonEntity::class,
+        FactionEntity::class,
+        FactionMembershipEntity::class,
         PersonRelationshipEntity::class,
         PersonCompanionEntity::class,
         QuestEntity::class,
@@ -32,7 +34,7 @@ import androidx.room.RoomDatabase
         BattleMapEntity::class,
         BattleMapSituationEntity::class,
     ],
-    version = 16,
+    version = 20,
     exportSchema = true,
 )
 internal abstract class WorldWeaverDatabase : RoomDatabase() {
@@ -48,6 +50,8 @@ internal abstract class WorldWeaverDatabase : RoomDatabase() {
     abstract fun loreHintDao(): LoreHintDao
     abstract fun worldPersonDao(): WorldPersonDao
     abstract fun campaignPersonDao(): CampaignPersonDao
+    abstract fun factionDao(): FactionDao
+    abstract fun factionMembershipDao(): FactionMembershipDao
     abstract fun personRelationshipDao(): PersonRelationshipDao
     abstract fun personCompanionDao(): PersonCompanionDao
     abstract fun questDao(): QuestDao

@@ -1,5 +1,6 @@
 package net.tactware.worldweaver.ui.encounters
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
@@ -21,8 +23,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.tactware.worldweaver.domain.EncounterTurnDirection
+import net.tactware.worldweaver.ui.maps.BattleMapItemOverlay
 import net.tactware.worldweaver.ui.maps.BattleMapTokenOverlay
 import net.tactware.worldweaver.ui.maps.BattleMapViewerComposeWidget
+import net.tactware.worldweaver.ui.maps.TerrainPaintKind
 import net.tactware.worldweaver.ui.theme.NavyBlue
 import net.tactware.worldweaver.ui.theme.TextPrimary
 import net.tactware.worldweaver.ui.theme.TextSecondary
@@ -73,6 +77,9 @@ internal fun EncounterCombatConsole(
                         onMarkerClicked = { markerId ->
                             BattleMapTokenOverlay.participantIdFrom(markerId)?.let { participantId ->
                                 onInteraction(EncountersInteraction.TokenSelected(participantId))
+                            }
+                            BattleMapItemOverlay.itemIdFrom(markerId)?.let { itemId ->
+                                onInteraction(EncountersInteraction.ItemSelected(itemId))
                             }
                         },
                     )
@@ -176,7 +183,7 @@ private fun CombatBoardChrome(
     onInteraction: (EncountersInteraction) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -245,6 +252,57 @@ private fun CombatBoardChrome(
             }
             TextButton(onClick = { onInteraction(EncountersInteraction.FogRevealAllSelected) }) {
                 Text("Reveal all")
+            }
+        }
+        FilterChip(
+            selected = state.terrainPaint == TerrainPaintKind.Blocked,
+            onClick = { onInteraction(EncountersInteraction.TerrainPaintSelected(TerrainPaintKind.Blocked)) },
+            label = { Text("Blocked") },
+        )
+        FilterChip(
+            selected = state.terrainPaint == TerrainPaintKind.Difficult,
+            onClick = { onInteraction(EncountersInteraction.TerrainPaintSelected(TerrainPaintKind.Difficult)) },
+            label = { Text("Difficult") },
+        )
+        FilterChip(
+            selected = state.terrainPaint == TerrainPaintKind.Clear,
+            onClick = { onInteraction(EncountersInteraction.TerrainPaintSelected(TerrainPaintKind.Clear)) },
+            label = { Text("Clear terrain") },
+        )
+        if (state.terrainPaint != null) {
+            Text(
+                text = "Click cells to paint ${state.terrainPaint.name.lowercase()} terrain",
+                fontSize = 13.sp,
+                color = TextSecondary,
+            )
+        }
+        FilterChip(
+            selected = state.itemDropEnabled,
+            onClick = { onInteraction(EncountersInteraction.ItemDropToggled) },
+            label = { Text("Item") },
+        )
+        if (state.itemDropEnabled) {
+            OutlinedTextField(
+                value = state.itemNameText,
+                onValueChange = { onInteraction(EncountersInteraction.ItemNameChanged(it)) },
+                label = { Text("Item name") },
+                singleLine = true,
+                modifier = Modifier.width(160.dp),
+            )
+            Text(
+                text = if (state.itemNameText.isBlank()) {
+                    "Name the item, then click a cell"
+                } else {
+                    "Click a cell to drop ${state.itemNameText.trim()}"
+                },
+                fontSize = 13.sp,
+                color = TextSecondary,
+            )
+        }
+        if (state.selectedItemName != null) {
+            Text(text = state.selectedItemName, fontSize = 13.sp, color = TextSecondary)
+            TextButton(onClick = { onInteraction(EncountersInteraction.ItemRemoved) }) {
+                Text("Remove")
             }
         }
     }

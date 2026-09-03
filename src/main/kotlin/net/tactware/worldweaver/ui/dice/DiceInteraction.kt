@@ -15,4 +15,7 @@ internal sealed interface DiceInteraction {
     data class ColorStyleSelected(val style: DiceColorStyle) : DiceInteraction
     data object RollSelected : DiceInteraction
     data object HistoryCleared : DiceInteraction
+    data object FloatingOpened : DiceInteraction
+    data object FloatingClosed : DiceInteraction
+    data object AlwaysOnTopToggled : DiceInteraction
 }

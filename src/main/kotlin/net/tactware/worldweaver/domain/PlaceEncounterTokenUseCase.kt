@@ -16,8 +16,15 @@ internal class PlaceEncounterTokenUseCase(
         cell: GridCell,
         columns: Int,
         rows: Int,
+        span: Int = 1,
     ): Result {
-        if (cell.column !in 0 until columns || cell.row !in 0 until rows) {
+        val footprint = span.coerceAtLeast(1)
+        if (
+            cell.column < 0 ||
+            cell.row < 0 ||
+            cell.column + footprint > columns ||
+            cell.row + footprint > rows
+        ) {
             return Result.InvalidCell
         }
         val encounter = encounterRepository.getById(encounterId) ?: return Result.NotFound

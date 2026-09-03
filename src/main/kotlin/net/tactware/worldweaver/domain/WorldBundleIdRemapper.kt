@@ -11,6 +11,8 @@ internal class WorldBundleIdRemapper(
         val locationIds = remapIds(bundle.locations.map { it.id })
         val worldPersonIds = remapIds(bundle.worldPeople.map { it.id })
         val loreIds = remapIds(bundle.loreEntries.map { it.id })
+        val factionIds = remapIds(bundle.factions.map { it.id })
+        val membershipIds = remapIds(bundle.memberships.map { it.id })
         val campaignIds = remapIds(bundle.campaigns.map { it.id })
         val campaignPersonIds = remapIds(bundle.campaignPeople.map { it.id })
         val questIds = remapIds(bundle.quests.map { it.id })
@@ -66,6 +68,19 @@ internal class WorldBundleIdRemapper(
                     },
                     locationId = lore.locationId?.let(locationIds::get),
                     characterId = remapCharacterId(lore.characterId, worldPersonIds, campaignPersonIds),
+                )
+            },
+            factions = bundle.factions.map { faction ->
+                faction.copy(
+                    id = factionIds.getValue(faction.id),
+                    worldId = worldId,
+                )
+            },
+            memberships = bundle.memberships.map { membership ->
+                membership.copy(
+                    id = membershipIds.getValue(membership.id),
+                    person = remapPersonRef(membership.person, worldPersonIds, campaignPersonIds),
+                    factionId = factionIds[membership.factionId] ?: membership.factionId,
                 )
             },
             worldPeople = bundle.worldPeople.map { person ->
@@ -135,6 +150,9 @@ internal class WorldBundleIdRemapper(
                 map.copy(
                     id = battleMapIds.getValue(map.id),
                     campaignId = campaignIds.getValue(map.campaignId),
+                    items = map.items.map { item ->
+                        item.copy(id = entityIdFactory.create())
+                    },
                 )
             },
             battleMapSituations = bundle.battleMapSituations.map { situation ->
@@ -167,6 +185,7 @@ internal class WorldBundleIdRemapper(
                     id = relationshipIds.getValue(relationship.id),
                     from = remapPersonRef(relationship.from, worldPersonIds, campaignPersonIds),
                     to = remapPersonRef(relationship.to, worldPersonIds, campaignPersonIds),
+                    factionId = relationship.factionId?.let { factionIds[it] ?: it },
                 )
             },
             companions = bundle.companions.map { companion ->

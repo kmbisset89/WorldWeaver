@@ -6,6 +6,8 @@ internal class WorldBundleSnapshotFactory(
     private val campaignRepository: CampaignRepository,
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
+    private val factionRepository: FactionRepository,
+    private val factionMembershipRepository: FactionMembershipRepository,
     private val worldPersonRepository: WorldPersonRepository,
     private val campaignPersonRepository: CampaignPersonRepository,
     private val locationOverlayRepository: LocationOverlayRepository,
@@ -40,6 +42,10 @@ internal class WorldBundleSnapshotFactory(
             campaigns = campaigns,
             locations = locations,
             loreEntries = loreRepository.getByWorld(worldId),
+            factions = factionRepository.getByWorld(worldId),
+            memberships = factionMembershipRepository.getAll().filter { membership ->
+                containsPerson(membership.person, personIds)
+            },
             worldPeople = worldPeople,
             campaignPeople = campaignPeople,
             locationOverlays = campaignIds.flatMap { locationOverlayRepository.getByCampaign(it) },

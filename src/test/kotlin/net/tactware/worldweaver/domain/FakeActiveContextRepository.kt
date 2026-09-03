@@ -23,4 +23,8 @@ internal class FakeActiveContextRepository : ActiveContextRepository {
     override fun setActiveCampaignId(campaignId: String?) {
         state.value = state.value.copy(activeCampaignId = campaignId)
     }
+
+    override fun setActiveSessionId(sessionId: String?) {
+        state.value = state.value.copy(activeSessionId = sessionId)
+    }
 }

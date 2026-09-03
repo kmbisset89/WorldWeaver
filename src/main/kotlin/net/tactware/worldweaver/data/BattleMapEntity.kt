@@ -34,6 +34,9 @@ internal data class BattleMapEntity(
     val unitsPerTile: Double,
     val fogEnabled: Boolean = false,
     val revealedCells: String = "",
+    val blockedCells: String = "",
+    val difficultCells: String = "",
+    val items: String = "",
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )

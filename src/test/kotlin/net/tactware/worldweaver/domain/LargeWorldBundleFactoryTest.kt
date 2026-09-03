@@ -64,6 +64,8 @@ internal class LargeWorldBundleFactoryTest {
         assertEquals(source.locations.size, harness.locations.getByWorld(created.world.id).size)
         assertEquals(source.worldPeople.size, harness.worldPeople.getByWorld(created.world.id).size)
         assertEquals(source.loreEntries.size, harness.lore.getByWorld(created.world.id).size)
+        assertEquals(source.factions.size, harness.factions.getByWorld(created.world.id).size)
+        assertEquals(source.memberships.size, harness.memberships.all().size)
         assertEquals(source.campaigns.size, harness.campaigns.getByWorld(created.world.id).size)
         assertEquals(source.quests.size, harness.quests.all().size)
         assertEquals(source.sessions.size, harness.sessions.all().size)
@@ -86,6 +88,8 @@ internal class LargeWorldBundleFactoryTest {
         val campaigns = FakeCampaignRepository()
         val locations = FakeLocationRepository()
         val lore = FakeLoreRepository()
+        val factions = FakeFactionRepository()
+        val memberships = FakeFactionMembershipRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
         val overlays = FakeLocationOverlayRepository()
@@ -116,6 +120,8 @@ internal class LargeWorldBundleFactoryTest {
             campaignRepository = campaigns,
             locationRepository = locations,
             loreRepository = lore,
+            factionRepository = factions,
+            factionMembershipRepository = memberships,
             worldPersonRepository = worldPeople,
             campaignPersonRepository = campaignPeople,
             locationOverlayRepository = overlays,

@@ -24,6 +24,10 @@ internal class PersonRelationshipRepositoryImpl(
         return personRelationshipDao.getAll().map { converter.toRelationship(it) }
     }
 
+    override suspend fun countByFaction(factionId: String): Int {
+        return personRelationshipDao.countByFaction(factionId)
+    }
+
     override suspend fun insert(relationship: PersonRelationship) {
         personRelationshipDao.insert(converter.toEntity(relationship))
     }
@@ -37,5 +41,9 @@ internal class PersonRelationshipRepositoryImpl(
             kind = converter.kindName(ref),
             personId = ref.id,
         )
+    }
+
+    override suspend fun deleteByFaction(factionId: String) {
+        personRelationshipDao.deleteByFaction(factionId)
     }
 }

@@ -14,13 +14,14 @@ internal class UpdateCampaignPersonDeathSavesUseCase(
         deathSaves: DeathSaves,
     ): Result {
         val person = campaignPersonRepository.getById(personId) ?: return Result.NotFound
+        val sheet = person.sheet as? FifthEditionSheet ?: return Result.Updated
         val clamped = DeathSaves(
             successes = deathSaves.successes.coerceIn(0, DeathSaves.LIMIT),
             failures = deathSaves.failures.coerceIn(0, DeathSaves.LIMIT),
         )
         campaignPersonRepository.update(
             person.copy(
-                sheet = person.sheet.copy(deathSaves = clamped),
+                sheet = sheet.copy(deathSaves = clamped),
                 updatedAt = instantProvider.now(),
             )
         )

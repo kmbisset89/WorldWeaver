@@ -41,7 +41,12 @@ internal class CreateAndUpdateWorldUseCaseTest {
             harness.createWorld("Faerun", "")
         )
 
-        val result = harness.updateWorld(created.world.id, "  ", "updated")
+        val result = harness.updateWorld(
+            created.world.id,
+            "  ",
+            "updated",
+            GameSystem.FifthEdition,
+        )
 
         assertIs<UpdateWorldUseCase.Result.InvalidName>(result)
         assertEquals("Faerun", harness.worlds.getById(created.world.id)?.name)
@@ -54,12 +59,18 @@ internal class CreateAndUpdateWorldUseCaseTest {
             harness.createWorld("Faerun", "")
         )
 
-        val result = harness.updateWorld(created.world.id, "Toril", "The world")
+        val result = harness.updateWorld(
+            created.world.id,
+            "Toril",
+            "The world",
+            GameSystem.Pathfinder2E,
+        )
 
         assertIs<UpdateWorldUseCase.Result.Updated>(result)
         val updated = harness.worlds.getById(created.world.id)
         assertEquals("Toril", updated?.name)
         assertEquals("The world", updated?.description)
+        assertEquals(GameSystem.Pathfinder2E, updated?.defaultGameSystem)
     }
 
     private class Harness {

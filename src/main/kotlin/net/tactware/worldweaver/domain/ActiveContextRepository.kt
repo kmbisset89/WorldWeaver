@@ -7,4 +7,5 @@ internal interface ActiveContextRepository {
     fun get(): ActiveContext
     fun setActiveWorldId(worldId: String?)
     fun setActiveCampaignId(campaignId: String?)
+    fun setActiveSessionId(sessionId: String?)
 }

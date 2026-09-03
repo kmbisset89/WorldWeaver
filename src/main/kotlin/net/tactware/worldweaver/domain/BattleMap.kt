@@ -17,6 +17,9 @@ internal data class BattleMap(
     val unitsPerTile: Double = 5.0,
     val fogEnabled: Boolean = false,
     val revealedCells: Set<GridCell> = emptySet(),
+    val blockedCells: Set<GridCell> = emptySet(),
+    val difficultCells: Set<GridCell> = emptySet(),
+    val items: List<BattleMapItem> = emptyList(),
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {

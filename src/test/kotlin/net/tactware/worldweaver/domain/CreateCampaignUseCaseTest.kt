@@ -5,7 +5,6 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 internal class CreateCampaignUseCaseTest {
@@ -13,7 +12,7 @@ internal class CreateCampaignUseCaseTest {
     fun createRequiresActiveWorld() = runTest {
         val harness = Harness()
 
-        val result = harness.createCampaign("Icewind Dale", "", "")
+        val result = harness.createCampaign("Icewind Dale", "", "", GameSystem.FifthEdition)
 
         assertIs<CreateCampaignUseCase.Result.NoActiveWorld>(result)
         assertTrue(harness.campaigns.all().isEmpty())
@@ -24,7 +23,7 @@ internal class CreateCampaignUseCaseTest {
         val harness = Harness()
         harness.context.setActiveWorldId("world-1")
 
-        val result = harness.createCampaign("  ", "", "")
+        val result = harness.createCampaign("  ", "", "", GameSystem.FifthEdition)
 
         assertIs<CreateCampaignUseCase.Result.InvalidName>(result)
     }
@@ -43,11 +42,16 @@ internal class CreateCampaignUseCaseTest {
         harness.worlds.insert(world)
         harness.context.setActiveWorldId(world.id)
 
-        val result = harness.createCampaign("Icewind Dale", "North", "Notes")
+        val result = harness.createCampaign(
+            "Icewind Dale",
+            "North",
+            "Notes",
+            GameSystem.Pathfinder2E,
+        )
 
         val created = assertIs<CreateCampaignUseCase.Result.Created>(result)
         assertEquals(world.id, created.campaign.worldId)
-        assertNull(created.campaign.gameSystem)
+        assertEquals(GameSystem.Pathfinder2E, created.campaign.gameSystem)
         assertEquals(CampaignStatus.Active, created.campaign.status)
         assertEquals(created.campaign.id, harness.context.get().activeCampaignId)
         assertEquals(world.id, harness.context.get().activeWorldId)

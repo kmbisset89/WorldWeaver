@@ -1,3 +1,4 @@
+import java.time.Year
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -11,6 +12,10 @@ plugins {
 group = "net.tactware.worldweaver"
 version = "1.0.0"
 
+val appPublisher = "Kerry Bisset"
+val appHomepage = "https://github.com/kmbisset89/WorldWeaver"
+val appCopyright = "Copyright © ${Year.now()} $appPublisher"
+
 repositories {
     google()
     mavenCentral()
@@ -19,8 +24,8 @@ repositories {
 
 dependencies {
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
-    implementation(compose.materialIconsExtended)
+    implementation("org.jetbrains.compose.material3:material3:1.11.0-alpha07")
+    implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
     implementation("androidx.room:room-runtime:2.7.2")
@@ -44,18 +49,30 @@ compose.desktop {
         mainClass = "net.tactware.worldweaver.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "WorldWeaver"
             packageVersion = "1.0.0"
-            description = "World Weaver desktop"
-            vendor = "TactWare"
+            description = "World Weaver — tabletop campaign manager ($appHomepage)"
+            vendor = appPublisher
+            copyright = appCopyright
+            licenseFile.set(project.file("LICENSE"))
 
             windows {
                 menuGroup = "World Weaver"
             }
 
             macOS {
-                bundleID = "net.tactware.worldweaver"
+                bundleID = "io.github.kmbisset89.worldweaver"
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>NSHumanReadableCopyright</key>
+                        <string>$appCopyright</string>
+                    """.trimIndent()
+                }
+            }
+
+            linux {
+                debMaintainer = "$appPublisher <kmbisset89@users.noreply.github.com>"
             }
         }
     }

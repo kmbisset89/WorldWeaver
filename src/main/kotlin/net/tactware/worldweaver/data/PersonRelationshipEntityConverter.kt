@@ -12,7 +12,7 @@ internal class PersonRelationshipEntityConverter {
             to = toRef(entity.toKind, entity.toId),
             type = RelationshipType.fromStorage(entity.type),
             description = entity.description,
-            factionLean = entity.factionLean,
+            factionId = entity.factionId,
         )
     }
 
@@ -25,7 +25,7 @@ internal class PersonRelationshipEntityConverter {
             toId = relationship.to.id,
             type = relationship.type.name,
             description = relationship.description,
-            factionLean = relationship.factionLean,
+            factionId = relationship.factionId,
         )
     }
 

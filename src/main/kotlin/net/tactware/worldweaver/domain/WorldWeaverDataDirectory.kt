@@ -17,6 +17,9 @@ internal class WorldWeaverDataDirectory(
     val voicesDir: File
         get() = File(root, VOICES_DIR_NAME)
 
+    val srdDir: File
+        get() = File(root, SRD_DIR_NAME)
+
     fun ensureExists() {
         root.mkdirs()
     }
@@ -27,5 +30,6 @@ internal class WorldWeaverDataDirectory(
         const val AVATARS_DIR_NAME = "avatars"
         const val MAPS_DIR_NAME = "maps"
         const val VOICES_DIR_NAME = "voices"
+        const val SRD_DIR_NAME = "srd"
     }
 }

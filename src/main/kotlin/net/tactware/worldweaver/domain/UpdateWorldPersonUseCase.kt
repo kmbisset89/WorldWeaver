@@ -3,6 +3,7 @@ package net.tactware.worldweaver.domain
 internal class UpdateWorldPersonUseCase(
     private val worldPersonRepository: WorldPersonRepository,
     private val instantProvider: InstantProvider,
+    private val sheetFactory: PersonSheetFactory = PersonSheetFactory(),
 ) {
     sealed interface Result {
         data object Updated : Result
@@ -28,13 +29,7 @@ internal class UpdateWorldPersonUseCase(
                 kind = draft.kind,
                 name = name,
                 description = draft.description.trim(),
-                sheet = draft.sheet.copy(
-                    race = draft.sheet.race.trim(),
-                    classLevels = draft.sheet.classLevels
-                        .map { it.copy(className = it.className.trim(), subclass = it.subclass.trim()) }
-                        .filter { it.className.isNotEmpty() },
-                    notes = draft.sheet.notes.trim(),
-                ),
+                sheet = sheetFactory.sanitize(draft.sheet),
                 updatedAt = instantProvider.now(),
             )
         )

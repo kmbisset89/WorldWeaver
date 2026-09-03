@@ -14,6 +14,7 @@ internal class SetActiveWorldUseCase(
             val campaign = campaignRepository.getById(campaignId)
             if (campaign == null || campaign.worldId != worldId) {
                 activeContextRepository.setActiveCampaignId(null)
+                activeContextRepository.setActiveSessionId(null)
             }
         }
         activeContextRepository.setActiveWorldId(worldId)

@@ -9,8 +9,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.tactware.worldweaver.core.AppCoroutineScope
+import net.tactware.worldweaver.domain.ClearSrdCatalogUseCase
 import net.tactware.worldweaver.domain.ExportAppBackupUseCase
+import net.tactware.worldweaver.domain.ImportSrdCatalogUseCase
+import net.tactware.worldweaver.domain.ObserveSrdCatalogUseCase
 import net.tactware.worldweaver.domain.RestoreAppBackupUseCase
+import net.tactware.worldweaver.domain.SrdCatalog
 import net.tactware.worldweaver.ui.theme.ThemeMode
 import net.tactware.worldweaver.ui.theme.ThemeSkin
 import java.io.File
@@ -19,6 +23,9 @@ internal class SettingsViewModel(
     private val shellSettingsStore: ShellSettingsStore,
     private val exportAppBackup: ExportAppBackupUseCase,
     private val restoreAppBackup: RestoreAppBackupUseCase,
+    private val observeSrdCatalog: ObserveSrdCatalogUseCase,
+    private val importSrdCatalog: ImportSrdCatalogUseCase,
+    private val clearSrdCatalog: ClearSrdCatalogUseCase,
     private val appScope: AppCoroutineScope,
 ) {
     private val _state = MutableStateFlow<SettingsViewState>(contentFrom(shellSettingsStore.settings.value))
@@ -31,6 +38,13 @@ internal class SettingsViewModel(
         appScope.scope.launch {
             shellSettingsStore.settings.collect { settings ->
                 syncFromStore(settings)
+            }
+        }
+        appScope.scope.launch {
+            observeSrdCatalog().collect { catalog ->
+                updateContent { current ->
+                    current.copy(srdStatus = statusFrom(catalog))
+                }
             }
         }
     }
@@ -50,6 +64,14 @@ internal class SettingsViewModel(
             is SettingsInteraction.RestorePathChosen -> requestRestore(interaction.path)
             SettingsInteraction.RestoreConfirmed -> confirmRestore()
             SettingsInteraction.RestoreCancelled -> clearPendingRestore()
+            SettingsInteraction.ImportBundledSrdSelected -> importSrd(ImportSrdCatalogUseCase.Source.Bundled)
+            SettingsInteraction.ImportSrdFileSelected -> Unit
+            is SettingsInteraction.SrdFilePathChosen -> importSrd(
+                ImportSrdCatalogUseCase.Source.File(File(interaction.path)),
+            )
+            SettingsInteraction.ClearSrdSelected -> requestClearSrd()
+            SettingsInteraction.ClearSrdConfirmed -> confirmClearSrd()
+            SettingsInteraction.ClearSrdCancelled -> clearPendingClearSrd()
         }
     }
 
@@ -174,6 +196,68 @@ internal class SettingsViewModel(
         }
     }
 
+    private fun importSrd(source: ImportSrdCatalogUseCase.Source) {
+        val content = _state.value as? SettingsViewState.Content ?: return
+        if (content.isTransferring) {
+            return
+        }
+        if (source is ImportSrdCatalogUseCase.Source.File && source.file.path.isBlank()) {
+            _effects.tryEmit(SettingsViewEffect.Failed("Choose an SRD JSON file"))
+            return
+        }
+        setTransferring(true)
+        appScope.scope.launch {
+            when (val result = importSrdCatalog(source)) {
+                is ImportSrdCatalogUseCase.Result.Imported -> {
+                    updateContent { current ->
+                        current.copy(srdStatus = statusFrom(result.catalog))
+                    }
+                    _effects.tryEmit(SettingsViewEffect.SrdImported)
+                }
+                ImportSrdCatalogUseCase.Result.InvalidFile -> {
+                    _effects.tryEmit(SettingsViewEffect.Failed("That file is not a valid WorldWeaver SRD catalog"))
+                }
+                is ImportSrdCatalogUseCase.Result.Failed -> {
+                    _effects.tryEmit(SettingsViewEffect.Failed(result.message))
+                }
+            }
+            setTransferring(false)
+        }
+    }
+
+    private fun requestClearSrd() {
+        val content = _state.value as? SettingsViewState.Content ?: return
+        if (content.isTransferring || content.srdStatus !is SettingsViewState.SrdStatus.Imported) {
+            return
+        }
+        updateContent { current ->
+            current.copy(pendingClearSrd = true)
+        }
+    }
+
+    private fun confirmClearSrd() {
+        val content = _state.value as? SettingsViewState.Content ?: return
+        if (content.isTransferring) {
+            return
+        }
+        setTransferring(true)
+        appScope.scope.launch {
+            clearSrdCatalog()
+            updateContent { current ->
+                current.copy(srdStatus = SettingsViewState.SrdStatus.BundledPickers)
+            }
+            _effects.tryEmit(SettingsViewEffect.SrdCleared)
+            setTransferring(false)
+            clearPendingClearSrd()
+        }
+    }
+
+    private fun clearPendingClearSrd() {
+        updateContent { current ->
+            current.copy(pendingClearSrd = false)
+        }
+    }
+
     private fun setTransferring(isTransferring: Boolean) {
         updateContent { current ->
             current.copy(isTransferring = isTransferring)
@@ -204,6 +288,8 @@ internal class SettingsViewModel(
                     profileError = content.profileError,
                     isTransferring = content.isTransferring,
                     pendingRestorePath = content.pendingRestorePath,
+                    srdStatus = content.srdStatus,
+                    pendingClearSrd = content.pendingClearSrd,
                 )
             } else {
                 contentFrom(settings)
@@ -221,6 +307,20 @@ internal class SettingsViewModel(
                 draftEmail = settings.email,
                 savedDisplayName = settings.displayName,
                 savedEmail = settings.email,
+            )
+        }
+
+        fun statusFrom(catalog: SrdCatalog?): SettingsViewState.SrdStatus {
+            if (catalog == null) {
+                return SettingsViewState.SrdStatus.BundledPickers
+            }
+            return SettingsViewState.SrdStatus.Imported(
+                sourceLabel = catalog.sourceLabel,
+                importedAtEpochMillis = catalog.importedAt.toEpochMilli(),
+                raceCount = catalog.races.size,
+                classCount = catalog.classes.size,
+                spellCount = catalog.spells.size,
+                monsterCount = catalog.monsters.size,
             )
         }
     }

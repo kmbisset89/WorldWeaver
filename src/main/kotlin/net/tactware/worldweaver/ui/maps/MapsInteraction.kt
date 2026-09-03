@@ -6,12 +6,16 @@ internal sealed interface MapsInteraction {
     data object CreateWorldSelected : MapsInteraction
     data object CreateCampaignSelected : MapsInteraction
     data object ImportSelected : MapsInteraction
+    data object StarterCatalogSelected : MapsInteraction
+    data object StarterCatalogDismissed : MapsInteraction
+    data class BundledMapSelected(val entryId: String) : MapsInteraction
     data class MakerNameChanged(val name: String) : MapsInteraction
     data class MakerImageChosen(val path: String) : MapsInteraction
     data class MakerColumnsChanged(val columns: String) : MapsInteraction
     data class MakerRowsChanged(val rows: String) : MapsInteraction
     data class MakerUnitNameChanged(val unitName: String) : MapsInteraction
     data class MakerUnitsPerTileChanged(val unitsPerTile: String) : MapsInteraction
+    data class MakerSceneryChanged(val scenery: String) : MapsInteraction
     data class MakerScaleChanged(val scalePercent: String) : MapsInteraction
     data object MakerGridToggled : MapsInteraction
     data object MakerRenderTilesToggled : MapsInteraction
@@ -36,6 +40,11 @@ internal sealed interface MapsInteraction {
     data object FogHideBrushSelected : MapsInteraction
     data object FogRevealAllSelected : MapsInteraction
     data object FogHideAllSelected : MapsInteraction
+    data class TerrainPaintSelected(val kind: TerrainPaintKind?) : MapsInteraction
+    data object ItemDropToggled : MapsInteraction
+    data class ItemNameChanged(val name: String) : MapsInteraction
+    data class ItemSelected(val itemId: String) : MapsInteraction
+    data object ItemRemoved : MapsInteraction
     data class SituationImageChosen(val path: String) : MapsInteraction
     data class SituationToggled(val situationId: String) : MapsInteraction
     data class SituationDeleteSelected(val situationId: String) : MapsInteraction

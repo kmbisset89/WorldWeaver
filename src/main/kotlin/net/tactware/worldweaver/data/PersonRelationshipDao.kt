@@ -16,6 +16,9 @@ internal interface PersonRelationshipDao {
     @Query("SELECT * FROM person_relationships ORDER BY id ASC")
     suspend fun getAll(): List<PersonRelationshipEntity>
 
+    @Query("SELECT COUNT(*) FROM person_relationships WHERE factionId = :factionId")
+    suspend fun countByFaction(factionId: String): Int
+
     @Insert
     suspend fun insert(entity: PersonRelationshipEntity)
 
@@ -30,4 +33,7 @@ internal interface PersonRelationshipDao {
         """,
     )
     suspend fun deleteByPerson(kind: String, personId: String)
+
+    @Query("DELETE FROM person_relationships WHERE factionId = :factionId")
+    suspend fun deleteByFaction(factionId: String)
 }

@@ -45,6 +45,22 @@ internal class PlaceEncounterTokenUseCaseTest {
         assertIs<PlaceEncounterTokenUseCase.Result.NotFound>(result)
     }
 
+    @Test
+    fun placeRejectsFootprintThatLeavesTheMap() = runTest {
+        val harness = Harness()
+        harness.insertEncounter()
+
+        val result = harness.placeToken(
+            GridCell(column = 9, row = 9),
+            columns = 10,
+            rows = 10,
+            span = 2,
+        )
+
+        assertIs<PlaceEncounterTokenUseCase.Result.InvalidCell>(result)
+        assertNull(harness.participant().boardCell())
+    }
+
     private class Harness {
         val encounters = FakeEncounterRepository()
         private val instant = InstantProvider { Instant.parse("2026-08-29T12:00:00Z") }
@@ -55,8 +71,9 @@ internal class PlaceEncounterTokenUseCaseTest {
             participantId: String = "p-1",
             columns: Int = 20,
             rows: Int = 20,
+            span: Int = 1,
         ): PlaceEncounterTokenUseCase.Result {
-            return placeToken("enc-1", participantId, cell, columns, rows)
+            return placeToken("enc-1", participantId, cell, columns, rows, span)
         }
 
         fun participant(): EncounterParticipant {

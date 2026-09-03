@@ -1,6 +1,7 @@
 package net.tactware.worldweaver.ui.campaigns
 
 import net.tactware.worldweaver.domain.CampaignStatus
+import net.tactware.worldweaver.domain.GameSystem
 
 internal sealed interface CampaignsInteraction {
     data object ScreenStarted : CampaignsInteraction
@@ -18,9 +19,11 @@ internal sealed interface CampaignsInteraction {
     data class EditorNameChanged(val name: String) : CampaignsInteraction
     data class EditorDescriptionChanged(val description: String) : CampaignsInteraction
     data class EditorNotesChanged(val notes: String) : CampaignsInteraction
+    data class EditorGameSystemSelected(val gameSystem: GameSystem) : CampaignsInteraction
     data object EditorSaved : CampaignsInteraction
     data object EditorDismissed : CampaignsInteraction
     data object OpenCharactersSelected : CampaignsInteraction
+    data object CreatePlayerCharacterSelected : CampaignsInteraction
     data object OpenQuestsSelected : CampaignsInteraction
     data object OpenSessionsSelected : CampaignsInteraction
 }

@@ -58,6 +58,15 @@ internal fun SessionDetailPane(
         if (session.notes.isNotBlank()) {
             Text(text = session.notes, fontSize = 14.sp, color = TextPrimary)
         }
+        if (session.recap.isNotBlank()) {
+            Text(
+                text = "What changed",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextSecondary,
+            )
+            Text(text = session.recap, fontSize = 14.sp, color = TextPrimary)
+        }
         ChecklistSection(checklist = checklist)
         LinkedQuestsSection(linkedQuests = linkedQuests, onInteraction = onInteraction)
         ScenesSection(session = session, onInteraction = onInteraction)

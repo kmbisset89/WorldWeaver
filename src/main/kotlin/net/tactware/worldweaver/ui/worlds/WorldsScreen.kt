@@ -80,6 +80,13 @@ internal fun WorldsScreen(
                 )
                 Spacer(modifier = Modifier.padding(top = 4.dp))
                 TextButton(
+                    onClick = { onInteraction(WorldsInteraction.OneShotSelected) },
+                    enabled = !viewState.isTransferring,
+                ) {
+                    Text("Create a one-shot")
+                }
+                Spacer(modifier = Modifier.padding(top = 4.dp))
+                TextButton(
                     onClick = { chooseImportPath(onInteraction) },
                     enabled = !viewState.isTransferring,
                 ) {
@@ -128,6 +135,12 @@ private fun WorldsHeader(
                 enabled = !isTransferring,
             ) {
                 Text("Import world")
+            }
+            OutlinedButton(
+                onClick = { onInteraction(WorldsInteraction.OneShotSelected) },
+                enabled = !isTransferring,
+            ) {
+                Text("One-shot")
             }
             Button(
                 onClick = { onInteraction(WorldsInteraction.NewWorldSelected) },

@@ -18,6 +18,10 @@ internal class FakePersonRelationshipRepository : PersonRelationshipRepository {
         return relationships.value
     }
 
+    override suspend fun countByFaction(factionId: String): Int {
+        return relationships.value.count { it.factionId == factionId }
+    }
+
     override suspend fun insert(relationship: PersonRelationship) {
         relationships.value = relationships.value + relationship
     }
@@ -30,6 +34,10 @@ internal class FakePersonRelationshipRepository : PersonRelationshipRepository {
         relationships.value = relationships.value.filterNot { relationship ->
             sameRef(relationship.from, ref) || sameRef(relationship.to, ref)
         }
+    }
+
+    override suspend fun deleteByFaction(factionId: String) {
+        relationships.value = relationships.value.filterNot { it.factionId == factionId }
     }
 
     private fun sameRef(left: PersonRef, right: PersonRef): Boolean {

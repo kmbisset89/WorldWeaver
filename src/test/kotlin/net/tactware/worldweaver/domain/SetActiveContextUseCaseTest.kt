@@ -59,6 +59,21 @@ internal class SetActiveContextUseCaseTest {
         assertEquals(campaign.id, harness.context.get().activeCampaignId)
     }
 
+    @Test
+    fun setActiveCampaignClearsSessionFromPreviousCampaign() = runTest {
+        val harness = Harness()
+        val world = harness.insertWorld("world-1", "Faerun")
+        val first = harness.insertCampaign("campaign-1", world.id)
+        val second = harness.insertCampaign("campaign-2", world.id)
+        harness.setActiveCampaign(first.id)
+        harness.context.setActiveSessionId("session-1")
+
+        harness.setActiveCampaign(second.id)
+
+        assertEquals(second.id, harness.context.get().activeCampaignId)
+        assertNull(harness.context.get().activeSessionId)
+    }
+
     private class Harness {
         val worlds = FakeWorldRepository()
         val campaigns = FakeCampaignRepository()

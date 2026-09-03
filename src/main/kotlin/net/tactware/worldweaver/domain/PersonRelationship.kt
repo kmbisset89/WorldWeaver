@@ -6,5 +6,5 @@ internal data class PersonRelationship(
     val to: PersonRef,
     val type: RelationshipType,
     val description: String,
-    val factionLean: String,
+    val factionId: String?,
 )

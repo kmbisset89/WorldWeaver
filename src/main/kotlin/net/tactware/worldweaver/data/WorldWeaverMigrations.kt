@@ -773,6 +773,205 @@ internal object WorldWeaverMigrations {
         }
     }
 
+    val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `factions` (
+                    `id` TEXT NOT NULL,
+                    `worldId` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `description` TEXT NOT NULL,
+                    `goals` TEXT NOT NULL,
+                    `notes` TEXT NOT NULL,
+                    `createdAtEpochMillis` INTEGER NOT NULL,
+                    `updatedAtEpochMillis` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`worldId`) REFERENCES `worlds`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_factions_worldId` ON `factions` (`worldId`)"
+            )
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `faction_memberships` (
+                    `id` TEXT NOT NULL,
+                    `personKind` TEXT NOT NULL,
+                    `personId` TEXT NOT NULL,
+                    `factionId` TEXT NOT NULL,
+                    `role` TEXT NOT NULL,
+                    `notes` TEXT NOT NULL,
+                    `createdAtEpochMillis` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`factionId`) REFERENCES `factions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_faction_memberships_factionId` ON `faction_memberships` (`factionId`)"
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_faction_memberships_personKind_personId` ON `faction_memberships` (`personKind`, `personId`)"
+            )
+            connection.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_faction_memberships_personKind_personId_factionId` ON `faction_memberships` (`personKind`, `personId`, `factionId`)"
+            )
+            connection.execSQL(
+                """
+                CREATE TEMP TABLE `relationship_worlds` AS
+                SELECT
+                    r.`id` AS `relationshipId`,
+                    TRIM(r.`factionLean`) AS `lean`,
+                    COALESCE(wp.`worldId`, c.`worldId`, wp2.`worldId`, c2.`worldId`) AS `worldId`
+                FROM `person_relationships` r
+                LEFT JOIN `world_people` wp ON r.`fromKind` = 'World' AND r.`fromId` = wp.`id`
+                LEFT JOIN `campaign_people` cp ON r.`fromKind` = 'Campaign' AND r.`fromId` = cp.`id`
+                LEFT JOIN `campaigns` c ON cp.`campaignId` = c.`id`
+                LEFT JOIN `world_people` wp2 ON r.`toKind` = 'World' AND r.`toId` = wp2.`id`
+                LEFT JOIN `campaign_people` cp2 ON r.`toKind` = 'Campaign' AND r.`toId` = cp2.`id`
+                LEFT JOIN `campaigns` c2 ON cp2.`campaignId` = c2.`id`
+                WHERE TRIM(r.`factionLean`) != ''
+                """.trimIndent()
+            )
+            connection.execSQL(
+                """
+                INSERT INTO `factions` (
+                    `id`, `worldId`, `name`, `description`, `goals`, `notes`,
+                    `createdAtEpochMillis`, `updatedAtEpochMillis`
+                )
+                SELECT
+                    'fac-' || rw.`worldId` || '-' || hex(lower(rw.`lean`)),
+                    rw.`worldId`,
+                    MIN(rw.`lean`),
+                    '',
+                    '',
+                    '',
+                    COALESCE(w.`createdAtEpochMillis`, 0),
+                    COALESCE(w.`updatedAtEpochMillis`, 0)
+                FROM `relationship_worlds` rw
+                LEFT JOIN `worlds` w ON w.`id` = rw.`worldId`
+                WHERE rw.`worldId` IS NOT NULL
+                GROUP BY rw.`worldId`, lower(rw.`lean`)
+                """.trimIndent()
+            )
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `person_relationships_new` (
+                    `id` TEXT NOT NULL,
+                    `fromKind` TEXT NOT NULL,
+                    `fromId` TEXT NOT NULL,
+                    `toKind` TEXT NOT NULL,
+                    `toId` TEXT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `description` TEXT NOT NULL,
+                    `factionId` TEXT,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`factionId`) REFERENCES `factions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                """
+                INSERT INTO `person_relationships_new` (
+                    `id`, `fromKind`, `fromId`, `toKind`, `toId`, `type`, `description`, `factionId`
+                )
+                SELECT
+                    r.`id`,
+                    r.`fromKind`,
+                    r.`fromId`,
+                    r.`toKind`,
+                    r.`toId`,
+                    r.`type`,
+                    r.`description`,
+                    CASE
+                        WHEN TRIM(r.`factionLean`) = '' THEN NULL
+                        WHEN rw.`worldId` IS NULL THEN NULL
+                        ELSE 'fac-' || rw.`worldId` || '-' || hex(lower(TRIM(r.`factionLean`)))
+                    END
+                FROM `person_relationships` r
+                LEFT JOIN `relationship_worlds` rw ON r.`id` = rw.`relationshipId`
+                """.trimIndent()
+            )
+            connection.execSQL("DROP TABLE `person_relationships`")
+            connection.execSQL("ALTER TABLE `person_relationships_new` RENAME TO `person_relationships`")
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_person_relationships_fromId` ON `person_relationships` (`fromId`)"
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_person_relationships_toId` ON `person_relationships` (`toId`)"
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_person_relationships_factionId` ON `person_relationships` (`factionId`)"
+            )
+            connection.execSQL("DROP TABLE `relationship_worlds`")
+        }
+    }
+
+    val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "ALTER TABLE `world_people` ADD COLUMN `sheetSystem` TEXT NOT NULL DEFAULT 'FifthEdition'"
+            )
+            connection.execSQL(
+                "ALTER TABLE `world_people` ADD COLUMN `pf2ePayload` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `campaign_people` ADD COLUMN `sheetSystem` TEXT NOT NULL DEFAULT 'FifthEdition'"
+            )
+            connection.execSQL(
+                "ALTER TABLE `campaign_people` ADD COLUMN `pf2ePayload` TEXT NOT NULL DEFAULT ''"
+            )
+        }
+    }
+
+    val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "ALTER TABLE `world_people` ADD COLUMN `skills` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `world_people` ADD COLUMN `spellSlots` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `world_people` ADD COLUMN `concentratingSpell` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `world_people` ADD COLUMN `creatureSize` TEXT NOT NULL DEFAULT 'Medium'"
+            )
+            connection.execSQL(
+                "ALTER TABLE `campaign_people` ADD COLUMN `skills` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `campaign_people` ADD COLUMN `spellSlots` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `campaign_people` ADD COLUMN `concentratingSpell` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `campaign_people` ADD COLUMN `creatureSize` TEXT NOT NULL DEFAULT 'Medium'"
+            )
+            connection.execSQL(
+                "ALTER TABLE `sessions` ADD COLUMN `recap` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `battle_maps` ADD COLUMN `blockedCells` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                "ALTER TABLE `battle_maps` ADD COLUMN `difficultCells` TEXT NOT NULL DEFAULT ''"
+            )
+        }
+    }
+
+    val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "ALTER TABLE `battle_maps` ADD COLUMN `items` TEXT NOT NULL DEFAULT ''"
+            )
+        }
+    }
+
     private val DEFAULT_MONTHS = listOf(
         "January" to 31,
         "February" to 28,

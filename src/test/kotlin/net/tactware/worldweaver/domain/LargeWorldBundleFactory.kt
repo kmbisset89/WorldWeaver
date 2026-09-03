@@ -100,6 +100,8 @@ internal class LargeWorldBundleFactory(
             campaigns = campaigns,
             locations = locations,
             loreEntries = loreEntries,
+            factions = factions(world.id),
+            memberships = memberships(worldPeople),
             worldPeople = worldPeople,
             campaignPeople = campaignPeople,
             locationOverlays = locationOverlays,
@@ -614,7 +616,45 @@ internal class LargeWorldBundleFactory(
                 },
                 type = RelationshipType.entries[index % RelationshipType.entries.size],
                 description = "Generated relationship $index",
-                factionLean = if (index % 2 == 0) "Crown" else "Guild",
+                factionId = if (index % 2 == 0) "fac-crown" else "fac-guild",
+            )
+        }
+    }
+
+    private fun factions(worldId: String): List<Faction> {
+        return listOf(
+            Faction(
+                id = "fac-crown",
+                worldId = worldId,
+                name = "Crown",
+                description = "The ruling house.",
+                goals = "",
+                notes = "",
+                createdAt = now,
+                updatedAt = now,
+            ),
+            Faction(
+                id = "fac-guild",
+                worldId = worldId,
+                name = "Guild",
+                description = "The trade houses.",
+                goals = "",
+                notes = "",
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+    }
+
+    private fun memberships(worldPeople: List<WorldPerson>): List<FactionMembership> {
+        return worldPeople.take(8).mapIndexed { index, person ->
+            FactionMembership(
+                id = "mem-$index",
+                person = PersonRef.World(person.id),
+                factionId = if (index % 2 == 0) "fac-crown" else "fac-guild",
+                role = if (index % 2 == 0) "Agent" else "Member",
+                notes = "",
+                createdAt = now,
             )
         }
     }

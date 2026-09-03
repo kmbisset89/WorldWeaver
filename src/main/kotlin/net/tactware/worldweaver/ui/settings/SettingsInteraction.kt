@@ -17,4 +17,10 @@ internal sealed interface SettingsInteraction {
     data class RestorePathChosen(val path: String) : SettingsInteraction
     data object RestoreConfirmed : SettingsInteraction
     data object RestoreCancelled : SettingsInteraction
+    data object ImportBundledSrdSelected : SettingsInteraction
+    data object ImportSrdFileSelected : SettingsInteraction
+    data class SrdFilePathChosen(val path: String) : SettingsInteraction
+    data object ClearSrdSelected : SettingsInteraction
+    data object ClearSrdConfirmed : SettingsInteraction
+    data object ClearSrdCancelled : SettingsInteraction
 }

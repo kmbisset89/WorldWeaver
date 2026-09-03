@@ -25,10 +25,16 @@ internal class PreferenceActiveContextRepository : ActiveContextRepository {
         state.value = state.value.copy(activeCampaignId = campaignId)
     }
 
+    override fun setActiveSessionId(sessionId: String?) {
+        write(SESSION_KEY, sessionId)
+        state.value = state.value.copy(activeSessionId = sessionId)
+    }
+
     private fun read(): ActiveContext {
         return ActiveContext(
             activeWorldId = readValue(WORLD_KEY),
             activeCampaignId = readValue(CAMPAIGN_KEY),
+            activeSessionId = readValue(SESSION_KEY),
         )
     }
 
@@ -49,5 +55,6 @@ internal class PreferenceActiveContextRepository : ActiveContextRepository {
         const val PREF_NODE = "net.tactware.worldweaver"
         const val WORLD_KEY = "active_world_id"
         const val CAMPAIGN_KEY = "active_campaign_id"
+        const val SESSION_KEY = "active_session_id"
     }
 }

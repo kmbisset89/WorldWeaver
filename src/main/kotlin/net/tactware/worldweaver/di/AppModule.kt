@@ -12,7 +12,13 @@ import net.tactware.worldweaver.data.CampaignRepositoryImpl
 import net.tactware.worldweaver.data.DatabaseProvider
 import net.tactware.worldweaver.data.EncounterEntityConverter
 import net.tactware.worldweaver.data.EncounterRepositoryImpl
+import net.tactware.worldweaver.data.FactionEntityConverter
+import net.tactware.worldweaver.data.FactionMembershipEntityConverter
+import net.tactware.worldweaver.data.FactionMembershipRepositoryImpl
+import net.tactware.worldweaver.data.FactionRepositoryImpl
 import net.tactware.worldweaver.data.FifthEditionSheetConverter
+import net.tactware.worldweaver.data.Pathfinder2ESheetConverter
+import net.tactware.worldweaver.data.PersonSheetEntityConverter
 import net.tactware.worldweaver.data.LocationEntityConverter
 import net.tactware.worldweaver.data.LocationOverlayEntityConverter
 import net.tactware.worldweaver.data.LocationOverlayRepositoryImpl
@@ -42,8 +48,13 @@ import net.tactware.worldweaver.data.WorldRepositoryImpl
 import net.tactware.worldweaver.data.WorldWeaverDatabase
 import net.tactware.worldweaver.domain.AbilityScoreRoller
 import net.tactware.worldweaver.domain.BattleMapFileStore
+import net.tactware.worldweaver.domain.BundledBattleMapCatalogLoader
+import net.tactware.worldweaver.domain.BundledSrdCatalogLoader
 import net.tactware.worldweaver.domain.ClearPersonAvatarUseCase
+import net.tactware.worldweaver.domain.ClearSrdCatalogUseCase
+import net.tactware.worldweaver.domain.CloseSessionUseCase
 import net.tactware.worldweaver.domain.ClearVoiceClipUseCase
+import net.tactware.worldweaver.domain.CreateWorldPersonFromSrdMonsterUseCase
 import net.tactware.worldweaver.domain.BattleMapImageScaler
 import net.tactware.worldweaver.domain.BattleMapRepository
 import net.tactware.worldweaver.domain.BattleMapSituationImageTransformer
@@ -63,8 +74,11 @@ import net.tactware.worldweaver.domain.CreateBattleMapSituationUseCase
 import net.tactware.worldweaver.domain.CreateBattleMapUseCase
 import net.tactware.worldweaver.domain.CreateCampaignUseCase
 import net.tactware.worldweaver.domain.CreateEncounterUseCase
+import net.tactware.worldweaver.domain.CreateFactionMembershipUseCase
+import net.tactware.worldweaver.domain.CreateFactionUseCase
 import net.tactware.worldweaver.domain.CreateLocationUseCase
 import net.tactware.worldweaver.domain.CreateLoreUseCase
+import net.tactware.worldweaver.domain.CreateOneShotUseCase
 import net.tactware.worldweaver.domain.CreatePersonCompanionUseCase
 import net.tactware.worldweaver.domain.CreatePersonRelationshipUseCase
 import net.tactware.worldweaver.domain.CreatePlotThreadUseCase
@@ -81,6 +95,8 @@ import net.tactware.worldweaver.domain.DeleteBattleMapSituationUseCase
 import net.tactware.worldweaver.domain.DeleteBattleMapUseCase
 import net.tactware.worldweaver.domain.DeleteCampaignUseCase
 import net.tactware.worldweaver.domain.DeleteEncounterUseCase
+import net.tactware.worldweaver.domain.DeleteFactionMembershipUseCase
+import net.tactware.worldweaver.domain.DeleteFactionUseCase
 import net.tactware.worldweaver.domain.DeleteLocationUseCase
 import net.tactware.worldweaver.domain.DeleteLoreUseCase
 import net.tactware.worldweaver.domain.DeletePersonCompanionUseCase
@@ -96,8 +112,15 @@ import net.tactware.worldweaver.domain.EndEncounterUseCase
 import net.tactware.worldweaver.domain.EntityIdFactory
 import net.tactware.worldweaver.domain.AppBackupArchiveConverter
 import net.tactware.worldweaver.domain.ExportAppBackupUseCase
+import net.tactware.worldweaver.domain.FactionMembershipRepository
+import net.tactware.worldweaver.domain.FactionRepository
 import net.tactware.worldweaver.domain.ExportWorldBundleUseCase
+import net.tactware.worldweaver.domain.FifthEditionPickerCatalogResolver
+import net.tactware.worldweaver.domain.ImportBundledBattleMapUseCase
+import net.tactware.worldweaver.domain.ImportSrdCatalogUseCase
 import net.tactware.worldweaver.domain.ImportWorldBundleUseCase
+import net.tactware.worldweaver.domain.ObserveFifthEditionPickerCatalogUseCase
+import net.tactware.worldweaver.domain.ObserveSrdCatalogUseCase
 import net.tactware.worldweaver.domain.RestoreAppBackupUseCase
 import net.tactware.worldweaver.domain.TransactionRunner
 import net.tactware.worldweaver.domain.WorldBundleArchiveConverter
@@ -114,6 +137,8 @@ import net.tactware.worldweaver.domain.ObserveCampaignsForActiveWorldUseCase
 import net.tactware.worldweaver.domain.ObserveBattleMapSituationsForActiveCampaignUseCase
 import net.tactware.worldweaver.domain.ObserveBattleMapsForActiveCampaignUseCase
 import net.tactware.worldweaver.domain.ToggleBattleMapSituationUseCase
+import net.tactware.worldweaver.domain.ObserveFactionMembershipsUseCase
+import net.tactware.worldweaver.domain.ObserveFactionsForActiveWorldUseCase
 import net.tactware.worldweaver.domain.ObserveEncountersForActiveCampaignUseCase
 import net.tactware.worldweaver.domain.ObserveLocationOverlaysForActiveCampaignUseCase
 import net.tactware.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
@@ -121,6 +146,8 @@ import net.tactware.worldweaver.domain.ObserveLoreForActiveWorldUseCase
 import net.tactware.worldweaver.domain.ObservePeopleForActiveContextUseCase
 import net.tactware.worldweaver.domain.ObservePersonCompanionsUseCase
 import net.tactware.worldweaver.domain.ObservePersonRelationshipsUseCase
+import net.tactware.worldweaver.domain.ObserveRelationshipWebUseCase
+import net.tactware.worldweaver.domain.RelationshipWebFactory
 import net.tactware.worldweaver.domain.ObservePlotThreadsForActiveCampaignUseCase
 import net.tactware.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
 import net.tactware.worldweaver.domain.ObserveReferenceDocsForActiveCampaignUseCase
@@ -129,9 +156,14 @@ import net.tactware.worldweaver.domain.ObserveDashboardCountsUseCase
 import net.tactware.worldweaver.domain.SearchRecordsUseCase
 import net.tactware.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
 import net.tactware.worldweaver.domain.ObserveWorldsUseCase
+import net.tactware.worldweaver.domain.OneShotDraftFactory
+import net.tactware.worldweaver.domain.OneShotTemplateCatalog
 import net.tactware.worldweaver.domain.UpdateWorldCalendarUseCase
 import net.tactware.worldweaver.domain.PersonAvatarFileStore
+import net.tactware.worldweaver.domain.PersonSheetFactory
 import net.tactware.worldweaver.domain.PersonCompanionRepository
+import net.tactware.worldweaver.domain.PlaceBattleMapItemUseCase
+import net.tactware.worldweaver.domain.DeleteBattleMapItemUseCase
 import net.tactware.worldweaver.domain.PlaceEncounterTokenUseCase
 import net.tactware.worldweaver.domain.SetPersonAvatarUseCase
 import net.tactware.worldweaver.domain.SetVoiceClipUseCase
@@ -147,18 +179,24 @@ import net.tactware.worldweaver.domain.RollEncounterInitiativeUseCase
 import net.tactware.worldweaver.domain.SaveSessionNpcDraftUseCase
 import net.tactware.worldweaver.domain.SessionRepository
 import net.tactware.worldweaver.domain.SetActiveCampaignUseCase
-import net.tactware.worldweaver.domain.StartEncounterUseCase
+import net.tactware.worldweaver.domain.SetActiveSessionUseCase
 import net.tactware.worldweaver.domain.SetActiveWorldUseCase
+import net.tactware.worldweaver.domain.SrdCatalogFileStore
+import net.tactware.worldweaver.domain.SrdCatalogJsonConverter
+import net.tactware.worldweaver.domain.SrdCatalogRepository
+import net.tactware.worldweaver.domain.StartEncounterUseCase
 import net.tactware.worldweaver.domain.SetCampaignStatusUseCase
 import net.tactware.worldweaver.domain.UpdateCampaignPersonDeathSavesUseCase
 import net.tactware.worldweaver.domain.UpdateCampaignPersonUseCase
 import net.tactware.worldweaver.domain.UpdateEncounterParticipantCombatUseCase
 import net.tactware.worldweaver.domain.UpdateBattleMapFogUseCase
+import net.tactware.worldweaver.domain.UpdateBattleMapTerrainUseCase
 import net.tactware.worldweaver.domain.UpdateBattleMapUseCase
 import net.tactware.worldweaver.domain.UpdateEncounterUseCase
 import net.tactware.worldweaver.domain.UpdateCampaignUseCase
 import net.tactware.worldweaver.domain.UpdateLocationOverlayUseCase
 import net.tactware.worldweaver.domain.UpdateLocationUseCase
+import net.tactware.worldweaver.domain.UpdateFactionUseCase
 import net.tactware.worldweaver.domain.UpdateLoreUseCase
 import net.tactware.worldweaver.domain.UpdatePlotThreadUseCase
 import net.tactware.worldweaver.domain.UpdateQuestUseCase
@@ -175,19 +213,26 @@ import net.tactware.worldweaver.ui.AppViewModel
 import net.tactware.worldweaver.ui.calendar.CalendarViewModel
 import net.tactware.worldweaver.ui.campaigns.CampaignsViewModel
 import net.tactware.worldweaver.ui.characters.CharactersViewModel
+import net.tactware.worldweaver.ui.sheet.CharacterSheetViewModel
 import net.tactware.worldweaver.ui.dice.DiceViewModel
 import net.tactware.worldweaver.ui.search.SearchViewModel
+import net.tactware.worldweaver.ui.factions.FactionsViewModel
+import net.tactware.worldweaver.ui.links.LinksViewModel
+import net.tactware.worldweaver.ui.links.RelationshipWebLayoutFactory
 import net.tactware.worldweaver.ui.encounters.EncountersViewModel
 import net.tactware.worldweaver.ui.home.HomeViewModel
+import net.tactware.worldweaver.ui.oneshot.OneShotWizardViewModel
 import net.tactware.worldweaver.ui.locations.LocationsViewModel
 import net.tactware.worldweaver.ui.lore.LoreViewModel
 import net.tactware.worldweaver.ui.maps.BattleMapBoardSession
 import net.tactware.worldweaver.ui.maps.BattleMapMapStateFactory
 import net.tactware.worldweaver.ui.maps.BattleMapMeasureOverlay
 import net.tactware.worldweaver.ui.maps.BattleMapMovementOverlay
+import net.tactware.worldweaver.ui.maps.BattleMapItemOverlay
 import net.tactware.worldweaver.ui.maps.BattleMapTokenOverlay
 import net.tactware.worldweaver.ui.maps.MapsViewModel
 import net.tactware.worldweaver.ui.quests.QuestsViewModel
+import net.tactware.worldweaver.ui.run.RunViewModel
 import net.tactware.worldweaver.ui.sessions.SessionsViewModel
 import net.tactware.worldweaver.ui.settings.SettingsViewModel
 import net.tactware.worldweaver.ui.settings.ShellSettingsStore
@@ -207,7 +252,12 @@ internal fun appModule() = module {
     single { LocationEntityConverter() }
     single { LocationOverlayEntityConverter() }
     single { LoreEntityConverter() }
+    single { FactionEntityConverter() }
+    single { FactionMembershipEntityConverter() }
     single { FifthEditionSheetConverter() }
+    single { Pathfinder2ESheetConverter() }
+    single { PersonSheetEntityConverter(get(), get()) }
+    single { PersonSheetFactory() }
     single { WorldPersonEntityConverter(get()) }
     single { CampaignPersonEntityConverter(get()) }
     single { PersonRelationshipEntityConverter() }
@@ -222,10 +272,17 @@ internal fun appModule() = module {
     single { BattleMapTilePyramidFactory() }
     single { BattleMapImageScaler() }
     single { BattleMapSituationImageTransformer() }
+    single { BundledBattleMapCatalogLoader() }
     single { WorldWeaverDataDirectory() }
     single { BattleMapFileStore(get<WorldWeaverDataDirectory>().mapsDir) }
     single { PersonAvatarFileStore(get<WorldWeaverDataDirectory>().avatarsDir) }
     single { VoiceClipFileStore(get<WorldWeaverDataDirectory>().voicesDir) }
+    single { SrdCatalogJsonConverter() }
+    single { BundledSrdCatalogLoader(get()) }
+    single { FifthEditionPickerCatalogResolver() }
+    single<SrdCatalogRepository> {
+        SrdCatalogFileStore(get<WorldWeaverDataDirectory>().srdDir, get())
+    }
     single { VoiceClipRecorder() }
     single { VoiceClipPlayer() }
     single { DiceRoller() }
@@ -245,6 +302,8 @@ internal fun appModule() = module {
     single { get<WorldWeaverDatabase>().loreHintDao() }
     single { get<WorldWeaverDatabase>().worldPersonDao() }
     single { get<WorldWeaverDatabase>().campaignPersonDao() }
+    single { get<WorldWeaverDatabase>().factionDao() }
+    single { get<WorldWeaverDatabase>().factionMembershipDao() }
     single { get<WorldWeaverDatabase>().personRelationshipDao() }
     single { get<WorldWeaverDatabase>().personCompanionDao() }
     single { get<WorldWeaverDatabase>().questDao() }
@@ -265,6 +324,8 @@ internal fun appModule() = module {
     single<LocationRepository> { LocationRepositoryImpl(get(), get()) }
     single<LocationOverlayRepository> { LocationOverlayRepositoryImpl(get(), get()) }
     single<LoreRepository> { LoreRepositoryImpl(get(), get(), get(), get()) }
+    single<FactionRepository> { FactionRepositoryImpl(get(), get()) }
+    single<FactionMembershipRepository> { FactionMembershipRepositoryImpl(get(), get()) }
     single<WorldPersonRepository> { WorldPersonRepositoryImpl(get(), get()) }
     single<CampaignPersonRepository> { CampaignPersonRepositoryImpl(get(), get()) }
     single<PersonRelationshipRepository> { PersonRelationshipRepositoryImpl(get(), get()) }
@@ -288,6 +349,8 @@ internal fun appModule() = module {
             campaignRepository = get(),
             locationRepository = get(),
             loreRepository = get(),
+            factionRepository = get(),
+            factionMembershipRepository = get(),
             worldPersonRepository = get(),
             campaignPersonRepository = get(),
             locationOverlayRepository = get(),
@@ -309,10 +372,14 @@ internal fun appModule() = module {
 
     factory { SetActiveWorldUseCase(get(), get(), get(), get()) }
     factory { SetActiveCampaignUseCase(get(), get()) }
+    factory { SetActiveSessionUseCase(get(), get(), get()) }
     factory { ClearActiveCampaignUseCase(get()) }
     factory { CreateWorldUseCase(get(), get(), get(), get(), get(), get()) }
+    factory { OneShotTemplateCatalog() }
+    factory { OneShotDraftFactory(get()) }
+    factory { CreateOneShotUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { UpdateWorldUseCase(get(), get()) }
-    factory { DeleteWorldUseCase(get(), get(), get()) }
+    factory { DeleteWorldUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { ExportWorldBundleUseCase(get(), get()) }
     factory {
         ExportAppBackupUseCase(
@@ -344,6 +411,8 @@ internal fun appModule() = module {
             campaignRepository = get(),
             locationRepository = get(),
             loreRepository = get(),
+            factionRepository = get(),
+            factionMembershipRepository = get(),
             worldPersonRepository = get(),
             campaignPersonRepository = get(),
             locationOverlayRepository = get(),
@@ -364,7 +433,7 @@ internal fun appModule() = module {
     }
     factory { ObserveWorldsUseCase(get()) }
     factory { ObserveDashboardCountsUseCase(get(), get(), get(), get()) }
-    factory { SearchRecordsUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { SearchRecordsUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { CreateCampaignUseCase(get(), get(), get(), get(), get()) }
     factory { UpdateCampaignUseCase(get(), get()) }
     factory { SetCampaignStatusUseCase(get(), get()) }
@@ -380,26 +449,42 @@ internal fun appModule() = module {
     factory { UpdateLoreUseCase(get(), get(), get(), get()) }
     factory { DeleteLoreUseCase(get(), get()) }
     factory { ObserveLoreForActiveWorldUseCase(get(), get()) }
+    factory { CreateFactionUseCase(get(), get(), get(), get()) }
+    factory { UpdateFactionUseCase(get(), get()) }
+    factory { DeleteFactionUseCase(get(), get(), get()) }
+    factory { ObserveFactionsForActiveWorldUseCase(get(), get()) }
+    factory { CreateFactionMembershipUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    factory { DeleteFactionMembershipUseCase(get()) }
+    factory { ObserveFactionMembershipsUseCase(get()) }
     factory { ObserveWorldCalendarForActiveWorldUseCase(get(), get()) }
     factory { FindSessionCalendarMonthIdsForWorldUseCase(get(), get()) }
     factory { UpdateWorldCalendarUseCase(get(), get(), get(), get(), get()) }
     factory { CreateWorldPersonUseCase(get(), get(), get(), get()) }
     factory { UpdateWorldPersonUseCase(get(), get()) }
-    factory { DeleteWorldPersonUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    factory { DeleteWorldPersonUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { CreateCampaignPersonUseCase(get(), get(), get(), get()) }
     factory { UpdateCampaignPersonUseCase(get(), get()) }
-    factory { DeleteCampaignPersonUseCase(get(), get(), get(), get(), get(), get()) }
+    factory { DeleteCampaignPersonUseCase(get(), get(), get(), get(), get(), get(), get()) }
     factory { AddWorldPersonToCampaignUseCase(get(), get(), get(), get(), get(), get(), get()) }
     factory { SetPersonAvatarUseCase(get(), get(), get(), get()) }
     factory { ClearPersonAvatarUseCase(get(), get(), get(), get()) }
     factory { SetVoiceClipUseCase(get(), get(), get(), get(), get()) }
     factory { ClearVoiceClipUseCase(get(), get(), get(), get(), get()) }
     factory { PlaceEncounterTokenUseCase(get(), get()) }
+    factory { PlaceBattleMapItemUseCase(get(), get(), get()) }
+    factory { DeleteBattleMapItemUseCase(get(), get()) }
     factory { ObservePeopleForActiveContextUseCase(get(), get(), get()) }
     factory { GenerateRandomNpcUseCase(get()) }
-    factory { CreatePersonRelationshipUseCase(get(), get(), get(), get()) }
+    factory { ObserveSrdCatalogUseCase(get()) }
+    factory { ObserveFifthEditionPickerCatalogUseCase(get(), get()) }
+    factory { ImportSrdCatalogUseCase(get(), get(), get(), get()) }
+    factory { ClearSrdCatalogUseCase(get()) }
+    factory { CreateWorldPersonFromSrdMonsterUseCase(get(), get(), get()) }
+    factory { CreatePersonRelationshipUseCase(get(), get(), get(), get(), get(), get()) }
     factory { DeletePersonRelationshipUseCase(get()) }
     factory { ObservePersonRelationshipsUseCase(get()) }
+    factory { RelationshipWebFactory() }
+    factory { ObserveRelationshipWebUseCase(get(), get(), get(), get(), get(), get()) }
     factory { CreatePersonCompanionUseCase(get(), get(), get(), get()) }
     factory { DeletePersonCompanionUseCase(get()) }
     factory { ObservePersonCompanionsUseCase(get()) }
@@ -409,7 +494,7 @@ internal fun appModule() = module {
     factory { ObserveQuestsForActiveCampaignUseCase(get(), get()) }
     factory { CreateSessionUseCase(get(), get(), get(), get(), get(), get(), get()) }
     factory { UpdateSessionUseCase(get(), get(), get(), get(), get(), get()) }
-    factory { DeleteSessionUseCase(get(), get()) }
+    factory { DeleteSessionUseCase(get(), get(), get()) }
     factory { ObserveSessionsForActiveCampaignUseCase(get(), get()) }
     factory { CreatePlotThreadUseCase(get(), get(), get(), get(), get()) }
     factory { UpdatePlotThreadUseCase(get(), get(), get()) }
@@ -423,8 +508,11 @@ internal fun appModule() = module {
     factory { CreateEncounterUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { UpdateEncounterUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { CreateBattleMapUseCase(get(), get(), get(), get(), get(), get()) }
+    factory { ImportBundledBattleMapUseCase(get(), get(), get(), get(), get()) }
     factory { UpdateBattleMapUseCase(get(), get()) }
     factory { UpdateBattleMapFogUseCase(get(), get()) }
+    factory { UpdateBattleMapTerrainUseCase(get(), get()) }
+    factory { CloseSessionUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { DeleteBattleMapUseCase(get(), get(), get(), get()) }
     factory { ObserveBattleMapsForActiveCampaignUseCase(get(), get()) }
     factory { CreateBattleMapSituationUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
@@ -437,10 +525,11 @@ internal fun appModule() = module {
     factory { BattleMapMovementOverlay() }
     factory { BattleMapMeasureOverlay() }
     factory { BattleMapTokenOverlay() }
+    factory { BattleMapItemOverlay() }
     factory { DeleteEncounterUseCase(get()) }
     factory { ObserveEncountersForActiveCampaignUseCase(get(), get()) }
     factory { StartEncounterUseCase(get(), get()) }
-    factory { EndEncounterUseCase(get(), get(), get()) }
+    factory { EndEncounterUseCase(get(), get(), get(), get()) }
     factory { AdvanceEncounterTurnUseCase(get(), get()) }
     factory { UpdateEncounterParticipantCombatUseCase(get(), get(), get(), get()) }
     factory { RollEncounterInitiativeUseCase(get()) }
@@ -453,10 +542,14 @@ internal fun appModule() = module {
             movementOverlay = get(),
             measureOverlay = get(),
             tokenOverlay = get(),
+            itemOverlay = get(),
             calculateReachableCells = get(),
             calculateGridDistance = get(),
             placeEncounterToken = get(),
             updateBattleMapFog = get(),
+            updateBattleMapTerrain = get(),
+            placeBattleMapItem = get(),
+            deleteBattleMapItem = get(),
             avatarFileStore = get(),
         )
     }
@@ -475,6 +568,8 @@ internal fun appModule() = module {
             appScope = get(),
             observeWorlds = get(),
             observeActiveContextDetails = get(),
+            observeActiveContext = get(),
+            observeSessions = get(),
             observeDashboardCounts = get(),
             setActiveWorld = get(),
         )
@@ -490,6 +585,14 @@ internal fun appModule() = module {
             setActiveWorld = get(),
             exportWorldBundle = get(),
             importWorldBundle = get(),
+        )
+    }
+    single {
+        OneShotWizardViewModel(
+            appScope = get(),
+            createOneShot = get(),
+            catalog = get(),
+            draftFactory = get(),
         )
     }
     single {
@@ -552,6 +655,28 @@ internal fun appModule() = module {
         )
     }
     single {
+        FactionsViewModel(
+            appScope = get(),
+            observeActiveContextDetails = get(),
+            observeFactions = get(),
+            observeMemberships = get(),
+            observePeople = get(),
+            createFaction = get(),
+            updateFaction = get(),
+            deleteFaction = get(),
+            deleteMembership = get(),
+        )
+    }
+    single { RelationshipWebLayoutFactory() }
+    single {
+        LinksViewModel(
+            appScope = get(),
+            observeRelationshipWeb = get(),
+            relationshipWebFactory = get(),
+            layoutFactory = get(),
+        )
+    }
+    single {
         CharactersViewModel(
             appScope = get(),
             observeActiveContextDetails = get(),
@@ -560,6 +685,8 @@ internal fun appModule() = module {
             observeCompanions = get(),
             observeLore = get(),
             observeQuests = get(),
+            observeFactions = get(),
+            observeMemberships = get(),
             createWorldPerson = get(),
             updateWorldPerson = get(),
             deleteWorldPerson = get(),
@@ -576,10 +703,24 @@ internal fun appModule() = module {
             voiceClipRecorder = get(),
             voiceClipPlayer = get(),
             generateRandomNpc = get(),
+            observePickerCatalog = get(),
+            createFromSrdMonster = get(),
             createPersonRelationship = get(),
             deletePersonRelationship = get(),
+            createFactionMembership = get(),
+            deleteFactionMembership = get(),
             createPersonCompanion = get(),
             deletePersonCompanion = get(),
+        )
+    }
+    single {
+        CharacterSheetViewModel(
+            appScope = get(),
+            observePeople = get(),
+            updateWorldPerson = get(),
+            updateCampaignPerson = get(),
+            updateDeathSaves = get(),
+            avatarFileStore = get(),
         )
     }
     single {
@@ -619,6 +760,7 @@ internal fun appModule() = module {
             deleteReferenceDoc = get(),
             generateRandomNpc = get(),
             saveSessionNpcDraft = get(),
+            setActiveSession = get(),
         )
     }
     single {
@@ -659,6 +801,7 @@ internal fun appModule() = module {
             movementOverlay = get(),
             measureOverlay = get(),
             tokenOverlay = get(),
+            itemOverlay = get(),
             calculateReachableCells = get(),
             calculateGridDistance = get(),
             placeEncounterToken = get(),
@@ -667,11 +810,33 @@ internal fun appModule() = module {
             avatarFileStore = get(),
             imageScaler = get(),
             updateBattleMapFog = get(),
+            updateBattleMapTerrain = get(),
+            placeBattleMapItem = get(),
+            deleteBattleMapItem = get(),
+            importBundledBattleMap = get(),
+            bundledCatalogLoader = get(),
+        )
+    }
+    single {
+        RunViewModel(
+            appScope = get(),
+            observeActiveContext = get(),
+            observeActiveContextDetails = get(),
+            observeSessions = get(),
+            observeQuests = get(),
+            observePeople = get(),
+            observeEncounters = get(),
+            observeCalendar = get(),
+            observeOverlays = get(),
+            observeLocations = get(),
+            closeSession = get(),
         )
     }
     single {
         DiceViewModel(
             diceRoller = get(),
+            activeContextRepository = get(),
+            appScope = get(),
         )
     }
     single {
@@ -685,6 +850,9 @@ internal fun appModule() = module {
             shellSettingsStore = get(),
             exportAppBackup = get(),
             restoreAppBackup = get(),
+            observeSrdCatalog = get(),
+            importSrdCatalog = get(),
+            clearSrdCatalog = get(),
             appScope = get(),
         )
     }
@@ -692,15 +860,20 @@ internal fun appModule() = module {
         AppViewModel(
             homeViewModel = get(),
             worldsViewModel = get(),
+            oneShotWizardViewModel = get(),
             campaignsViewModel = get(),
             locationsViewModel = get(),
             loreViewModel = get(),
             calendarViewModel = get(),
+            factionsViewModel = get(),
+            linksViewModel = get(),
             charactersViewModel = get(),
+            characterSheetViewModel = get(),
             questsViewModel = get(),
             sessionsViewModel = get(),
             encountersViewModel = get(),
             mapsViewModel = get(),
+            runViewModel = get(),
             diceViewModel = get(),
             searchViewModel = get(),
             settingsViewModel = get(),

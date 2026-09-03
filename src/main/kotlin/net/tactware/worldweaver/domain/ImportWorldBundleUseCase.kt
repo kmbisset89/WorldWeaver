@@ -12,6 +12,8 @@ internal class ImportWorldBundleUseCase(
     private val campaignRepository: CampaignRepository,
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
+    private val factionRepository: FactionRepository,
+    private val factionMembershipRepository: FactionMembershipRepository,
     private val worldPersonRepository: WorldPersonRepository,
     private val campaignPersonRepository: CampaignPersonRepository,
     private val locationOverlayRepository: LocationOverlayRepository,
@@ -64,6 +66,7 @@ internal class ImportWorldBundleUseCase(
             }
             bundle.worldPeople.forEach { worldPersonRepository.insert(it) }
             bundle.loreEntries.forEach { loreRepository.insert(it) }
+            bundle.factions.forEach { factionRepository.insert(it) }
             bundle.campaigns.forEach { campaignRepository.insert(it) }
             bundle.campaignPeople.forEach { campaignPersonRepository.insert(it) }
             bundle.locationOverlays.forEach { locationOverlayRepository.upsert(it) }
@@ -74,6 +77,7 @@ internal class ImportWorldBundleUseCase(
             bundle.battleMaps.forEach { battleMapRepository.insert(it) }
             bundle.battleMapSituations.forEach { battleMapSituationRepository.insert(it) }
             bundle.encounters.forEach { encounterRepository.insert(it) }
+            bundle.memberships.forEach { factionMembershipRepository.insert(it) }
             bundle.relationships.forEach { personRelationshipRepository.insert(it) }
             bundle.companions.forEach { personCompanionRepository.insert(it) }
         }

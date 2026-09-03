@@ -1,5 +1,6 @@
 package net.tactware.worldweaver.ui.worlds
 
+import net.tactware.worldweaver.domain.GameSystem
 import net.tactware.worldweaver.domain.World
 
 internal sealed class WorldsViewState {
@@ -28,6 +29,7 @@ internal sealed class WorldsViewState {
         val worldId: String?,
         val name: String,
         val description: String,
+        val defaultGameSystem: GameSystem,
         val nameError: String?,
     )
 

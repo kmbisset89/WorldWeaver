@@ -15,6 +15,7 @@ import net.tactware.worldweaver.domain.ActiveContextDetails
 import net.tactware.worldweaver.domain.BattleMap
 import net.tactware.worldweaver.domain.BattleMapDraft
 import net.tactware.worldweaver.domain.BattleMapGridGeometry
+import net.tactware.worldweaver.domain.BattleMapImagePromptFactory
 import net.tactware.worldweaver.domain.BattleMapImageScaler
 import net.tactware.worldweaver.domain.BattleMapSituation
 import net.tactware.worldweaver.domain.BattleMapSituationDraft
@@ -22,6 +23,8 @@ import net.tactware.worldweaver.domain.CalculateGridDistanceUseCase
 import net.tactware.worldweaver.domain.CalculateReachableCellsUseCase
 import net.tactware.worldweaver.domain.GridDistance
 import net.tactware.worldweaver.domain.BattleMapFogEdit
+import net.tactware.worldweaver.domain.BundledBattleMapCatalog
+import net.tactware.worldweaver.domain.BundledBattleMapCatalogLoader
 import net.tactware.worldweaver.domain.CreateBattleMapSituationUseCase
 import net.tactware.worldweaver.domain.CreateBattleMapUseCase
 import net.tactware.worldweaver.domain.DeleteBattleMapSituationUseCase
@@ -32,6 +35,7 @@ import net.tactware.worldweaver.domain.EncounterParticipantSource
 import net.tactware.worldweaver.domain.EncounterParticipantVisibilityResolver
 import net.tactware.worldweaver.domain.EncounterStatus
 import net.tactware.worldweaver.domain.GridCell
+import net.tactware.worldweaver.domain.ImportBundledBattleMapUseCase
 import net.tactware.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import net.tactware.worldweaver.domain.ObserveBattleMapSituationsForActiveCampaignUseCase
 import net.tactware.worldweaver.domain.ObserveBattleMapsForActiveCampaignUseCase
@@ -40,9 +44,15 @@ import net.tactware.worldweaver.domain.ObservePeopleForActiveContextUseCase
 import net.tactware.worldweaver.domain.PeopleSnapshot
 import net.tactware.worldweaver.domain.PersonAvatarFileStore
 import net.tactware.worldweaver.domain.PersonRef
+import net.tactware.worldweaver.domain.DeleteBattleMapItemUseCase
+import net.tactware.worldweaver.domain.PlaceBattleMapItemUseCase
 import net.tactware.worldweaver.domain.PlaceEncounterTokenUseCase
 import net.tactware.worldweaver.domain.ToggleBattleMapSituationUseCase
+import net.tactware.worldweaver.domain.OccupiedBoardCellsCalculator
+import net.tactware.worldweaver.domain.CreatureSizeResolver
 import net.tactware.worldweaver.domain.UpdateBattleMapFogUseCase
+import net.tactware.worldweaver.domain.UpdateBattleMapTerrainUseCase
+import net.tactware.worldweaver.domain.BattleMapTerrainEdit
 import ovh.plrapps.mapcompose.ui.state.MapState
 import java.io.File
 import javax.imageio.ImageIO
@@ -61,6 +71,7 @@ internal class MapsViewModel(
     private val movementOverlay: BattleMapMovementOverlay,
     private val measureOverlay: BattleMapMeasureOverlay,
     private val tokenOverlay: BattleMapTokenOverlay,
+    private val itemOverlay: BattleMapItemOverlay,
     private val calculateReachableCells: CalculateReachableCellsUseCase,
     private val calculateGridDistance: CalculateGridDistanceUseCase,
     private val placeEncounterToken: PlaceEncounterTokenUseCase,
@@ -69,8 +80,16 @@ internal class MapsViewModel(
     private val avatarFileStore: PersonAvatarFileStore,
     private val imageScaler: BattleMapImageScaler,
     private val updateBattleMapFog: UpdateBattleMapFogUseCase,
+    private val updateBattleMapTerrain: UpdateBattleMapTerrainUseCase,
+    private val placeBattleMapItem: PlaceBattleMapItemUseCase,
+    private val deleteBattleMapItem: DeleteBattleMapItemUseCase,
+    private val importBundledBattleMap: ImportBundledBattleMapUseCase,
+    private val bundledCatalogLoader: BundledBattleMapCatalogLoader,
+    private val imagePromptFactory: BattleMapImagePromptFactory = BattleMapImagePromptFactory(),
     private val visibilityResolver: EncounterParticipantVisibilityResolver =
         EncounterParticipantVisibilityResolver(),
+    private val occupiedCellsCalculator: OccupiedBoardCellsCalculator = OccupiedBoardCellsCalculator(),
+    private val sizeResolver: CreatureSizeResolver = CreatureSizeResolver(),
 ) {
     private val _state = MutableStateFlow<MapsViewState>(MapsViewState.Loading)
     val state: StateFlow<MapsViewState> = _state.asStateFlow()
@@ -107,6 +126,10 @@ internal class MapsViewModel(
     private var measureDistance: GridDistance? = null
     private var fogPaintEnabled = false
     private var fogRevealBrush = false
+    private var terrainPaint: TerrainPaintKind? = null
+    private var itemDropEnabled = false
+    private var itemNameText = ""
+    private var selectedItemId: String? = null
 
     init {
         observe()
@@ -119,6 +142,9 @@ internal class MapsViewModel(
             MapsInteraction.CreateWorldSelected -> _effects.tryEmit(MapsViewEffect.OpenWorlds)
             MapsInteraction.CreateCampaignSelected -> _effects.tryEmit(MapsViewEffect.OpenCampaigns)
             MapsInteraction.ImportSelected -> openMaker()
+            MapsInteraction.StarterCatalogSelected -> openStarterCatalog()
+            MapsInteraction.StarterCatalogDismissed -> dismissStarterCatalog()
+            is MapsInteraction.BundledMapSelected -> importBundledMap(interaction.entryId)
             is MapsInteraction.MakerNameChanged -> updateMaker { editor ->
                 editor.copy(name = interaction.name, nameError = null)
             }
@@ -140,6 +166,9 @@ internal class MapsViewModel(
             }
             is MapsInteraction.MakerUnitsPerTileChanged -> updateMaker { editor ->
                 editor.copy(unitsPerTileText = sanitizeDecimal(interaction.unitsPerTile), gridError = null)
+            }
+            is MapsInteraction.MakerSceneryChanged -> updateMaker { editor ->
+                editor.copy(sceneryText = interaction.scenery)
             }
             is MapsInteraction.MakerScaleChanged -> updateMaker { editor ->
                 editor.copy(scalePercentText = interaction.scalePercent.filter { it.isDigit() }.take(3))
@@ -175,6 +204,11 @@ internal class MapsViewModel(
             MapsInteraction.FogHideBrushSelected -> setFogRevealBrush(false)
             MapsInteraction.FogRevealAllSelected -> applyFogEdit(BattleMapFogEdit.RevealAll)
             MapsInteraction.FogHideAllSelected -> applyFogEdit(BattleMapFogEdit.HideAll)
+            is MapsInteraction.TerrainPaintSelected -> setTerrainPaint(interaction.kind)
+            MapsInteraction.ItemDropToggled -> toggleItemDrop()
+            is MapsInteraction.ItemNameChanged -> changeItemName(interaction.name)
+            is MapsInteraction.ItemSelected -> selectItem(interaction.itemId)
+            MapsInteraction.ItemRemoved -> removeSelectedItem()
             is MapsInteraction.DeleteMapSelected -> requestDelete(interaction.battleMapId)
             MapsInteraction.DeleteConfirmed -> confirmDelete()
             MapsInteraction.DeleteCancelled -> updatePendingDelete(null)
@@ -250,6 +284,13 @@ internal class MapsViewModel(
             _state.value = current.copy(worldName = world.name, campaignName = campaign.name)
             return
         }
+        if (current is MapsViewState.StarterCatalog) {
+            _state.value = starterCatalogState(
+                importingId = current.importingId,
+                error = current.error,
+            )
+            return
+        }
         showLibrary(pendingDelete = pendingDeleteFrom(current))
     }
 
@@ -260,6 +301,7 @@ internal class MapsViewModel(
             _state.value = MapsViewState.Empty(
                 worldName = latestWorldName,
                 campaignName = latestCampaignName,
+                starterCatalogAvailable = bundledCatalogLoader.isAvailable(),
             )
             return
         }
@@ -289,6 +331,9 @@ internal class MapsViewModel(
             clearMovement(refresh = false)
             clearMeasure(refresh = false)
             fogPaintEnabled = false
+            terrainPaint = null
+            itemDropEnabled = false
+            selectedItemId = null
             selectedTokenParticipantId = null
             syncSelectedToken()
         }
@@ -309,6 +354,11 @@ internal class MapsViewModel(
             measureDistance = measureDistance,
             fogPaintEnabled = fogPaintEnabled,
             fogRevealBrush = fogRevealBrush,
+            terrainPaint = terrainPaint,
+            itemDropEnabled = itemDropEnabled,
+            itemNameText = itemNameText,
+            selectedItemId = selectedItemId,
+            selectedItemName = selectedItemName(),
             tokens = boardTokens(selected.id),
             selectedTokenName = selectedTokenName(),
             unplacedTokenCount = unplacedTokenCount(selected.id),
@@ -327,7 +377,11 @@ internal class MapsViewModel(
             MapsViewState.Loading, is MapsViewState.Error -> {
                 openMakerOnNextLoad = true
             }
-            MapsViewState.NoActiveWorld, MapsViewState.NoActiveCampaign, is MapsViewState.Maker -> Unit
+            MapsViewState.NoActiveWorld,
+            MapsViewState.NoActiveCampaign,
+            is MapsViewState.Maker,
+            is MapsViewState.StarterCatalog,
+            -> Unit
         }
     }
 
@@ -433,6 +487,102 @@ internal class MapsViewModel(
         showLibrary(pendingDelete = null)
     }
 
+    private fun openStarterCatalog() {
+        if (!bundledCatalogLoader.isAvailable()) {
+            return
+        }
+        when (_state.value) {
+            is MapsViewState.Empty, is MapsViewState.Content -> {
+                _state.value = starterCatalogState(importingId = null, error = null)
+            }
+            else -> Unit
+        }
+    }
+
+    private fun dismissStarterCatalog() {
+        showLibrary(pendingDelete = null)
+    }
+
+    private fun importBundledMap(entryId: String) {
+        val catalog = _state.value as? MapsViewState.StarterCatalog ?: return
+        if (catalog.importingId != null) {
+            return
+        }
+        val entry = catalog.entries.firstOrNull { it.id == entryId } ?: return
+        if (entry.alreadyAdded) {
+            val existing = latestMaps.firstOrNull { it.name.equals(entry.name, ignoreCase = true) }
+            if (existing != null) {
+                selectedMapId = existing.id
+                showLibrary(pendingDelete = null)
+            }
+            return
+        }
+        _state.value = catalog.copy(importingId = entryId, error = null)
+        appScope.scope.launch {
+            when (val result = importBundledBattleMap(entryId)) {
+                is ImportBundledBattleMapUseCase.Result.Imported -> {
+                    selectedMapId = result.battleMap.id
+                    showLibrary(pendingDelete = null)
+                }
+                ImportBundledBattleMapUseCase.Result.AlreadyPresent -> {
+                    val existing = latestMaps.firstOrNull { map ->
+                        map.name.equals(entry.name, ignoreCase = true)
+                    }
+                    if (existing != null) {
+                        selectedMapId = existing.id
+                    }
+                    showLibrary(pendingDelete = null)
+                }
+                ImportBundledBattleMapUseCase.Result.MissingAsset -> {
+                    updateStarterCatalog("Could not find that starter map file")
+                }
+                ImportBundledBattleMapUseCase.Result.InvalidImage -> {
+                    updateStarterCatalog("That starter map is not a readable image")
+                }
+                ImportBundledBattleMapUseCase.Result.UnknownEntry -> {
+                    updateStarterCatalog("That starter map is not in the catalog")
+                }
+                ImportBundledBattleMapUseCase.Result.NoActiveCampaign -> {
+                    showLibrary(pendingDelete = null)
+                }
+            }
+        }
+    }
+
+    private fun updateStarterCatalog(error: String) {
+        val current = _state.value
+        if (current is MapsViewState.StarterCatalog) {
+            _state.value = current.copy(importingId = null, error = error)
+        }
+    }
+
+    private fun starterCatalogState(
+        importingId: String?,
+        error: String?,
+    ): MapsViewState.StarterCatalog {
+        val addedNames = latestMaps.map { it.name.lowercase() }.toSet()
+        return MapsViewState.StarterCatalog(
+            worldName = latestWorldName,
+            campaignName = latestCampaignName,
+            entries = BundledBattleMapCatalog.entries.map { entry ->
+                val gridLabel = "${entry.columns}×${entry.rows} · 5 ft"
+                val stageLabel = if (entry.situations.isEmpty()) {
+                    gridLabel
+                } else {
+                    "${entry.situations.size + 1} stages · $gridLabel"
+                }
+                MapsViewState.StarterCatalogEntry(
+                    id = entry.id,
+                    name = entry.name,
+                    detail = stageLabel,
+                    alreadyAdded = entry.name.lowercase() in addedNames,
+                )
+            },
+            importingId = importingId,
+            error = error,
+        )
+    }
+
     private fun requestDelete(battleMapId: String) {
         val battleMap = latestMaps.firstOrNull { it.id == battleMapId } ?: return
         val current = _state.value
@@ -532,6 +682,11 @@ internal class MapsViewModel(
                 measureDistance = measureDistance,
             fogPaintEnabled = fogPaintEnabled,
             fogRevealBrush = fogRevealBrush,
+            terrainPaint = terrainPaint,
+            itemDropEnabled = itemDropEnabled,
+            itemNameText = itemNameText,
+            selectedItemId = selectedItemId,
+            selectedItemName = selectedItemName(),
             )
         }
     }
@@ -574,6 +729,27 @@ internal class MapsViewModel(
             }
             return
         }
+        val terrain = terrainPaint
+        if (terrain != null) {
+            val edit = when (terrain) {
+                TerrainPaintKind.Blocked -> BattleMapTerrainEdit.SetBlocked(setOf(cell))
+                TerrainPaintKind.Difficult -> BattleMapTerrainEdit.SetDifficult(setOf(cell))
+                TerrainPaintKind.Clear -> BattleMapTerrainEdit.Clear(setOf(cell))
+            }
+            appScope.scope.launch {
+                updateBattleMapTerrain(selected.id, edit)
+            }
+            return
+        }
+        if (itemDropEnabled) {
+            appScope.scope.launch {
+                val result = placeBattleMapItem(selected.id, itemNameText, cell)
+                if (result is PlaceBattleMapItemUseCase.Result.Placed) {
+                    selectedItemId = result.item.id
+                }
+            }
+            return
+        }
         if (measureEnabled) {
             applyMeasureClick(selected, cell)
             return
@@ -582,6 +758,8 @@ internal class MapsViewModel(
         val participantId = selectedTokenParticipantId
             ?: encounter?.let { currentTurnParticipant(it)?.id }
         if (encounter != null && participantId != null) {
+            val participant = encounter.participants.firstOrNull { it.id == participantId }
+            val span = participant?.let { sizeResolver.resolve(it, latestPeople).span } ?: 1
             appScope.scope.launch {
                 val result = placeEncounterToken(
                     encounterId = encounter.id,
@@ -589,6 +767,7 @@ internal class MapsViewModel(
                     cell = cell,
                     columns = selected.columns,
                     rows = selected.rows,
+                    span = span,
                 )
                 if (result is PlaceEncounterTokenUseCase.Result.Placed) {
                     selectedTokenParticipantId = participantId
@@ -645,6 +824,8 @@ internal class MapsViewModel(
         measureEnabled = !measureEnabled
         if (measureEnabled) {
             fogPaintEnabled = false
+            terrainPaint = null
+            itemDropEnabled = false
         }
         if (!measureEnabled) {
             clearMeasure()
@@ -658,6 +839,9 @@ internal class MapsViewModel(
     }
 
     private fun applyMeasureClick(battleMap: BattleMap, cell: GridCell) {
+        if (cell in battleMap.blockedCells) {
+            return
+        }
         if (measureOrigin == null || measureDestination != null) {
             measureOrigin = cell
             measureDestination = null
@@ -691,6 +875,8 @@ internal class MapsViewModel(
     private fun toggleFogPaint() {
         fogPaintEnabled = !fogPaintEnabled
         if (fogPaintEnabled) {
+            terrainPaint = null
+            itemDropEnabled = false
             measureEnabled = false
             clearMeasure(refresh = false)
         }
@@ -700,9 +886,66 @@ internal class MapsViewModel(
     private fun setFogRevealBrush(reveal: Boolean) {
         fogRevealBrush = reveal
         fogPaintEnabled = true
+        terrainPaint = null
+        itemDropEnabled = false
         measureEnabled = false
         clearMeasure(refresh = false)
         refreshMovementState()
+    }
+
+    private fun setTerrainPaint(kind: TerrainPaintKind?) {
+        terrainPaint = if (terrainPaint == kind) null else kind
+        if (terrainPaint != null) {
+            fogPaintEnabled = false
+            itemDropEnabled = false
+            measureEnabled = false
+            clearMeasure(refresh = false)
+        }
+        refreshMovementState()
+    }
+
+    private fun toggleItemDrop() {
+        itemDropEnabled = !itemDropEnabled
+        if (itemDropEnabled) {
+            fogPaintEnabled = false
+            terrainPaint = null
+            measureEnabled = false
+            clearMeasure(refresh = false)
+        }
+        refreshMovementState()
+    }
+
+    private fun changeItemName(name: String) {
+        itemNameText = name.take(80)
+        refreshMovementState()
+    }
+
+    private fun selectItem(itemId: String) {
+        val selected = selectedFrom(latestMaps) ?: return
+        if (selected.items.none { it.id == itemId }) {
+            return
+        }
+        selectedItemId = itemId
+        bindMapOverlays(selected)
+        refreshMovementState()
+    }
+
+    private fun removeSelectedItem() {
+        val selected = selectedFrom(latestMaps) ?: return
+        val itemId = selectedItemId ?: return
+        appScope.scope.launch {
+            deleteBattleMapItem(selected.id, itemId)
+            selectedItemId = null
+        }
+    }
+
+    private fun occupiedCellsFor(battleMap: BattleMap): Set<GridCell> {
+        val encounter = encounterForMap(battleMap.id) ?: return emptySet()
+        return occupiedCellsCalculator.occupiedCells(
+            encounter = encounter,
+            people = latestPeople,
+            exceptParticipantId = selectedTokenParticipantId,
+        )
     }
 
     private fun applyFogEdit(edit: BattleMapFogEdit) {
@@ -724,6 +967,9 @@ internal class MapsViewModel(
             unitsPerTile = battleMap.unitsPerTile,
             columns = battleMap.columns,
             rows = battleMap.rows,
+            blockedCells = battleMap.blockedCells,
+            difficultCells = battleMap.difficultCells,
+            occupiedCells = occupiedCellsFor(battleMap),
         )
     }
 
@@ -741,6 +987,11 @@ internal class MapsViewModel(
                 measureDistance = measureDistance,
             fogPaintEnabled = fogPaintEnabled,
             fogRevealBrush = fogRevealBrush,
+            terrainPaint = terrainPaint,
+            itemDropEnabled = itemDropEnabled,
+            itemNameText = itemNameText,
+            selectedItemId = selectedItemId,
+            selectedItemName = selectedItemName(),
                 tokens = boardTokens(current.selectedMap?.id),
                 selectedTokenName = selectedTokenName(),
                 unplacedTokenCount = unplacedTokenCount(current.selectedMap?.id),
@@ -772,9 +1023,15 @@ internal class MapsViewModel(
             measureDistance = measureDistance,
             fogPaintEnabled = fogPaintEnabled,
             fogRevealBrush = fogRevealBrush,
+            terrainPaint = terrainPaint,
+            itemDropEnabled = itemDropEnabled,
+            itemNameText = itemNameText,
+            selectedItemId = selectedItemId,
+            selectedItemName = selectedItemName(),
             tokens = boardTokens(selected.id),
             selectedTokenName = selectedTokenName(),
             unplacedTokenCount = unplacedTokenCount(selected.id),
+            starterCatalogAvailable = bundledCatalogLoader.isAvailable(),
         )
     }
 
@@ -816,6 +1073,11 @@ internal class MapsViewModel(
             layerIds = binding.situationLayerIds,
             currentSignature = binding.situationSignature,
         )
+        binding.terrainLayerId = mapStateFactory.syncTerrainLayer(
+            mapState = binding.mapState,
+            battleMap = battleMap,
+            layerId = binding.terrainLayerId,
+        )
         val fog = mapStateFactory.syncFogLayer(
             mapState = binding.mapState,
             battleMap = battleMap,
@@ -826,6 +1088,9 @@ internal class MapsViewModel(
     }
 
     private fun bindMapOverlays(battleMap: BattleMap) {
+        if (selectedItemId != null && battleMap.items.none { it.id == selectedItemId }) {
+            selectedItemId = null
+        }
         val geometry = geometryFor(battleMap)
         val tokens = boardTokens(battleMap.id)
         dmBinding?.let { binding ->
@@ -839,6 +1104,7 @@ internal class MapsViewModel(
                 unitName = battleMap.unitName,
             )
             tokenOverlay.bind(binding.mapState, geometry, tokens)
+            itemOverlay.bind(binding.mapState, geometry, battleMap.items, selectedItemId)
         }
         playerBinding?.let { binding ->
             val playerTokens = tokens.filter { token ->
@@ -859,6 +1125,12 @@ internal class MapsViewModel(
             }
             movementOverlay.bind(binding.mapState, geometry, playerOrigin, playerReachable)
             tokenOverlay.bind(binding.mapState, geometry, playerTokens)
+            itemOverlay.bind(
+                mapState = binding.mapState,
+                geometry = geometry,
+                items = battleMap.items.filter { battleMap.isRevealedToPlayers(it.cell) },
+                selectedItemId = null,
+            )
         }
     }
 
@@ -889,6 +1161,7 @@ internal class MapsViewModel(
         movementOverlay.clear(binding.mapState)
         measureOverlay.clear(binding.mapState)
         tokenOverlay.clear(binding.mapState)
+        itemOverlay.clear(binding.mapState)
         binding.mapState.shutdown()
     }
 
@@ -921,7 +1194,7 @@ internal class MapsViewModel(
     }
 
     private fun emptyMaker(): MapsViewState.MakerEditorState {
-        return MapsViewState.MakerEditorState(
+        val editor = MapsViewState.MakerEditorState(
             name = "",
             imagePath = null,
             imageWidth = 0,
@@ -933,11 +1206,14 @@ internal class MapsViewModel(
             scalePercentText = "100",
             showGrid = true,
             showRenderTiles = true,
+            sceneryText = "",
+            imagePrompt = "",
             nameError = null,
             imageError = null,
             gridError = null,
             isSaving = false,
         )
+        return editor.copy(imagePrompt = promptFor(editor))
     }
 
     private fun updateMaker(
@@ -945,8 +1221,20 @@ internal class MapsViewModel(
     ) {
         val current = _state.value
         if (current is MapsViewState.Maker) {
-            _state.value = current.copy(editor = transform(current.editor))
+            val next = transform(current.editor)
+            _state.value = current.copy(editor = next.copy(imagePrompt = promptFor(next)))
         }
+    }
+
+    private fun promptFor(editor: MapsViewState.MakerEditorState): String {
+        return imagePromptFactory.create(
+            name = editor.name,
+            columns = editor.columnsText.toIntOrNull()?.takeIf { it >= 1 },
+            rows = editor.rowsText.toIntOrNull()?.takeIf { it >= 1 },
+            unitName = editor.unitNameText,
+            unitsPerTile = editor.unitsPerTileText.toDoubleOrNull()?.takeIf { it > 0.0 },
+            scenery = editor.sceneryText,
+        )
     }
 
     private fun updatePendingDelete(pendingDelete: MapsViewState.PendingDelete?) {
@@ -1027,6 +1315,7 @@ internal class MapsViewModel(
                 participantId = participant.id,
                 name = participant.name,
                 cell = cell,
+                span = sizeResolver.resolve(participant, latestPeople).span,
                 avatarPath = avatarPathFor(participant),
                 selected = participant.id == selectedTokenParticipantId,
                 isCurrentTurn = participant.id == currentTurnId,
@@ -1040,6 +1329,10 @@ internal class MapsViewModel(
     private fun selectedTokenName(): String? {
         val encounter = encounterForMap(selectedMapId) ?: return null
         return encounter.participants.firstOrNull { it.id == selectedTokenParticipantId }?.name
+    }
+
+    private fun selectedItemName(): String? {
+        return selectedFrom(latestMaps)?.items?.firstOrNull { it.id == selectedItemId }?.name
     }
 
     private fun unplacedTokenCount(battleMapId: String?): Int {
@@ -1068,16 +1361,16 @@ internal class MapsViewModel(
         val sourceId = participant.sourceId ?: return null
         return when (participant.source) {
             EncounterParticipantSource.WorldPerson -> {
-                latestPeople.worldPeople.firstOrNull { it.id == sourceId }?.sheet?.walkSpeed
+                latestPeople.worldPeople.firstOrNull { it.id == sourceId }?.sheet?.movementSpeed()
             }
             EncounterParticipantSource.CampaignPerson -> {
                 val campaignPerson = latestPeople.campaignPeople.firstOrNull { it.id == sourceId }
                     ?: return null
-                campaignPerson.sheet.walkSpeed.takeIf { it > 0 }
+                campaignPerson.sheet.movementSpeed().takeIf { it > 0 }
                     ?: latestPeople.worldPeople
                         .firstOrNull { it.id == campaignPerson.worldPersonId }
                         ?.sheet
-                        ?.walkSpeed
+                        ?.movementSpeed()
             }
             EncounterParticipantSource.Nameless -> null
         }
@@ -1088,6 +1381,7 @@ internal class MapsViewModel(
         val mapState: MapState,
         val situationLayerIds: MutableMap<String, String> = mutableMapOf(),
         var situationSignature: String? = null,
+        var terrainLayerId: String? = null,
         var fogLayerId: String? = null,
     )
 

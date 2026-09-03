@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 internal data class AppBackupPrefs(
     val activeWorldId: String? = null,
     val activeCampaignId: String? = null,
+    val activeSessionId: String? = null,
     val displayName: String,
     val email: String,
     val themeMode: String,

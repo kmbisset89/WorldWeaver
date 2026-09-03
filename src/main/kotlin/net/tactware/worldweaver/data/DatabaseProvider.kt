@@ -36,6 +36,10 @@ internal class DatabaseProvider(
                 WorldWeaverMigrations.MIGRATION_13_14,
                 WorldWeaverMigrations.MIGRATION_14_15,
                 WorldWeaverMigrations.MIGRATION_15_16,
+                WorldWeaverMigrations.MIGRATION_16_17,
+                WorldWeaverMigrations.MIGRATION_17_18,
+                WorldWeaverMigrations.MIGRATION_18_19,
+                WorldWeaverMigrations.MIGRATION_19_20,
             )
             .build()
     }

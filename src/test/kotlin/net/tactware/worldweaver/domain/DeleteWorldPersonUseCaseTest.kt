@@ -35,7 +35,7 @@ internal class DeleteWorldPersonUseCaseTest {
                 to = PersonRef.World(other.id),
                 type = RelationshipType.Ally,
                 description = "",
-                factionLean = "",
+                factionId = null,
             )
         )
         harness.companions.insert(
@@ -60,6 +60,7 @@ internal class DeleteWorldPersonUseCaseTest {
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
         val relationships = FakePersonRelationshipRepository()
+        val memberships = FakeFactionMembershipRepository()
         val companions = FakePersonCompanionRepository()
         val quests = FakeQuestRepository()
         val avatars = PersonAvatarFileStore(Files.createTempDirectory("ww-avatars").toFile())
@@ -68,6 +69,7 @@ internal class DeleteWorldPersonUseCaseTest {
             worldPeople,
             campaignPeople,
             relationships,
+            memberships,
             companions,
             quests,
             avatars,

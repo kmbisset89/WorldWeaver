@@ -15,7 +15,7 @@ internal class UpdateCampaignPersonDeathSavesUseCaseTest {
         val result = harness.updateDeathSaves(DeathSaves(successes = 4, failures = -1))
 
         assertIs<UpdateCampaignPersonDeathSavesUseCase.Result.Updated>(result)
-        val sheet = harness.people.getById("pc-1")!!.sheet
+        val sheet = assertIs<FifthEditionSheet>(harness.people.getById("pc-1")!!.sheet)
         assertEquals(3, sheet.deathSaves.successes)
         assertEquals(0, sheet.deathSaves.failures)
     }
@@ -27,6 +27,34 @@ internal class UpdateCampaignPersonDeathSavesUseCaseTest {
         val result = harness.updateDeathSaves(DeathSaves.none())
 
         assertIs<UpdateCampaignPersonDeathSavesUseCase.Result.NotFound>(result)
+    }
+
+    @Test
+    fun pathfinderSheetIsLeftUnchanged() = runTest {
+        val harness = Harness()
+        val now = Instant.parse("2026-08-30T12:00:00Z")
+        harness.people.insert(
+            CampaignPerson(
+                id = "pc-1",
+                campaignId = "campaign-1",
+                worldPersonId = null,
+                kind = PersonKind.PlayerCharacter,
+                name = "Harsk",
+                description = "",
+                sheet = Pathfinder2ESheet.empty().copy(dying = 1, wounded = 1),
+                overlayHitPoints = null,
+                overlayNotes = "",
+                createdAt = now,
+                updatedAt = now,
+            )
+        )
+
+        val result = harness.updateDeathSaves(DeathSaves(successes = 2, failures = 1))
+
+        assertIs<UpdateCampaignPersonDeathSavesUseCase.Result.Updated>(result)
+        val sheet = assertIs<Pathfinder2ESheet>(harness.people.getById("pc-1")!!.sheet)
+        assertEquals(1, sheet.dying)
+        assertEquals(1, sheet.wounded)
     }
 
     private class Harness {

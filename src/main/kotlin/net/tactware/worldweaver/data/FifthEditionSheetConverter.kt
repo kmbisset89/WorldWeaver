@@ -2,8 +2,11 @@ package net.tactware.worldweaver.data
 
 import net.tactware.worldweaver.domain.AbilityScores
 import net.tactware.worldweaver.domain.ClassLevel
+import net.tactware.worldweaver.domain.CreatureSize
 import net.tactware.worldweaver.domain.DeathSaves
 import net.tactware.worldweaver.domain.FifthEditionSheet
+import net.tactware.worldweaver.domain.FifthEditionSkill
+import net.tactware.worldweaver.domain.FifthEditionSpellSlot
 import net.tactware.worldweaver.domain.InventoryItem
 import net.tactware.worldweaver.domain.PersonFeature
 import net.tactware.worldweaver.domain.PersonSpell
@@ -39,6 +42,14 @@ internal class FifthEditionSheetConverter {
                 listOf(spell.name, spell.level.toString(), spell.prepared.toString()).joinToString(FIELD)
             },
             notes = sheet.notes,
+            skills = sheet.skills.joinToString(RECORD) { skill ->
+                listOf(skill.name, skill.ability, skill.proficient.toString()).joinToString(FIELD)
+            },
+            spellSlots = sheet.spellSlots.joinToString(RECORD) { slot ->
+                listOf(slot.level.toString(), slot.maximum.toString(), slot.used.toString()).joinToString(FIELD)
+            },
+            concentratingSpell = sheet.concentratingSpell,
+            creatureSize = sheet.creatureSize.name,
         )
     }
 
@@ -92,6 +103,22 @@ internal class FifthEditionSheetConverter {
                 )
             },
             notes = encoded.notes,
+            skills = decodeRecords(encoded.skills) { parts ->
+                FifthEditionSkill(
+                    name = parts.getOrElse(0) { "" },
+                    ability = parts.getOrElse(1) { "DEX" },
+                    proficient = parts.getOrElse(2) { "false" }.toBooleanStrictOrNull() ?: false,
+                )
+            },
+            spellSlots = decodeRecords(encoded.spellSlots) { parts ->
+                FifthEditionSpellSlot(
+                    level = parts.getOrElse(0) { "1" }.toIntOrNull() ?: 1,
+                    maximum = parts.getOrElse(1) { "0" }.toIntOrNull() ?: 0,
+                    used = parts.getOrElse(2) { "0" }.toIntOrNull() ?: 0,
+                )
+            },
+            concentratingSpell = encoded.concentratingSpell,
+            creatureSize = CreatureSize.fromStorage(encoded.creatureSize),
         )
     }
 
@@ -118,6 +145,10 @@ internal class FifthEditionSheetConverter {
         val features: String,
         val spells: String,
         val notes: String,
+        val skills: String = "",
+        val spellSlots: String = "",
+        val concentratingSpell: String = "",
+        val creatureSize: String = "Medium",
     )
 
     private companion object {

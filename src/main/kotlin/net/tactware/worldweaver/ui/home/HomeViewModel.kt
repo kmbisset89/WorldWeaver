@@ -11,10 +11,15 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import net.tactware.worldweaver.core.AppCoroutineScope
+import net.tactware.worldweaver.domain.ActiveContextDetails
+import net.tactware.worldweaver.domain.DashboardCounts
 import net.tactware.worldweaver.domain.ObserveActiveContextDetailsUseCase
+import net.tactware.worldweaver.domain.ObserveActiveContextUseCase
 import net.tactware.worldweaver.domain.ObserveDashboardCountsUseCase
+import net.tactware.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
 import net.tactware.worldweaver.domain.ObserveWorldsUseCase
 import net.tactware.worldweaver.domain.SetActiveWorldUseCase
+import net.tactware.worldweaver.domain.World
 import net.tactware.worldweaver.ui.settings.ShellSettingsStore
 
 internal class HomeViewModel(
@@ -22,6 +27,8 @@ internal class HomeViewModel(
     private val appScope: AppCoroutineScope,
     private val observeWorlds: ObserveWorldsUseCase,
     private val observeActiveContextDetails: ObserveActiveContextDetailsUseCase,
+    private val observeActiveContext: ObserveActiveContextUseCase,
+    private val observeSessions: ObserveSessionsForActiveCampaignUseCase,
     private val observeDashboardCounts: ObserveDashboardCountsUseCase,
     private val setActiveWorld: SetActiveWorldUseCase,
 ) {
@@ -42,8 +49,9 @@ internal class HomeViewModel(
             HomeInteraction.ScreenStarted -> Unit
             HomeInteraction.RetrySelected -> observe()
             HomeInteraction.NewWorldSelected -> emitEffect(HomeViewEffect.OpenWorldCreator)
+            HomeInteraction.OneShotSelected -> emitEffect(HomeViewEffect.OpenOneShotWizard)
             is HomeInteraction.WorldSelected -> selectWorld(interaction.worldId)
-            HomeInteraction.ContinueCampaignSelected -> emitEffect(HomeViewEffect.OpenCampaigns)
+            HomeInteraction.ContinueCampaignSelected -> emitEffect(HomeViewEffect.OpenRun)
             HomeInteraction.WorldsCountSelected -> emitEffect(HomeViewEffect.OpenWorlds)
             HomeInteraction.CampaignsCountSelected -> emitEffect(HomeViewEffect.OpenCampaigns)
             HomeInteraction.PeopleCountSelected -> emitEffect(HomeViewEffect.OpenCharacters)
@@ -55,30 +63,38 @@ internal class HomeViewModel(
         _state.value = HomeViewState.Loading
         observeJob = appScope.scope.launch {
             combine(
-                observeWorlds(),
-                observeActiveContextDetails(),
-                observeDashboardCounts(),
-                shellSettingsStore.settings,
-            ) { worlds, details, counts, settings ->
-                if (worlds.isEmpty()) {
-                    HomeViewState.Empty(displayName = settings.displayName)
+                combine(
+                    observeWorlds(),
+                    observeActiveContextDetails(),
+                    observeDashboardCounts(),
+                    shellSettingsStore.settings,
+                ) { worlds, details, counts, settings ->
+                    HomeBundle(worlds, details, counts, settings.displayName)
+                },
+                observeActiveContext(),
+                observeSessions(),
+            ) { bundle, context, sessions ->
+                if (bundle.worlds.isEmpty()) {
+                    HomeViewState.Empty(displayName = bundle.displayName)
                 } else {
-                    val campaign = details.campaign
-                    val world = details.world
+                    val campaign = bundle.details.campaign
+                    val world = bundle.details.world
+                    val session = sessions.firstOrNull { it.id == context.activeSessionId }
                     HomeViewState.Content(
-                        displayName = settings.displayName,
-                        recentWorlds = worlds.take(RECENT_WORLD_LIMIT),
+                        displayName = bundle.displayName,
+                        recentWorlds = bundle.worlds.take(RECENT_WORLD_LIMIT),
                         continueCampaign = if (campaign != null && world != null) {
                             HomeViewState.ContinueCampaign(
                                 campaignName = campaign.name,
                                 worldName = world.name,
+                                sessionName = session?.name,
                             )
                         } else {
                             null
                         },
-                        worldCount = counts.worlds,
-                        campaignCount = counts.campaigns,
-                        peopleCount = counts.people,
+                        worldCount = bundle.counts.worlds,
+                        campaignCount = bundle.counts.campaigns,
+                        peopleCount = bundle.counts.people,
                     )
                 }
             }
@@ -108,4 +124,11 @@ internal class HomeViewModel(
     private companion object {
         const val RECENT_WORLD_LIMIT = 5
     }
+
+    private data class HomeBundle(
+        val worlds: List<World>,
+        val details: ActiveContextDetails,
+        val counts: DashboardCounts,
+        val displayName: String,
+    )
 }

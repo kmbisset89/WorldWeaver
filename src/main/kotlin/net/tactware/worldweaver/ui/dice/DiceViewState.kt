@@ -19,5 +19,7 @@ internal sealed class DiceViewState {
         val rollToken: Long,
         val lastResult: DiceRollResult?,
         val history: List<DiceRollResult>,
+        val isFloatingOpen: Boolean,
+        val isAlwaysOnTop: Boolean,
     ) : DiceViewState()
 }

@@ -26,5 +26,6 @@ internal sealed class HomeViewState {
     data class ContinueCampaign(
         val campaignName: String,
         val worldName: String,
+        val sessionName: String?,
     )
 }

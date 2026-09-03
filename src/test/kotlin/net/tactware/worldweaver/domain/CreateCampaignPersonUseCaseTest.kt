@@ -53,8 +53,9 @@ internal class CreateCampaignPersonUseCaseTest {
         val created = assertIs<CreateCampaignPersonUseCase.Result.Created>(result)
         assertEquals("campaign-1", created.person.campaignId)
         assertNull(created.person.worldPersonId)
-        assertEquals(3, created.person.sheet.totalLevel())
-        assertEquals(2, created.person.sheet.classLevels.size)
+        val createdSheet = assertIs<FifthEditionSheet>(created.person.sheet)
+        assertEquals(3, createdSheet.totalLevel())
+        assertEquals(2, createdSheet.classLevels.size)
     }
 
     @Test
@@ -70,6 +71,31 @@ internal class CreateCampaignPersonUseCaseTest {
         assertEquals(1, harness.campaignPeople.all().size)
     }
 
+    @Test
+    fun createPersistsPathfinderSheet() = runTest {
+        val harness = Harness()
+        harness.context.setActiveCampaignId("campaign-1")
+        val sheet = Pathfinder2ESheet.empty().copy(
+            ancestry = "Human",
+            className = "Champion",
+            subclass = "Paladin",
+            level = 2,
+        )
+
+        val result = harness.createPerson(
+            name = "Iomedae",
+            kind = PersonKind.PlayerCharacter,
+            sheet = sheet,
+        )
+
+        val created = assertIs<CreateCampaignPersonUseCase.Result.Created>(result)
+        val persisted = assertIs<Pathfinder2ESheet>(created.person.sheet)
+        assertEquals("Human", persisted.ancestry)
+        assertEquals("Champion", persisted.className)
+        assertEquals(2, persisted.level)
+        assertEquals(GameSystem.Pathfinder2E, persisted.gameSystem())
+    }
+
     private class Harness {
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
@@ -82,7 +108,7 @@ internal class CreateCampaignPersonUseCaseTest {
         suspend fun createPerson(
             name: String,
             kind: PersonKind = PersonKind.PlayerCharacter,
-            sheet: FifthEditionSheet = FifthEditionSheet.empty(),
+            sheet: PersonSheet = FifthEditionSheet.empty(),
         ): CreateCampaignPersonUseCase.Result {
             return createCampaignPerson(
                 CampaignPersonDraft(

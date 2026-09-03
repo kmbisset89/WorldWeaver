@@ -8,7 +8,7 @@ internal data class WorldPerson(
     val kind: PersonKind,
     val name: String,
     val description: String,
-    val sheet: FifthEditionSheet,
+    val sheet: PersonSheet,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

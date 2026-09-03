@@ -22,8 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.tactware.worldweaver.domain.AbilityScores
 import net.tactware.worldweaver.domain.CompanionKind
-import net.tactware.worldweaver.domain.FifthEditionReference
+import net.tactware.worldweaver.domain.FifthEditionPickerCatalog
 import net.tactware.worldweaver.domain.FifthEditionSheet
+import net.tactware.worldweaver.domain.Pathfinder2ESheet
 import net.tactware.worldweaver.domain.RelationshipType
 import net.tactware.worldweaver.ui.theme.NavyBlue
 import net.tactware.worldweaver.ui.voice.VoiceClipComposeWidget
@@ -36,7 +37,9 @@ import net.tactware.worldweaver.ui.theme.TextSecondary
 internal fun CharacterDetailPane(
     selected: CharactersViewState.SelectedPerson,
     relationshipEditor: CharactersViewState.RelationshipEditorState?,
+    membershipEditor: CharactersViewState.MembershipEditorState?,
     companionEditor: CharactersViewState.CompanionEditorState?,
+    pickerCatalog: FifthEditionPickerCatalog,
     onInteraction: (CharactersInteraction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -108,21 +111,45 @@ internal fun CharacterDetailPane(
                 onInteraction(CharactersInteraction.VoiceClipRemoved)
             },
         )
-        AbilitySection(sheet = selected.sheet)
-        CombatSection(sheet = selected.sheet)
-        ClassSection(sheet = selected.sheet)
-        if (selected.isWorldReference) {
-            OverlaySection(selected = selected, onInteraction = onInteraction)
-        }
-        InventorySection(sheet = selected.sheet)
-        SpellSection(sheet = selected.sheet)
-        FeatureSection(sheet = selected.sheet)
-        if (selected.sheet.notes.isNotBlank()) {
-            DetailSection("Notes", selected.sheet.notes)
+        when (val sheet = selected.sheet) {
+            is FifthEditionSheet -> {
+                AbilitySection(scores = sheet.abilityScores)
+                CombatSection(sheet = sheet)
+                ClassSection(sheet = sheet)
+                if (selected.isWorldReference) {
+                    OverlaySection(selected = selected, onInteraction = onInteraction)
+                }
+                InventorySection(sheet = sheet)
+                SpellSection(sheet = sheet)
+                FeatureSection(sheet = sheet)
+                if (sheet.notes.isNotBlank()) {
+                    DetailSection("Notes", sheet.notes)
+                }
+            }
+            is Pathfinder2ESheet -> {
+                AbilitySection(scores = sheet.abilityScores)
+                PathfinderCombatSection(sheet = sheet)
+                PathfinderIdentitySection(sheet = sheet)
+                PathfinderSkillSection(sheet = sheet)
+                PathfinderFeatSection(sheet = sheet)
+                PathfinderSpellSection(sheet = sheet)
+                if (selected.isWorldReference) {
+                    OverlaySection(selected = selected, onInteraction = onInteraction)
+                }
+                if (sheet.notes.isNotBlank()) {
+                    DetailSection("Notes", sheet.notes)
+                }
+            }
         }
         CompanionSection(
             companions = selected.companions,
             editor = companionEditor,
+            pickerCatalog = pickerCatalog,
+            onInteraction = onInteraction,
+        )
+        MembershipSection(
+            memberships = selected.memberships,
+            editor = membershipEditor,
             onInteraction = onInteraction,
         )
         RelationshipSection(
@@ -139,6 +166,11 @@ internal fun CharacterDetailPane(
             onInteraction = onInteraction,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(
+                onClick = { onInteraction(CharactersInteraction.SheetSelected(selected.key)) }
+            ) {
+                Text("Open sheet")
+            }
             TextButton(
                 onClick = { onInteraction(CharactersInteraction.EditPersonSelected(selected.key)) }
             ) {
@@ -163,8 +195,7 @@ internal fun CharacterDetailPane(
 }
 
 @Composable
-private fun AbilitySection(sheet: FifthEditionSheet) {
-    val scores = sheet.abilityScores
+private fun AbilitySection(scores: AbilityScores) {
     DetailSection(
         title = "Ability scores",
         value = listOf(
@@ -183,8 +214,18 @@ private fun CombatSection(sheet: FifthEditionSheet) {
     val death = "Death saves ${sheet.deathSaves.successes}S / ${sheet.deathSaves.failures}F"
     DetailSection(
         title = "Combat",
-        value = "HP ${sheet.hitPoints}/${sheet.maxHitPoints}  ·  Temp ${sheet.temporaryHitPoints}  ·  AC ${sheet.armorClass}  ·  Speed ${sheet.walkSpeed}  ·  $death",
+        value = "HP ${sheet.hitPoints}/${sheet.maxHitPoints}  ·  Temp ${sheet.temporaryHitPoints}  ·  AC ${sheet.armorClass}  ·  Speed ${sheet.walkSpeed}  ·  ${sheet.creatureSize.displayName}  ·  $death",
     )
+    if (sheet.concentratingSpell.isNotBlank()) {
+        DetailSection("Concentration", sheet.concentratingSpell)
+    }
+    if (sheet.spellSlots.any { it.maximum > 0 }) {
+        val slots = sheet.spellSlots
+            .filter { it.maximum > 0 }
+            .sortedBy { it.level }
+            .joinToString("  ") { slot -> "L${slot.level} ${slot.remaining()}/${slot.maximum}" }
+        DetailSection("Spell slots", slots)
+    }
 }
 
 @Composable
@@ -240,6 +281,75 @@ private fun FeatureSection(sheet: FifthEditionSheet) {
 }
 
 @Composable
+private fun PathfinderCombatSection(sheet: Pathfinder2ESheet) {
+    DetailSection(
+        title = "Combat",
+        value = "HP ${sheet.hitPoints}/${sheet.maxHitPoints}  ·  Temp ${sheet.temporaryHitPoints}  ·  " +
+            "AC ${sheet.armorClass}  ·  Speed ${sheet.landSpeed}  ·  Perception ${sheet.perception}  ·  " +
+            "Dying ${sheet.dying}  ·  Wounded ${sheet.wounded}",
+    )
+}
+
+@Composable
+private fun PathfinderIdentitySection(sheet: Pathfinder2ESheet) {
+    val ancestry = sheet.ancestry.ifBlank { "No ancestry" }
+    val heritage = sheet.heritage.takeIf { it.isNotBlank() }
+    val background = sheet.background.takeIf { it.isNotBlank() }
+    val classLabel = if (sheet.className.isBlank()) {
+        "No class"
+    } else {
+        val path = if (sheet.subclass.isBlank()) "" else " (${sheet.subclass})"
+        "${sheet.className}$path ${sheet.level}"
+    }
+    DetailSection(
+        title = "Ancestry and class",
+        value = listOfNotNull(ancestry, heritage, background, classLabel).joinToString(" · "),
+    )
+}
+
+@Composable
+private fun PathfinderSkillSection(sheet: Pathfinder2ESheet) {
+    val value = if (sheet.skills.isEmpty()) {
+        "No skills yet."
+    } else {
+        sheet.skills.joinToString("\n") { skill ->
+            "${skill.name} (${skill.rank.name})"
+        }
+    }
+    DetailSection("Skills", value)
+}
+
+@Composable
+private fun PathfinderFeatSection(sheet: Pathfinder2ESheet) {
+    val value = if (sheet.feats.isEmpty()) {
+        "No feats yet."
+    } else {
+        sheet.feats.joinToString("\n") { feat ->
+            val type = if (feat.type.isBlank()) "" else " [${feat.type}]"
+            if (feat.description.isBlank()) {
+                "${feat.name}$type"
+            } else {
+                "${feat.name}$type: ${feat.description}"
+            }
+        }
+    }
+    DetailSection("Feats", value)
+}
+
+@Composable
+private fun PathfinderSpellSection(sheet: Pathfinder2ESheet) {
+    val value = if (sheet.spells.isEmpty()) {
+        "No spells yet."
+    } else {
+        sheet.spells.joinToString("\n") { spell ->
+            val prepared = if (spell.prepared) "prepared" else "known"
+            "${spell.name} (Rank ${spell.rank}, $prepared)"
+        }
+    }
+    DetailSection("Spells", value)
+}
+
+@Composable
 private fun OverlaySection(
     selected: CharactersViewState.SelectedPerson,
     onInteraction: (CharactersInteraction) -> Unit,
@@ -290,6 +400,7 @@ private fun OverlaySection(
 private fun CompanionSection(
     companions: List<CharactersViewState.CompanionRow>,
     editor: CharactersViewState.CompanionEditorState?,
+    pickerCatalog: FifthEditionPickerCatalog,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
     Card(
@@ -407,8 +518,8 @@ private fun CompanionSection(
                         modifier = Modifier.fillMaxWidth()
                     )
                     val creatures = when (editor.kind) {
-                        CompanionKind.Familiar -> FifthEditionReference.familiars
-                        CompanionKind.AnimalCompanion -> FifthEditionReference.animalCompanions
+                        CompanionKind.Familiar -> pickerCatalog.familiars
+                        CompanionKind.AnimalCompanion -> pickerCatalog.animalCompanions
                     }
                     creatures.forEach { creature ->
                         FilterChip(
@@ -431,6 +542,106 @@ private fun CompanionSection(
                     }
                     TextButton(
                         onClick = { onInteraction(CharactersInteraction.CompanionEditorDismissed) }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MembershipSection(
+    memberships: List<CharactersViewState.MembershipRow>,
+    editor: CharactersViewState.MembershipEditorState?,
+    onInteraction: (CharactersInteraction) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Factions",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+            if (memberships.isEmpty()) {
+                Text("No faction memberships yet.", fontSize = 13.sp, color = TextSecondary)
+            } else {
+                memberships.forEach { membership ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (membership.role.isBlank()) {
+                                    membership.factionName
+                                } else {
+                                    "${membership.factionName} · ${membership.role}"
+                                },
+                                fontSize = 13.sp,
+                                color = TextPrimary
+                            )
+                            if (membership.notes.isNotBlank()) {
+                                Text(
+                                    text = membership.notes,
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        TextButton(
+                            onClick = {
+                                onInteraction(CharactersInteraction.MembershipDeleted(membership.id))
+                            }
+                        ) {
+                            Text("Remove")
+                        }
+                    }
+                }
+            }
+            if (editor == null) {
+                TextButton(onClick = { onInteraction(CharactersInteraction.MembershipEditorOpened) }) {
+                    Text("Add faction")
+                }
+            } else {
+                Text("Faction", fontSize = 12.sp, color = TextSecondary)
+                editor.factions.forEach { faction ->
+                    FilterChip(
+                        selected = editor.factionId == faction.id,
+                        onClick = {
+                            onInteraction(CharactersInteraction.MembershipFactionSelected(faction.id))
+                        },
+                        label = { Text(faction.name) },
+                    )
+                }
+                if (editor.factionError != null) {
+                    Text(editor.factionError, fontSize = 12.sp, color = TextSecondary)
+                }
+                OutlinedTextField(
+                    value = editor.role,
+                    onValueChange = {
+                        onInteraction(CharactersInteraction.MembershipRoleChanged(it))
+                    },
+                    label = { Text("Role (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row {
+                    TextButton(onClick = { onInteraction(CharactersInteraction.MembershipSaved) }) {
+                        Text("Save membership")
+                    }
+                    TextButton(
+                        onClick = { onInteraction(CharactersInteraction.MembershipEditorDismissed) }
                     ) {
                         Text("Cancel")
                     }
@@ -476,9 +687,9 @@ private fun RelationshipSection(
                                 fontSize = 13.sp,
                                 color = TextPrimary
                             )
-                            if (relationship.factionLean.isNotBlank()) {
+                            if (relationship.factionName != null) {
                                 Text(
-                                    text = "Faction: ${relationship.factionLean}",
+                                    text = "Faction: ${relationship.factionName}",
                                     fontSize = 12.sp,
                                     color = TextSecondary
                                 )
@@ -537,15 +748,27 @@ private fun RelationshipSection(
                     label = { Text("Description") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = editor.factionLean,
-                    onValueChange = {
-                        onInteraction(CharactersInteraction.RelationshipFactionChanged(it))
-                    },
-                    label = { Text("Faction lean") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Text("Faction lean", fontSize = 12.sp, color = TextSecondary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = editor.factionId == null,
+                        onClick = {
+                            onInteraction(CharactersInteraction.RelationshipFactionSelected(null))
+                        },
+                        label = { Text("None") },
+                    )
+                    editor.factions.forEach { faction ->
+                        FilterChip(
+                            selected = editor.factionId == faction.id,
+                            onClick = {
+                                onInteraction(
+                                    CharactersInteraction.RelationshipFactionSelected(faction.id)
+                                )
+                            },
+                            label = { Text(faction.name) },
+                        )
+                    }
+                }
                 Row {
                     TextButton(onClick = { onInteraction(CharactersInteraction.RelationshipSaved) }) {
                         Text("Save relationship")

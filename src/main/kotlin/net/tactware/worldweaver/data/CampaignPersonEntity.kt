@@ -48,6 +48,12 @@ internal data class CampaignPersonEntity(
     val notes: String,
     val overlayHitPoints: Int?,
     val overlayNotes: String,
+    val skills: String = "",
+    val spellSlots: String = "",
+    val concentratingSpell: String = "",
+    val creatureSize: String = "Medium",
+    val sheetSystem: String,
+    val pf2ePayload: String,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )

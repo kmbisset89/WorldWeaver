@@ -30,6 +30,7 @@ import net.tactware.worldweaver.domain.EncounterParticipantSource
 import net.tactware.worldweaver.domain.EncounterStatus
 import net.tactware.worldweaver.domain.EndEncounterUseCase
 import net.tactware.worldweaver.domain.FifthEditionCondition
+import net.tactware.worldweaver.domain.FifthEditionSheet
 import net.tactware.worldweaver.domain.Location
 import net.tactware.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import net.tactware.worldweaver.domain.ObserveBattleMapSituationsForActiveCampaignUseCase
@@ -150,6 +151,14 @@ internal class EncountersViewModel(
                 selectedParticipantId = interaction.participantId
                 boardSession.selectParticipant(interaction.participantId)
                 refreshRunning()
+            }
+            is EncountersInteraction.SheetSelected -> {
+                _effects.tryEmit(
+                    EncountersViewEffect.OpenSheet(
+                        source = interaction.source,
+                        sourceId = interaction.sourceId,
+                    )
+                )
             }
             is EncountersInteraction.CombatAmountChanged -> {
                 combatAmount = interaction.amount
@@ -342,6 +351,26 @@ internal class EncountersViewModel(
             }
             EncountersInteraction.FogHideAllSelected -> {
                 boardSession.applyFogEdit(BattleMapFogEdit.HideAll)
+                refreshRunning()
+            }
+            is EncountersInteraction.TerrainPaintSelected -> {
+                boardSession.setTerrainPaint(interaction.kind)
+                refreshRunning()
+            }
+            EncountersInteraction.ItemDropToggled -> {
+                boardSession.toggleItemDrop()
+                refreshRunning()
+            }
+            is EncountersInteraction.ItemNameChanged -> {
+                boardSession.changeItemName(interaction.name)
+                refreshRunning()
+            }
+            is EncountersInteraction.ItemSelected -> {
+                boardSession.selectItem(interaction.itemId)
+                refreshRunning()
+            }
+            EncountersInteraction.ItemRemoved -> {
+                boardSession.removeSelectedItem()
                 refreshRunning()
             }
             EncountersInteraction.PlayerViewSelected -> {
@@ -580,6 +609,11 @@ internal class EncountersViewModel(
             measureDistance = board.measureDistance,
             fogPaintEnabled = board.fogPaintEnabled,
             fogRevealBrush = board.fogRevealBrush,
+            terrainPaint = board.terrainPaint,
+            itemDropEnabled = board.itemDropEnabled,
+            itemNameText = board.itemNameText,
+            selectedItemId = board.selectedItemId,
+            selectedItemName = board.selectedItemName,
             playerViewOpen = board.playerViewOpen,
             pendingEnd = pendingEnd,
         )
@@ -1198,10 +1232,10 @@ internal class EncountersViewModel(
         val sourceId = participant.sourceId ?: return null
         return when (participant.source) {
             EncounterParticipantSource.WorldPerson -> {
-                latestPeople.worldPeople.firstOrNull { it.id == sourceId }?.sheet?.walkSpeed
+                latestPeople.worldPeople.firstOrNull { it.id == sourceId }?.sheet?.movementSpeed()
             }
             EncounterParticipantSource.CampaignPerson -> {
-                latestPeople.campaignPeople.firstOrNull { it.id == sourceId }?.sheet?.walkSpeed
+                latestPeople.campaignPeople.firstOrNull { it.id == sourceId }?.sheet?.movementSpeed()
             }
             EncounterParticipantSource.Nameless -> null
         }
@@ -1212,7 +1246,8 @@ internal class EncountersViewModel(
             return null
         }
         val sourceId = participant.sourceId ?: return null
-        return latestPeople.campaignPeople.firstOrNull { it.id == sourceId }?.sheet?.deathSaves
+        val sheet = latestPeople.campaignPeople.firstOrNull { it.id == sourceId }?.sheet
+        return (sheet as? FifthEditionSheet)?.deathSaves
     }
 
     private fun setupFrom(state: EncountersViewState): EncountersViewState.EncounterSetupState? {

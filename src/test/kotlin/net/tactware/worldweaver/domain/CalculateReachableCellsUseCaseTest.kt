@@ -66,4 +66,55 @@ internal class CalculateReachableCellsUseCaseTest {
 
         assertTrue(cells.isEmpty())
     }
+
+    @Test
+    fun blockedCellsStopWalk() {
+        val origin = GridCell(column = 2, row = 2)
+        val cells = calculateReachableCells(
+            origin = origin,
+            walkSpeed = 30,
+            unitsPerTile = 5.0,
+            columns = 5,
+            rows = 5,
+            blockedCells = setOf(GridCell(column = 3, row = 2)),
+        )
+
+        assertTrue(cells.contains(origin))
+        assertTrue(cells.none { it.column == 3 && it.row == 2 })
+        assertTrue(cells.contains(GridCell(column = 4, row = 2)))
+    }
+
+    @Test
+    fun difficultCellsCostTwoSquares() {
+        val origin = GridCell(column = 0, row = 0)
+        val cells = calculateReachableCells(
+            origin = origin,
+            walkSpeed = 10,
+            unitsPerTile = 5.0,
+            columns = 4,
+            rows = 1,
+            difficultCells = setOf(GridCell(column = 1, row = 0)),
+        )
+
+        assertEquals(
+            setOf(origin, GridCell(column = 1, row = 0)),
+            cells.toSet(),
+        )
+    }
+
+    @Test
+    fun occupiedCellsBlockWalkExceptOrigin() {
+        val origin = GridCell(column = 1, row = 1)
+        val cells = calculateReachableCells(
+            origin = origin,
+            walkSpeed = 30,
+            unitsPerTile = 5.0,
+            columns = 3,
+            rows = 3,
+            occupiedCells = setOf(GridCell(column = 2, row = 1)),
+        )
+
+        assertTrue(cells.contains(origin))
+        assertTrue(cells.none { it == GridCell(column = 2, row = 1) })
+    }
 }

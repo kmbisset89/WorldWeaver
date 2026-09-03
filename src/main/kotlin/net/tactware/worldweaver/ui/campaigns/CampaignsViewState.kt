@@ -2,6 +2,7 @@ package net.tactware.worldweaver.ui.campaigns
 
 import net.tactware.worldweaver.domain.Campaign
 import net.tactware.worldweaver.domain.CampaignStatus
+import net.tactware.worldweaver.domain.GameSystem
 
 internal sealed class CampaignsViewState {
     data object Loading : CampaignsViewState()
@@ -15,11 +16,13 @@ internal sealed class CampaignsViewState {
 
     data class Empty(
         val worldName: String,
+        val worldDefaultGameSystem: GameSystem,
         val editor: CampaignEditorState?,
     ) : CampaignsViewState()
 
     data class Content(
         val worldName: String,
+        val worldDefaultGameSystem: GameSystem,
         val campaigns: List<Campaign>,
         val selectedCampaign: Campaign?,
         val showRetired: Boolean,
@@ -54,6 +57,7 @@ internal sealed class CampaignsViewState {
         val name: String,
         val description: String,
         val notes: String,
+        val gameSystem: GameSystem,
         val nameError: String?,
     )
 
