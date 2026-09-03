@@ -98,7 +98,7 @@ As a DM, I have an active World and optional active Campaign that all feature sc
 
 **v1:** `AppSettings` stored the active campaign id.
 
-**Status:** Done — `active_world_id`, optional `active_campaign_id`, and optional `active_session_id` in Preferences. Theme, skin, profile, and nav density share the same `net.tactware.worldweaver` node via `ShellSettingsStore`.
+**Status:** Done — `active_world_id`, optional `active_campaign_id`, and optional `active_session_id` in Preferences. Theme, skin, profile, and nav density share the same `io.github.kmbisset89.worldweaver` node via `ShellSettingsStore`.
 
 ### WW-FND-04 Feature navigation
 
@@ -1049,7 +1049,7 @@ As a DM, my light / dark / system theme survives restart.
 
 - Theme is stored and applied on launch.
 
-**Status:** Done — `ShellSettingsStore` owns `theme_mode` under `net.tactware.worldweaver`. A leftover root `theme_mode` key is migrated once.
+**Status:** Done — `ShellSettingsStore` owns `theme_mode` under `io.github.kmbisset89.worldweaver`.
 
 ### WW-SET-02 Theme skins
 

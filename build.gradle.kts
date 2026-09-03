@@ -9,7 +9,7 @@ plugins {
     id("com.google.devtools.ksp") version "2.3.10"
 }
 
-group = "net.tactware.worldweaver"
+group = "io.github.kmbisset89.worldweaver"
 version = "1.0.0"
 
 val appPublisher = "Kerry Bisset"
@@ -46,7 +46,7 @@ ksp {
 
 compose.desktop {
     application {
-        mainClass = "net.tactware.worldweaver.MainKt"
+        mainClass = "io.github.kmbisset89.worldweaver.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
@@ -56,6 +56,20 @@ compose.desktop {
             vendor = appPublisher
             copyright = appCopyright
             licenseFile.set(project.file("LICENSE"))
+            // jdk.crypto.ec was folded into java.base; requesting it breaks jlink on some JDK 21 builds.
+            // java.instrument / java.prefs / jdk.unsupported: reported by suggestRuntimeModules.
+            // java.sql / java.naming: Room's JVM runtime still touches JDBC/JNDI types during startup.
+            // java.xml: ImageIO PNG metadata and java.sql both use JAXP.
+            // jdk.security.auth: AWT file dialogs on Linux can need Unix principals.
+            modules(
+                "java.instrument",
+                "java.naming",
+                "java.prefs",
+                "java.sql",
+                "java.xml",
+                "jdk.unsupported",
+                "jdk.security.auth",
+            )
 
             windows {
                 menuGroup = "World Weaver"
@@ -74,6 +88,15 @@ compose.desktop {
             linux {
                 debMaintainer = "$appPublisher <kmbisset89@users.noreply.github.com>"
             }
+        }
+        // packageRelease* enables ProGuard shrinking by default. Room, Koin, bundled
+        // SQLite, MapCompose, and Skiko still reference classes the shrinker cannot
+        // resolve, which makes the Windows launcher report "Failed to launch JVM".
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+            obfuscate.set(false)
+            optimize.set(false)
+            joinOutputJars.set(false)
         }
     }
 }
