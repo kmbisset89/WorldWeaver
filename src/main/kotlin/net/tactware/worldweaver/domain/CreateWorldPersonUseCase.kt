@@ -5,6 +5,7 @@ internal class CreateWorldPersonUseCase(
     private val activeContextRepository: ActiveContextRepository,
     private val entityIdFactory: EntityIdFactory,
     private val instantProvider: InstantProvider,
+    private val sheetFactory: PersonSheetFactory = PersonSheetFactory(),
 ) {
     sealed interface Result {
         data class Created(val person: WorldPerson) : Result
@@ -29,7 +30,7 @@ internal class CreateWorldPersonUseCase(
             kind = draft.kind,
             name = name,
             description = draft.description.trim(),
-            sheet = sanitizeSheet(draft.sheet),
+            sheet = sheetFactory.sanitize(draft.sheet),
             createdAt = now,
             updatedAt = now,
         )
@@ -37,17 +38,4 @@ internal class CreateWorldPersonUseCase(
         return Result.Created(person)
     }
 
-    private fun sanitizeSheet(sheet: FifthEditionSheet): FifthEditionSheet {
-        return sheet.copy(
-            race = sheet.race.trim(),
-            classLevels = sheet.classLevels.map { level ->
-                level.copy(
-                    className = level.className.trim(),
-                    subclass = level.subclass.trim(),
-                    level = level.level.coerceAtLeast(1),
-                )
-            }.filter { it.className.isNotEmpty() },
-            notes = sheet.notes.trim(),
-        )
-    }
 }

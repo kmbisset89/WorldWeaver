@@ -17,12 +17,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import net.tactware.worldweaver.domain.FifthEditionReference
+import net.tactware.worldweaver.domain.CreatureSize
+import net.tactware.worldweaver.domain.FifthEditionPickerCatalog
 import net.tactware.worldweaver.domain.PersonKind
 
 @Composable
 internal fun CharacterEditorDialog(
     editor: CharactersViewState.CharacterEditorState,
+    pickerCatalog: FifthEditionPickerCatalog,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
     val isCreate = editor.personId == null
@@ -85,7 +87,11 @@ internal fun CharacterEditorDialog(
                 if (editor.isWorldReference) {
                     OverlayEditor(editor = editor, onInteraction = onInteraction)
                 } else {
-                    SheetEditor(editor = editor, onInteraction = onInteraction)
+                    SheetEditor(
+                        editor = editor,
+                        pickerCatalog = pickerCatalog,
+                        onInteraction = onInteraction,
+                    )
                 }
             }
         },
@@ -127,6 +133,7 @@ private fun OverlayEditor(
 @Composable
 private fun SheetEditor(
     editor: CharactersViewState.CharacterEditorState,
+    pickerCatalog: FifthEditionPickerCatalog,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
     Text("Race")
@@ -137,7 +144,7 @@ private fun SheetEditor(
         singleLine = true,
         modifier = Modifier.fillMaxWidth()
     )
-    FifthEditionReference.races.forEach { race ->
+    pickerCatalog.races.forEach { race ->
         FilterChip(
             selected = editor.race == race,
             onClick = { onInteraction(CharactersInteraction.EditorRaceChanged(race)) },
@@ -149,6 +156,7 @@ private fun SheetEditor(
         ClassLevelEditor(
             index = index,
             level = level,
+            pickerCatalog = pickerCatalog,
             onInteraction = onInteraction,
         )
     }
@@ -202,6 +210,86 @@ private fun SheetEditor(
         ScoreField("Death F", editor.deathFailures) {
             onInteraction(CharactersInteraction.EditorDeathFailuresChanged(it))
         }
+    }
+    Text("Size")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CreatureSize.entries.forEach { size ->
+            FilterChip(
+                selected = editor.creatureSize == size,
+                onClick = { onInteraction(CharactersInteraction.EditorCreatureSizeSelected(size)) },
+                label = { Text(size.displayName) },
+            )
+        }
+    }
+    OutlinedTextField(
+        value = editor.concentratingSpell,
+        onValueChange = { onInteraction(CharactersInteraction.EditorConcentratingSpellChanged(it)) },
+        label = { Text("Concentrating on") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text("Skill proficiency")
+    editor.skills.chunked(3).forEach { row ->
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            row.forEach { skill ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Checkbox(
+                        checked = skill.proficient,
+                        onCheckedChange = {
+                            onInteraction(CharactersInteraction.EditorSkillProficiencyToggled(skill.name))
+                        },
+                    )
+                    Text("${skill.name} (${skill.ability})")
+                }
+            }
+        }
+    }
+    Text("Spell slots")
+    editor.spellSlots.forEachIndexed { index, slot ->
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = slot.levelText,
+                onValueChange = {
+                    onInteraction(CharactersInteraction.EditorSpellSlotLevelChanged(index, it))
+                },
+                label = { Text("Lvl") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = slot.maximumText,
+                onValueChange = {
+                    onInteraction(CharactersInteraction.EditorSpellSlotMaximumChanged(index, it))
+                },
+                label = { Text("Max") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = slot.usedText,
+                onValueChange = {
+                    onInteraction(CharactersInteraction.EditorSpellSlotUsedChanged(index, it))
+                },
+                label = { Text("Used") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { onInteraction(CharactersInteraction.EditorSpellSlotRemoved(index)) }) {
+                Text("Remove")
+            }
+        }
+    }
+    TextButton(onClick = { onInteraction(CharactersInteraction.EditorSpellSlotAdded) }) {
+        Text("Add spell slot")
     }
     Text("Inventory")
     editor.items.forEachIndexed { index, item ->
@@ -276,7 +364,7 @@ private fun SheetEditor(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        FifthEditionReference.spells.forEach { name ->
+        pickerCatalog.spells.forEach { name ->
             FilterChip(
                 selected = spell.name == name,
                 onClick = { onInteraction(CharactersInteraction.EditorSpellNameChanged(index, name)) },
@@ -326,6 +414,7 @@ private fun SheetEditor(
 private fun ClassLevelEditor(
     index: Int,
     level: CharactersViewState.ClassLevelEditor,
+    pickerCatalog: FifthEditionPickerCatalog,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
     OutlinedTextField(
@@ -335,14 +424,14 @@ private fun ClassLevelEditor(
         singleLine = true,
         modifier = Modifier.fillMaxWidth()
     )
-    FifthEditionReference.classes.forEach { className ->
+    pickerCatalog.classes.forEach { className ->
         FilterChip(
             selected = level.className == className,
             onClick = { onInteraction(CharactersInteraction.EditorClassNameChanged(index, className)) },
             label = { Text(className) },
         )
     }
-    val subclasses = FifthEditionReference.subclassesFor(level.className)
+    val subclasses = pickerCatalog.subclassesFor(level.className)
     if (subclasses.isNotEmpty()) {
         Text("Subclass")
         subclasses.forEach { subclass ->

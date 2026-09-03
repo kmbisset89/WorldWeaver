@@ -9,7 +9,7 @@ internal data class CampaignPerson(
     val kind: PersonKind,
     val name: String,
     val description: String,
-    val sheet: FifthEditionSheet,
+    val sheet: PersonSheet,
     val overlayHitPoints: Int?,
     val overlayNotes: String,
     val createdAt: Instant,

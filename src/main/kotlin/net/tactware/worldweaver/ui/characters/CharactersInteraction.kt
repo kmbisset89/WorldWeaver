@@ -2,6 +2,8 @@ package net.tactware.worldweaver.ui.characters
 
 import net.tactware.worldweaver.domain.AbilityScoreMethod
 import net.tactware.worldweaver.domain.CompanionKind
+import net.tactware.worldweaver.domain.CreatureSize
+import net.tactware.worldweaver.domain.Pathfinder2ESkillRank
 import net.tactware.worldweaver.domain.PersonKind
 import net.tactware.worldweaver.domain.RelationshipType
 
@@ -10,9 +12,11 @@ internal sealed interface CharactersInteraction {
     data object RetrySelected : CharactersInteraction
     data object CreateWorldSelected : CharactersInteraction
     data object NewPersonSelected : CharactersInteraction
+    data object NewPlayerCharacterSelected : CharactersInteraction
     data object RandomNpcSelected : CharactersInteraction
     data class PersonSelected(val key: CharactersViewState.PersonKey) : CharactersInteraction
     data class PersonOpened(val key: CharactersViewState.PersonKey) : CharactersInteraction
+    data class SheetSelected(val key: CharactersViewState.PersonKey) : CharactersInteraction
     data class EditPersonSelected(val key: CharactersViewState.PersonKey) : CharactersInteraction
     data class DeletePersonSelected(val key: CharactersViewState.PersonKey) : CharactersInteraction
     data object DeleteConfirmed : CharactersInteraction
@@ -38,9 +42,15 @@ internal sealed interface CharactersInteraction {
     data class RelationshipTargetSelected(val key: CharactersViewState.PersonKey) : CharactersInteraction
     data class RelationshipTypeSelected(val type: RelationshipType) : CharactersInteraction
     data class RelationshipDescriptionChanged(val description: String) : CharactersInteraction
-    data class RelationshipFactionChanged(val factionLean: String) : CharactersInteraction
+    data class RelationshipFactionSelected(val factionId: String?) : CharactersInteraction
     data object RelationshipSaved : CharactersInteraction
     data class RelationshipDeleted(val relationshipId: String) : CharactersInteraction
+    data object MembershipEditorOpened : CharactersInteraction
+    data object MembershipEditorDismissed : CharactersInteraction
+    data class MembershipFactionSelected(val factionId: String?) : CharactersInteraction
+    data class MembershipRoleChanged(val role: String) : CharactersInteraction
+    data object MembershipSaved : CharactersInteraction
+    data class MembershipDeleted(val membershipId: String) : CharactersInteraction
     data class EditorMembershipSelected(val membership: PersonMembership) : CharactersInteraction
     data class EditorKindSelected(val kind: PersonKind) : CharactersInteraction
     data class EditorNameChanged(val name: String) : CharactersInteraction
@@ -62,6 +72,14 @@ internal sealed interface CharactersInteraction {
     data class EditorTemporaryHitPointsChanged(val value: String) : CharactersInteraction
     data class EditorArmorClassChanged(val value: String) : CharactersInteraction
     data class EditorWalkSpeedChanged(val value: String) : CharactersInteraction
+    data class EditorCreatureSizeSelected(val size: CreatureSize) : CharactersInteraction
+    data class EditorConcentratingSpellChanged(val value: String) : CharactersInteraction
+    data class EditorSkillProficiencyToggled(val name: String) : CharactersInteraction
+    data object EditorSpellSlotAdded : CharactersInteraction
+    data class EditorSpellSlotRemoved(val index: Int) : CharactersInteraction
+    data class EditorSpellSlotLevelChanged(val index: Int, val value: String) : CharactersInteraction
+    data class EditorSpellSlotMaximumChanged(val index: Int, val value: String) : CharactersInteraction
+    data class EditorSpellSlotUsedChanged(val index: Int, val value: String) : CharactersInteraction
     data class EditorDeathSuccessesChanged(val value: String) : CharactersInteraction
     data class EditorDeathFailuresChanged(val value: String) : CharactersInteraction
     data object EditorItemAdded : CharactersInteraction
@@ -139,4 +157,40 @@ internal sealed interface CharactersInteraction {
     data object WizardBackSelected : CharactersInteraction
     data object WizardSaved : CharactersInteraction
     data object WizardDismissed : CharactersInteraction
+    data object SrdMonsterImportOpened : CharactersInteraction
+    data object SrdMonsterImportDismissed : CharactersInteraction
+    data class SrdMonsterSelected(val name: String) : CharactersInteraction
+    data class PathfinderAncestryChanged(val ancestry: String) : CharactersInteraction
+    data class PathfinderHeritageChanged(val heritage: String) : CharactersInteraction
+    data class PathfinderBackgroundChanged(val background: String) : CharactersInteraction
+    data class PathfinderClassChanged(val className: String) : CharactersInteraction
+    data class PathfinderSubclassChanged(val subclass: String) : CharactersInteraction
+    data class PathfinderLevelChanged(val level: String) : CharactersInteraction
+    data class PathfinderPerceptionChanged(val value: String) : CharactersInteraction
+    data class PathfinderLandSpeedChanged(val value: String) : CharactersInteraction
+    data class PathfinderDyingChanged(val value: String) : CharactersInteraction
+    data class PathfinderWoundedChanged(val value: String) : CharactersInteraction
+    data object PathfinderSkillAdded : CharactersInteraction
+    data class PathfinderSkillRemoved(val index: Int) : CharactersInteraction
+    data class PathfinderSkillNameChanged(val index: Int, val name: String) : CharactersInteraction
+    data class PathfinderSkillRankChanged(
+        val index: Int,
+        val rank: Pathfinder2ESkillRank,
+    ) : CharactersInteraction
+    data object PathfinderFeatAdded : CharactersInteraction
+    data class PathfinderFeatRemoved(val index: Int) : CharactersInteraction
+    data class PathfinderFeatNameChanged(val index: Int, val name: String) : CharactersInteraction
+    data class PathfinderFeatTypeChanged(val index: Int, val type: String) : CharactersInteraction
+    data class PathfinderFeatDescriptionChanged(
+        val index: Int,
+        val description: String,
+    ) : CharactersInteraction
+    data object PathfinderSpellAdded : CharactersInteraction
+    data class PathfinderSpellRemoved(val index: Int) : CharactersInteraction
+    data class PathfinderSpellNameChanged(val index: Int, val name: String) : CharactersInteraction
+    data class PathfinderSpellRankChanged(val index: Int, val rank: String) : CharactersInteraction
+    data class PathfinderSpellPreparedChanged(
+        val index: Int,
+        val prepared: Boolean,
+    ) : CharactersInteraction
 }

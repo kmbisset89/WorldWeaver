@@ -3,6 +3,7 @@ package net.tactware.worldweaver.ui.dice
 import net.tactware.worldweaver.domain.DiceRollSource
 import net.tactware.worldweaver.domain.DiceRoller
 import net.tactware.worldweaver.domain.DieSides
+import net.tactware.worldweaver.domain.FakeActiveContextRepository
 import net.tactware.worldweaver.domain.RollMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -42,6 +43,37 @@ internal class DiceViewModelTest {
         assertEquals(1, state.history.size)
         assertEquals(0L, state.rollToken)
         assertNull(state.entryError)
+    }
+
+    @Test
+    fun historyIsKeyedToTheActiveSession() {
+        val context = FakeActiveContextRepository()
+        context.setActiveSessionId("session-a")
+        val faces = sequenceOf(17, 4).iterator()
+        val viewModel = DiceViewModel(
+            diceRoller = DiceRoller { _ -> faces.next() },
+            initialColorStyle = DiceColorStyle.BONE,
+            persistColorStyle = { },
+            persistAlwaysOnTop = { },
+            activeContextRepository = context,
+        )
+
+        viewModel.onInteraction(DiceInteraction.RollSelected)
+        assertEquals(listOf(17), content(viewModel).lastResult?.faces)
+
+        context.setActiveSessionId("session-b")
+        viewModel.onInteraction(DiceInteraction.ScreenStarted)
+        assertTrue(content(viewModel).history.isEmpty())
+        assertNull(content(viewModel).lastResult)
+
+        viewModel.onInteraction(DiceInteraction.RollSelected)
+        assertEquals(listOf(4), content(viewModel).lastResult?.faces)
+        assertEquals(1, content(viewModel).history.size)
+
+        context.setActiveSessionId("session-a")
+        viewModel.onInteraction(DiceInteraction.ScreenStarted)
+        assertEquals(listOf(17), content(viewModel).lastResult?.faces)
+        assertEquals(1, content(viewModel).history.size)
     }
 
     @Test
@@ -113,11 +145,59 @@ internal class DiceViewModelTest {
         assertEquals("2d", state.notationText)
     }
 
+    @Test
+    fun floatingOpenedAndClosedTogglesWindowFlag() {
+        val viewModel = viewModel(DiceRoller())
+
+        assertEquals(false, content(viewModel).isFloatingOpen)
+        viewModel.onInteraction(DiceInteraction.FloatingOpened)
+        assertEquals(true, content(viewModel).isFloatingOpen)
+        viewModel.onInteraction(DiceInteraction.FloatingClosed)
+        assertEquals(false, content(viewModel).isFloatingOpen)
+    }
+
+    @Test
+    fun alwaysOnTopTogglePersists() {
+        var persisted: Boolean? = null
+        val viewModel = DiceViewModel(
+            diceRoller = DiceRoller(),
+            initialColorStyle = DiceColorStyle.BONE,
+            persistColorStyle = { },
+            initialAlwaysOnTop = false,
+            persistAlwaysOnTop = { persisted = it },
+        )
+
+        viewModel.onInteraction(DiceInteraction.AlwaysOnTopToggled)
+
+        assertEquals(true, content(viewModel).isAlwaysOnTop)
+        assertEquals(true, persisted)
+
+        viewModel.onInteraction(DiceInteraction.AlwaysOnTopToggled)
+
+        assertEquals(false, content(viewModel).isAlwaysOnTop)
+        assertEquals(false, persisted)
+    }
+
+    @Test
+    fun initialAlwaysOnTopIsRestored() {
+        val viewModel = DiceViewModel(
+            diceRoller = DiceRoller(),
+            initialColorStyle = DiceColorStyle.BONE,
+            persistColorStyle = { },
+            initialAlwaysOnTop = true,
+            persistAlwaysOnTop = { },
+        )
+
+        assertEquals(true, content(viewModel).isAlwaysOnTop)
+        assertEquals(false, content(viewModel).isFloatingOpen)
+    }
+
     private fun viewModel(roller: DiceRoller): DiceViewModel {
         return DiceViewModel(
             diceRoller = roller,
             initialColorStyle = DiceColorStyle.BONE,
             persistColorStyle = { },
+            persistAlwaysOnTop = { },
         )
     }
 

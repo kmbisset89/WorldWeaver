@@ -14,6 +14,7 @@ import net.tactware.worldweaver.core.AppCoroutineScope
 import net.tactware.worldweaver.domain.ActiveContext
 import net.tactware.worldweaver.domain.CreateWorldUseCase
 import net.tactware.worldweaver.domain.DeleteWorldUseCase
+import net.tactware.worldweaver.domain.GameSystem
 import net.tactware.worldweaver.domain.ExportWorldBundleUseCase
 import net.tactware.worldweaver.domain.ImportWorldBundleUseCase
 import net.tactware.worldweaver.domain.ObserveActiveContextUseCase
@@ -52,6 +53,7 @@ internal class WorldsViewModel(
             WorldsInteraction.ScreenStarted -> Unit
             WorldsInteraction.RetrySelected -> observe()
             WorldsInteraction.NewWorldSelected -> openCreateEditor()
+            WorldsInteraction.OneShotSelected -> _effects.tryEmit(WorldsViewEffect.OpenOneShotWizard)
             is WorldsInteraction.WorldSelected -> selectWorld(interaction.worldId)
             is WorldsInteraction.EditWorldSelected -> openEditEditor(interaction.worldId)
             is WorldsInteraction.DeleteWorldSelected -> requestDelete(interaction.worldId)
@@ -62,6 +64,9 @@ internal class WorldsViewModel(
             }
             is WorldsInteraction.EditorDescriptionChanged -> updateEditor { editor ->
                 editor?.copy(description = interaction.description)
+            }
+            is WorldsInteraction.EditorGameSystemSelected -> updateEditor { editor ->
+                editor?.copy(defaultGameSystem = interaction.gameSystem)
             }
             WorldsInteraction.EditorSaved -> saveEditor()
             WorldsInteraction.EditorDismissed -> updateEditor { null }
@@ -141,6 +146,7 @@ internal class WorldsViewModel(
             worldId = world.id,
             name = world.name,
             description = world.description,
+            defaultGameSystem = world.defaultGameSystem,
             nameError = null,
         )
         when (val current = _state.value) {
@@ -198,9 +204,18 @@ internal class WorldsViewModel(
         }
         appScope.scope.launch {
             val invalidName = if (editor.worldId == null) {
-                createWorld(editor.name, editor.description) is CreateWorldUseCase.Result.InvalidName
+                createWorld(
+                    editor.name,
+                    editor.description,
+                    editor.defaultGameSystem,
+                ) is CreateWorldUseCase.Result.InvalidName
             } else {
-                updateWorld(editor.worldId, editor.name, editor.description) is
+                updateWorld(
+                    editor.worldId,
+                    editor.name,
+                    editor.description,
+                    editor.defaultGameSystem,
+                ) is
                     UpdateWorldUseCase.Result.InvalidName
             }
             if (invalidName) {
@@ -305,6 +320,7 @@ internal class WorldsViewModel(
             worldId = null,
             name = "",
             description = "",
+            defaultGameSystem = GameSystem.FifthEdition,
             nameError = null,
         )
     }

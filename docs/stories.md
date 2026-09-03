@@ -92,13 +92,13 @@ As a DM, I have an active World and optional active Campaign that all feature sc
 
 **Acceptance**
 
-- Active world id and optional active campaign id survive restart.
+- Active world id, optional active campaign id, and optional active session id survive restart.
 - Feature screens operate only on that context.
 - Clearing the active campaign does not clear the active world.
 
 **v1:** `AppSettings` stored the active campaign id.
 
-**Status:** Done — `active_world_id` and optional `active_campaign_id` in Preferences. Theme, skin, profile, and nav density share the same `net.tactware.worldweaver` node via `ShellSettingsStore`.
+**Status:** Done — `active_world_id`, optional `active_campaign_id`, and optional `active_session_id` in Preferences. Theme, skin, profile, and nav density share the same `net.tactware.worldweaver` node via `ShellSettingsStore`.
 
 ### WW-FND-04 Feature navigation
 
@@ -110,9 +110,9 @@ As a DM, I open Campaigns, Locations, Lore, Characters, Sessions, Encounters, an
 - Current destination is highlighted.
 - Destinations that are not built yet are not shown as working.
 
-**Today:** Home / Worlds / Campaigns / Locations / Lore / Characters / Quests / Sessions / Encounters / Maps / Dice / Settings (`Screen.kt`). Global search is shell chrome, not a destination. Later destinations stay hidden.
+**Today:** Home / Worlds / Campaigns / Locations / Lore / Calendar / Factions / Characters / Quests / Sessions / Encounters / Maps / Dice / Settings (`Screen.kt`). Home Continue opens `Screen.RUN` without a sidebar entry. Global search is shell chrome, not a destination. Later destinations stay hidden.
 
-**Status:** Partial — Dice is listed; remaining destinations stay hidden until they ship.
+**Status:** Partial — Run is a hidden destination opened from Home Continue; remaining destinations stay hidden until they ship.
 
 ### WW-FND-05 Empty and error states
 
@@ -194,6 +194,21 @@ As a DM, I export a world (setting, campaigns, children, and images) to a backup
 
 **Status:** Done — Worlds screen Export/Import; format version 1 zip with JSON + files.
 
+### WW-WLD-06 One-shot wizard
+
+As a DM, I create a playable one-shot by answering stepped questions (chips plus typed answers) so I can sit down and run tonight without filling every screen by hand.
+
+**Acceptance**
+
+- Home empty state and Worlds offer **Create a one-shot** without replacing blank **New world**.
+- Steps: identity, hook, places, people, conflict, table plan, review.
+- Choice chips fill empty fields only; typed answers are kept.
+- Finish creates a world, campaign, location tree, optional people/faction/lore, a quest, a session with scenes, and an optional planned encounter.
+- Active world, campaign, and session are set so Home Continue tonight can open.
+- Cancel discards the wizard without creating records.
+
+**Status:** Done — full-screen hidden destination; `CreateOneShotUseCase` composes existing create use cases.
+
 ### WW-CMP-01 Create campaign
 
 As a DM, I create a campaign inside the active world (name, description, notes, mechanics inherited or overridden).
@@ -246,6 +261,20 @@ As a DM, Home shows recent worlds and a continue-active-campaign card instead of
 - With worlds: show recent worlds and continue into the active campaign when one is set.
 
 **v1:** Dashboard counts were hardcoded.
+
+**Status:** Done — Continue tonight opens the run surface when a campaign is active (WW-HOME-03).
+
+### WW-HOME-03 Run cockpit
+
+As a DM, Home Continue opens tonight's run: party, objectives, calendar today, the active encounter, and a close-session recap, without a new sidebar destination.
+
+**Acceptance**
+
+- `Screen.RUN` is not listed in the sidebar. Home Continue navigates there; Home stays highlighted.
+- The cockpit is composed from the active session, campaign PCs, quests, calendar, and encounter.
+- Character peek reuses the existing sheet window. Player View and the dice tray reuse existing surfaces.
+
+**Status:** Done — `RunViewModel` / `RunScreen`; Home Continue is “Continue tonight”.
 
 ---
 
@@ -434,11 +463,11 @@ As a DM, I record who knows whom and faction lean.
 **Acceptance**
 
 - Relationships can point at world people or campaign PCs.
-- Faction lean can be a string until WW-FAC-01.
+- Faction lean is a first-class faction reference (WW-FAC-01).
 
 **v1:** `CharacterRelationship`.
 
-**Status:** Done — `person_relationships` can point at a world person or a campaign person; faction lean is a string.
+**Status:** Done — `person_relationships` can point at a world person or a campaign person; faction lean is a faction picker (WW-FAC-01).
 
 ### WW-CHR-05 Random NPC generator
 
@@ -470,7 +499,7 @@ As a DM, I pick race, class, subclass, and spells from static 5E reference data.
 
 **Acceptance**
 
-- Pickers use bundled reference data, not a live import.
+- Pickers use bundled reference data until an SRD catalog is imported (WW-SRD-01).
 - Live SRD import is WW-SRD-01.
 
 **Status:** Done — static race, class, subclass, and spell-name pickers; free text still allowed.
@@ -499,6 +528,33 @@ As a DM, I attach familiars and animal companions as linked NPC/Monster people s
 - Character detail lists companions; encounter editor can add a participant’s companions.
 
 **Status:** Done — `person_companions` links owner to companion people; encounter editor offers “Add companions”.
+
+### WW-CHR-10 Dedicated character sheet view
+
+As a DM, I open a table-ready character sheet from Characters or combat without leaving the tracker or replacing the dossier.
+
+**Acceptance**
+
+- 5E and PF2E share chrome (header, ability strip, vitals) and use system-specific bodies. PF2E is not a relabeled 5E sheet.
+- The sheet opens in a floating window. The Characters detail pane stays the dossier (relationships, factions, lore, overlay).
+- Combat offers **Sheet** on linked participants. Nameless groups show that they have no linked person.
+- Sheet HP is the person / overlay value, not the encounter snapshot. Mid-round damage stays on the tracker.
+- 5E death-save boxes write through the same campaign-person path as the combat console. PF2E dying / wounded write to the person sheet.
+- 5E skills include stored proficiency and the proficiency bonus when marked (WW-CHR-11).
+
+**Status:** Done — `CharacterSheetViewModel` window hosted from App; Open sheet on the dossier; Sheet on linked combatants.
+
+### WW-CHR-11 Combat peek
+
+As a DM, I store 5E skill proficiency, spell slots, and concentration, and see them on the sheet and tonight's party strip.
+
+**Acceptance**
+
+- Skill proficiency is persisted on the 5E sheet and added to the ability modifier when marked.
+- Spell slots (level, max, used) and concentrating spell persist and appear on the sheet peek and run cockpit.
+- Creature size is stored for board occupancy (WW-VTT-05).
+
+**Status:** Done — schema 19 sheet columns; editor toggles; sheet and cockpit display.
 
 ---
 
@@ -630,6 +686,30 @@ As a DM, I see active quests, last-session recap, and party location when I star
 - Missing pieces show as empty, not errors.
 
 **Status:** Done — derived checklist on session detail: active quests, previous notes, party location.
+
+### WW-SES-08 Active session
+
+As a DM, I set which session is tonight. Encounter outcomes, dice history, calendar today, and Player View bind to that session instead of guessing `max(updatedAt)`.
+
+**Acceptance**
+
+- Active session id is stored with active world/campaign context and round-trips through backup.
+- Creating or selecting a session makes it active. Ending an encounter appends to the active session when it belongs to the campaign.
+- Dice history is keyed by session id.
+
+**Status:** Done — `active_session_id` prefs; `SetActiveSessionUseCase`; run cockpit calendar chip and player view.
+
+### WW-SES-09 Session-close what-changed
+
+As a DM, I close tonight and get an automatic list of what happened, plus an optional two-sentence “why it matters next week.”
+
+**Acceptance**
+
+- Close writes a recap from date stamp, ended encounter outcomes, active quest counts, and party location.
+- Optional why-it-matters text is appended. Recap shows on the cockpit and session detail.
+- There is no chronicle sidebar destination.
+
+**Status:** Done — `CloseSessionUseCase` from the run cockpit Close session button.
 
 ---
 
@@ -850,6 +930,20 @@ As a DM, I roll dice that look like the ones on the table, pick a color, type a 
 
 **Status:** Done
 
+### WW-DICE-04 Floating dice tray
+
+As a DM, I pop the dice tray into a floating window I can keep above the table, and the tray itself presents the last roll as the center of the screen.
+
+**Acceptance**
+
+- The sidebar Dice screen stays available and has Pop out / Close window.
+- Pop out opens a second OS window that shares the same roller, history, and color.
+- The floating window has an Always on top toggle that persists across restart.
+- Closing the window does not clear history or the last roll.
+- Both surfaces use the same tray: hero last-roll stage, die picker, grouped controls, and history rows.
+
+**Status:** Done
+
 ### WW-SRCH-01 Global search
 
 As a DM, I search across worlds, campaigns, locations, lore, characters, quests, and sessions.
@@ -1059,15 +1153,66 @@ As a DM, I keep a world calendar and stamp an in-world date on sessions.
 
 As a DM, I manage factions as first-class world entities, not only a field on a character.
 
+**Acceptance**
+
+- Factions are world-owned (`worldId`); list, create, edit, and delete them on a Factions screen for the active world.
+- Required unique name (trimmed, case-insensitive per world); optional description, goals, and notes.
+- A world person or campaign person can belong to one or more factions in that world, with an optional role and notes.
+- Memberships and relationship leans may only point at a faction whose world matches the person’s world. Adding a world NPC to a campaign does not copy memberships.
+- Relationship editor replaces free-text faction lean with an optional faction picker (`factionId`).
+- Delete requires confirm and is blocked while any membership or relationship references the faction.
+- Deleting a person removes that person’s memberships.
+- Survives restart, world-bundle export/import (old bundles get an empty faction list; leftover `factionLean` strings become factions by name), and app backup.
+- Sidebar entry appears only when the screen ships (WW-FND-04). Global search includes faction name and description.
+
+**Status:** Done — Factions screen CRUD; person memberships; relationship picker; schema 17.
+
+#### WW-LNK-01 Relationship web
+
+As a DM, I see people and factions as a node-link chart so I can follow who is connected.
+
+**Acceptance**
+
+- Links is a sidebar screen for the active world. Campaign people appear when a campaign is active.
+- Nodes are people and factions. Edges are person relationships (typed) and faction memberships (role).
+- Edges whose endpoints are outside the current snapshot are omitted.
+- Unlinked people and factions are hidden by default and can be shown.
+- Relationship types and membership edges can be filtered. Name search highlights matching nodes.
+- Click a node to inspect its links. Open jumps to Characters or Factions.
+- Pan and zoom the chart. No new persistence.
+
+**Status:** Done — Compose Canvas cluster layout; `ObserveRelationshipWebUseCase` over existing relationship and membership data.
+
 ### Rules and content
 
 #### WW-SRD-01 Import 5E SRD
 
 As a DM, I import 5E SRD reference data (races, classes, spells, monsters) instead of relying only on bundled pickers.
 
+**Acceptance**
+
+- The catalog is app-owned (not world-owned) and is not part of a `.wwbundle`.
+- Settings can import the bundled SRD, import the same JSON from a file, or clear the import and revert to bundled pickers.
+- Character race, class, subclass, and spell pickers merge imported lists with the bundled fallback. Free text still works.
+- Imported monsters can be added to the active world’s library (name, HP, AC, walk speed).
+- The imported catalog lives under `~/.worldweaver/srd/` and is included in app backup/restore.
+
+**Status:** Done — Settings import/clear; pickers merge imported lists; SRD monsters seed the world library; catalog is app-owned and backed up.
+
 #### WW-SYS-01 Pathfinder 2E sheets
 
 As a DM, I use PF2E character sheets that are not a 5E skin.
+
+**Acceptance**
+
+- A campaign picks 5E or PF2E. New campaigns default to the world’s system and can override it. The world editor can set that default (5E unless changed).
+- Only 5E and PF2E appear in those pickers. Other systems stay hidden until they have their own slice (WW-SYS-02).
+- New world-library people get the world’s sheet type. New campaign people get the campaign’s sheet type (world default if the campaign has none stored).
+- Changing a world or campaign system does not convert existing people. Edit and display the sheet they already have.
+- A PF2E person uses a PF2E sheet (ancestry, heritage, background, class, attributes, HP/AC, Perception, speed, skills, feats, spells, dying/wounded) — not relabeled 5E fields.
+- 5E SRD pickers and Add SRD monster stay on 5E people only. Random NPC stays 5E-only.
+
+**Status:** Done — campaign/world 5E–PF2E pickers; `PersonSheet` with a real PF2E model and editor; schema 18 `sheetSystem`/`pf2ePayload`; existing people stay on the sheet they already have.
 
 **v1:** Declared PF2E; UI was incomplete.
 
@@ -1135,6 +1280,30 @@ As a DM, I hide or reveal people on the player window and show combat status on 
 - Restarting the app keeps hide/show.
 - Closing Player View does not quit the app.
 
+#### WW-VTT-05 Token footprint
+
+As a DM, a Large (or bigger) creature occupies N×N cells, and walk range treats those cells as occupied.
+
+**Acceptance**
+
+- Creature size is stored on the person sheet (default Medium).
+- Occupied cells are origin plus span-1 in column and row.
+- Placing a token rejects a footprint that leaves the map.
+
+**Status:** Done — `CreatureSize` occupancy on Maps and the combat board; token overlay scales with span.
+
+#### WW-VTT-06 Blocked and difficult cells
+
+As a DM, I paint blocked and difficult terrain; walk dots pay extra for difficult cells and cannot enter blocked or occupied cells. The measure tape does not start or end on blocked cells.
+
+**Acceptance**
+
+- Blocked and difficult cells persist on the battle map and survive restart.
+- Walk uses 8-direction BFS: blocked/occupied are impassable; difficult costs 2 squares.
+- Terrain paint chips live on Maps (Blocked / Difficult / Clear).
+
+**Status:** Done — `blockedCells` / `difficultCells` on schema 19; Maps terrain paint.
+
 ### Identity and multiplayer
 
 #### WW-ID-01 Real account
@@ -1173,6 +1342,13 @@ As a DM on a phone, I navigate without a desktop sidebar.
 
 As a DM, schema upgrades keep my data.
 
+**Acceptance**
+
+- A schema-16 database with `factionLean` relationships migrates to schema 18: factions, `factionId`, and default `sheetSystem` / `pf2ePayload`.
+- Restore refuses a backup whose `dbSchemaVersion` is newer than the app. Older schemas restore and migrate on next open.
+
+**Status:** Done — `Schema16To18MigrationTest`; restore gates `dbSchemaVersion` in `AppBackupArchiveConverter`.
+
 #### WW-QA-02 Ownership tests
 
 As a developer, use-case tests cover world/campaign ownership and cascade rules.
@@ -1180,6 +1356,12 @@ As a developer, use-case tests cover world/campaign ownership and cascade rules.
 #### WW-QA-03 No orphan caches
 
 As a developer, there is no leftover in-memory service beside the database of record.
+
+**Acceptance**
+
+- Delete world removes world-person avatars and voices, and location voice sidecars.
+
+**Status:** Done — `DeleteWorldUseCase` deletes location voice files; world-person sidecars go through `DeleteWorldPersonUseCase`.
 
 **v1:** `LocationService` still had hardcoded sample locations after Room was the real path.
 
@@ -1211,11 +1393,13 @@ As a DM, I import an old `~/.worldweaver/worldweaver.db` into the new World/Camp
 | WW-WLD-03 | 1 | Edit world details | World | Done |
 | WW-WLD-04 | 1 | Delete world | World | Done |
 | WW-WLD-05 | 1 | Export and import world bundle | World | Done |
+| WW-WLD-06 | 1 | One-shot wizard | World | Done |
 | WW-CMP-01 | 1 | Create campaign | Campaign | Done |
 | WW-CMP-02 | 1 | List campaigns / set active | Campaign | Done |
 | WW-CMP-03 | 1 | Edit / archive / complete / delete campaign | Campaign | Done |
 | WW-CMP-04 | 1 | Campaign overview | Campaign | Done |
 | WW-HOME-01 | 1 | Home continue card | App | Done |
+| WW-HOME-03 | 1 | Run cockpit | App | Done |
 | WW-LOC-01 | 2 | Create location | World | Done |
 | WW-LOC-02 | 2 | Browse as a tree | World | Done |
 | WW-LOC-03 | 2 | Edit location metadata | World | Done |
@@ -1236,6 +1420,8 @@ As a DM, I import an old `~/.worldweaver/worldweaver.db` into the new World/Camp
 | WW-CHR-07 | 4 | 5E SRD pickers (static) | World | Done |
 | WW-CHR-08 | 4 | Character creation wizard | Both | Done |
 | WW-CHR-09 | 4 | Familiars and animal companions | Both | Done |
+| WW-CHR-10 | 4 | Dedicated character sheet view | Both | Done |
+| WW-CHR-11 | 4 | 5E skill proficiency / slots / concentration | Campaign | Done |
 | WW-QST-01 | 5 | Create quest | Campaign | Done |
 | WW-QST-02 | 5 | Objectives | Campaign | Done |
 | WW-QST-03 | 5 | Active and completed quests | Campaign | Done |
@@ -1247,6 +1433,8 @@ As a DM, I import an old `~/.worldweaver/worldweaver.db` into the new World/Camp
 | WW-SES-05 | 6 | Party march order | Campaign | Done |
 | WW-SES-06 | 6 | Save NPC drafts from session | Both | Done |
 | WW-SES-07 | 6 | Start-of-session checklist | Campaign | Done |
+| WW-SES-08 | 6 | Active session | Campaign | Done |
+| WW-SES-09 | 6 | Session-close what-changed | Campaign | Done |
 | WW-ENC-01 | 7 | Encounter CRUD | Campaign | Done |
 | WW-ENC-02 | 7 | Add participants | Campaign | Done |
 | WW-ENC-03 | 7 | Initiative | Campaign | Done |
@@ -1264,6 +1452,7 @@ As a DM, I import an old `~/.worldweaver/worldweaver.db` into the new World/Camp
 | WW-DICE-01 | 8 | Standalone dice roller | App | Done |
 | WW-DICE-02 | 8 | Shared roller | App | Done |
 | WW-DICE-03 | 8 | Physical feel and table entry | App | Done |
+| WW-DICE-04 | 8 | Floating dice tray | App | Done |
 | WW-SRCH-01 | 8 | Global search | App | Done |
 | WW-MAP-01 | 8 | Import battle map | Campaign | Done |
 | WW-MAP-02 | 8 | Attach map to encounter | Campaign | Done |
@@ -1279,21 +1468,24 @@ As a DM, I import an old `~/.worldweaver/worldweaver.db` into the new World/Camp
 | WW-SET-06 | 9 | Notifications | App | Done |
 | WW-VOC-01 | 10 | Voice clips | World | Done |
 | WW-CAL-01 | 10 | World calendar | World | Done |
-| WW-FAC-01 | 10 | Factions | World | Not started |
-| WW-SRD-01 | 10 | Import 5E SRD | App | Not started |
-| WW-SYS-01 | 10 | Pathfinder 2E sheets | Campaign | Not started |
+| WW-FAC-01 | 10 | Factions | World | Done |
+| WW-LNK-01 | 10 | Relationship web | Both | Done |
+| WW-SRD-01 | 10 | Import 5E SRD | App | Done |
+| WW-SYS-01 | 10 | Pathfinder 2E sheets | Campaign | Done |
 | WW-SYS-02 | 10 | Other game systems | App | Not started |
 | WW-VTT-01 | 10 | Tokens | Campaign | Done |
 | WW-VTT-02 | 10 | Fog of war | Campaign | Done |
 | WW-VTT-03 | 10 | Measure and range | Campaign | Done |
 | WW-VTT-04 | 10 | Token visibility and status | Campaign | Done |
+| WW-VTT-05 | 10 | Token footprint / size | Campaign | Done |
+| WW-VTT-06 | 10 | Blocked and difficult cells | Campaign | Done |
 | WW-ID-01 | 10 | Real account | App | Not started |
 | WW-MP-01 | 10 | Player invite | Campaign | Not started |
 | WW-MP-02 | 10 | Live table | Campaign | Not started |
 | WW-MP-03 | 10 | Player sheet | Campaign | Not started |
 | WW-AND-01 | 10 | Android target | App | Not started |
 | WW-AND-02 | 10 | Mobile navigation | App | Not started |
-| WW-QA-01 | 10 | Migrations | App | Not started |
+| WW-QA-01 | 10 | Migrations | App | Done |
 | WW-QA-02 | 10 | Ownership tests | App | Not started |
-| WW-QA-03 | 10 | No orphan caches | App | Not started |
+| WW-QA-03 | 10 | No orphan caches | App | Done |
 | WW-MIG-01 | 10 | Import TactWare database | App | Not started |

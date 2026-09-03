@@ -1,10 +1,13 @@
 package net.tactware.worldweaver.ui.worlds
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,7 +49,19 @@ internal fun WorldEditorDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Game system: ${GameSystem.FifthEdition.displayName}")
+                Text("Game system")
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GameSystem.entries.forEach { system ->
+                        FilterChip(
+                            selected = editor.defaultGameSystem == system,
+                            onClick = {
+                                onInteraction(WorldsInteraction.EditorGameSystemSelected(system))
+                            },
+                            label = { Text(system.displayName) },
+                        )
+                    }
+                }
             }
         },
         confirmButton = {

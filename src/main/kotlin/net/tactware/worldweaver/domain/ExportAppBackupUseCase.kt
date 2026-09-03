@@ -41,6 +41,7 @@ internal class ExportAppBackupUseCase(
                 prefs = AppBackupPrefs(
                     activeWorldId = context.activeWorldId,
                     activeCampaignId = context.activeCampaignId,
+                    activeSessionId = context.activeSessionId,
                     displayName = settings.displayName,
                     email = settings.email,
                     themeMode = settings.themeMode.name,
@@ -52,6 +53,7 @@ internal class ExportAppBackupUseCase(
                 avatarsDir = dataDirectory.avatarsDir,
                 mapsDir = dataDirectory.mapsDir,
                 voicesDir = dataDirectory.voicesDir,
+                srdDir = dataDirectory.srdDir,
             )
             Result.Written
         } catch (error: Exception) {

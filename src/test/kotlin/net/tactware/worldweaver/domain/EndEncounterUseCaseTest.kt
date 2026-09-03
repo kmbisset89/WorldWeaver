@@ -45,11 +45,34 @@ internal class EndEncounterUseCaseTest {
         assertEquals("Victory.", harness.encounters.getById("enc-1")!!.outcomeNote)
     }
 
+    @Test
+    fun endAppendsOutcomeToActiveSessionEvenIfAnotherIsNewer() = runTest {
+        val harness = Harness()
+        harness.insertEncounter("enc-1")
+        harness.insertSession(
+            id = "tonight",
+            notes = "Tonight.",
+            updatedAt = Instant.parse("2026-08-28T12:00:00Z"),
+        )
+        harness.insertSession(
+            id = "newer",
+            notes = "Later edit.",
+            updatedAt = Instant.parse("2026-08-29T10:00:00Z"),
+        )
+        harness.context.setActiveSessionId("tonight")
+
+        harness.endEncounter("enc-1", "Victory.")
+
+        assertEquals("Tonight.\n\nEncounter: Ambush\nVictory.", harness.sessions.getById("tonight")!!.notes)
+        assertEquals("Later edit.", harness.sessions.getById("newer")!!.notes)
+    }
+
     private class Harness {
         val encounters = FakeEncounterRepository()
         val sessions = FakeSessionRepository()
+        val context = FakeActiveContextRepository()
         private val instant = InstantProvider { Instant.parse("2026-08-29T12:00:00Z") }
-        val endEncounter = EndEncounterUseCase(encounters, sessions, instant)
+        val endEncounter = EndEncounterUseCase(encounters, sessions, context, instant)
 
         suspend fun insertEncounter(id: String) {
             val now = Instant.parse("2026-08-29T12:00:00Z")

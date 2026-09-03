@@ -17,5 +17,10 @@ internal data class BattleMapBoardSnapshot(
     val measureDistance: GridDistance?,
     val fogPaintEnabled: Boolean,
     val fogRevealBrush: Boolean,
+    val terrainPaint: TerrainPaintKind?,
+    val itemDropEnabled: Boolean,
+    val itemNameText: String,
+    val selectedItemId: String?,
+    val selectedItemName: String?,
     val playerViewOpen: Boolean,
 )

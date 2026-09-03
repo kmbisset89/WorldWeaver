@@ -59,6 +59,7 @@ internal class CreateSessionUseCaseTest {
         assertEquals("Arrival", created.session.scenes[0].title)
         assertEquals("Bram", created.session.marchOrder.single().displayName)
         assertEquals(PersonRef.Campaign("pc-1"), created.session.marchOrder.single().person)
+        assertEquals(created.session.id, harness.context.get().activeSessionId)
     }
 
     @Test

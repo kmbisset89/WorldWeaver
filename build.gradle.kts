@@ -11,6 +11,9 @@ plugins {
 group = "net.tactware.worldweaver"
 version = "1.0.0"
 
+val appPublisher = "Kerry Bisset"
+val appHomepage = "https://github.com/kmbisset89/WorldWeaver"
+
 repositories {
     google()
     mavenCentral()
@@ -44,18 +47,30 @@ compose.desktop {
         mainClass = "net.tactware.worldweaver.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "WorldWeaver"
             packageVersion = "1.0.0"
-            description = "World Weaver desktop"
-            vendor = "TactWare"
+            description = "World Weaver — tabletop campaign manager ($appHomepage)"
+            vendor = appPublisher
+            copyright = "Copyright © ${java.time.Year.now()} $appPublisher"
+            licenseFile.set(project.file("LICENSE"))
 
             windows {
                 menuGroup = "World Weaver"
             }
 
             macOS {
-                bundleID = "net.tactware.worldweaver"
+                bundleID = "io.github.kmbisset89.worldweaver"
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>NSHumanReadableCopyright</key>
+                        <string>Copyright © ${java.time.Year.now()} $appPublisher</string>
+                    """.trimIndent()
+                }
+            }
+
+            linux {
+                debMaintainer = "$appPublisher <kmbisset89@users.noreply.github.com>"
             }
         }
     }

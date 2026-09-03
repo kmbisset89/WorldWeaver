@@ -27,6 +27,7 @@ import net.tactware.worldweaver.ui.theme.TextSecondary
 @Composable
 internal fun CampaignOverviewPane(
     campaign: Campaign,
+    worldDefaultGameSystem: GameSystem,
     partyMembers: List<CampaignsViewState.PartyMember>,
     activeQuests: List<CampaignsViewState.OverviewQuest>,
     lastSession: CampaignsViewState.OverviewSession?,
@@ -48,7 +49,7 @@ internal fun CampaignOverviewPane(
         )
         Text(
             text = "${CampaignsViewState.statusLabel(campaign.status)} · " +
-                (campaign.gameSystem ?: GameSystem.FifthEdition).displayName,
+                campaign.resolvedGameSystem(worldDefaultGameSystem).displayName,
             fontSize = 13.sp,
             color = TextSecondary
         )
@@ -170,8 +171,17 @@ private fun PartySection(
                     }
                 }
             }
-            TextButton(onClick = { onInteraction(CampaignsInteraction.OpenCharactersSelected) }) {
-                Text("Open Characters")
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(
+                    onClick = {
+                        onInteraction(CampaignsInteraction.CreatePlayerCharacterSelected)
+                    }
+                ) {
+                    Text("Add PC")
+                }
+                TextButton(onClick = { onInteraction(CampaignsInteraction.OpenCharactersSelected) }) {
+                    Text("Open Characters")
+                }
             }
         }
     }

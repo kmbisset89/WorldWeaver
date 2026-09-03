@@ -16,6 +16,10 @@ import net.tactware.worldweaver.domain.Campaign
 import net.tactware.worldweaver.domain.CampaignStatus
 import net.tactware.worldweaver.domain.CreateCampaignUseCase
 import net.tactware.worldweaver.domain.DeleteCampaignUseCase
+import net.tactware.worldweaver.domain.FifthEditionSheet
+import net.tactware.worldweaver.domain.GameSystem
+import net.tactware.worldweaver.domain.Pathfinder2ESheet
+import net.tactware.worldweaver.domain.PersonSheet
 import net.tactware.worldweaver.domain.CampaignPerson
 import net.tactware.worldweaver.domain.Location
 import net.tactware.worldweaver.domain.LocationOverlay
@@ -64,6 +68,7 @@ internal class CampaignsViewModel(
     private var observeJob: Job? = null
     private var showRetired = false
     private var openCreateOnNextLoad = false
+    private var latestWorldDefault = GameSystem.FifthEdition
 
     init {
         observe()
@@ -104,10 +109,16 @@ internal class CampaignsViewModel(
             is CampaignsInteraction.EditorNotesChanged -> updateEditor { editor ->
                 editor?.copy(notes = interaction.notes)
             }
+            is CampaignsInteraction.EditorGameSystemSelected -> updateEditor { editor ->
+                editor?.copy(gameSystem = interaction.gameSystem)
+            }
             CampaignsInteraction.EditorSaved -> saveEditor()
             CampaignsInteraction.EditorDismissed -> updateEditor { null }
             CampaignsInteraction.OpenCharactersSelected -> {
                 _effects.tryEmit(CampaignsViewEffect.OpenCharacters)
+            }
+            CampaignsInteraction.CreatePlayerCharacterSelected -> {
+                createPlayerCharacter()
             }
             CampaignsInteraction.OpenQuestsSelected -> {
                 _effects.tryEmit(CampaignsViewEffect.OpenQuests)
@@ -170,6 +181,7 @@ internal class CampaignsViewModel(
             _state.value = CampaignsViewState.NoActiveWorld
             return
         }
+        latestWorldDefault = world.defaultGameSystem
         val current = _state.value
         val editor = if (openCreateOnNextLoad) {
             openCreateOnNextLoad = false
@@ -180,6 +192,7 @@ internal class CampaignsViewModel(
         if (campaigns.isEmpty()) {
             _state.value = CampaignsViewState.Empty(
                 worldName = world.name,
+                worldDefaultGameSystem = world.defaultGameSystem,
                 editor = editor,
             )
             return
@@ -187,6 +200,7 @@ internal class CampaignsViewModel(
         val selected = details.campaign ?: campaigns.firstOrNull { it.status == CampaignStatus.Active }
         _state.value = CampaignsViewState.Content(
             worldName = world.name,
+            worldDefaultGameSystem = world.defaultGameSystem,
             campaigns = campaigns,
             selectedCampaign = selected,
             showRetired = showRetired,
@@ -225,6 +239,7 @@ internal class CampaignsViewModel(
             name = campaign.name,
             description = campaign.description,
             notes = campaign.notes,
+            gameSystem = campaign.resolvedGameSystem(latestWorldDefault),
             nameError = null,
         )
         when (val current = _state.value) {
@@ -245,6 +260,20 @@ internal class CampaignsViewModel(
         appScope.scope.launch {
             setActiveCampaign(campaignId)
         }
+    }
+
+    private fun createPlayerCharacter() {
+        val campaignId = selectedCampaignId()
+        appScope.scope.launch {
+            if (campaignId != null) {
+                setActiveCampaign(campaignId)
+            }
+            _effects.tryEmit(CampaignsViewEffect.CreatePlayerCharacter)
+        }
+    }
+
+    private fun selectedCampaignId(): String? {
+        return (_state.value as? CampaignsViewState.Content)?.selectedCampaign?.id
     }
 
     private fun requestDelete(campaignId: String) {
@@ -284,7 +313,12 @@ internal class CampaignsViewModel(
         }
         appScope.scope.launch {
             val invalidName = if (editor.campaignId == null) {
-                createCampaign(editor.name, editor.description, editor.notes) is
+                createCampaign(
+                    editor.name,
+                    editor.description,
+                    editor.notes,
+                    editor.gameSystem,
+                ) is
                     CreateCampaignUseCase.Result.InvalidName
             } else {
                 updateCampaign(
@@ -292,6 +326,7 @@ internal class CampaignsViewModel(
                     editor.name,
                     editor.description,
                     editor.notes,
+                    editor.gameSystem,
                 ) is UpdateCampaignUseCase.Result.InvalidName
             }
             if (invalidName) {
@@ -333,6 +368,7 @@ internal class CampaignsViewModel(
             name = "",
             description = "",
             notes = "",
+            gameSystem = latestWorldDefault,
             nameError = null,
         )
     }
@@ -349,6 +385,28 @@ internal class CampaignsViewModel(
         return (state as? CampaignsViewState.Content)?.pendingDelete
     }
 
+    private fun partyClassLabel(sheet: PersonSheet): String {
+        return when (sheet) {
+            is FifthEditionSheet -> {
+                if (sheet.classLevels.isEmpty()) {
+                    "Level ${sheet.totalLevel()}"
+                } else {
+                    sheet.classLevels.joinToString(", ") { level ->
+                        "${level.className} ${level.level}"
+                    }
+                }
+            }
+            is Pathfinder2ESheet -> {
+                val className = sheet.className.takeIf { it.isNotBlank() } ?: "Level ${sheet.level}"
+                if (sheet.className.isBlank()) {
+                    className
+                } else {
+                    "$className ${sheet.level}"
+                }
+            }
+        }
+    }
+
     private fun partyMembers(
         campaignPeople: List<CampaignPerson>,
     ): List<CampaignsViewState.PartyMember> {
@@ -356,19 +414,12 @@ internal class CampaignsViewModel(
             .filter { it.kind == PersonKind.PlayerCharacter }
             .sortedBy { it.name.lowercase() }
             .map { person ->
-                val classes = if (person.sheet.classLevels.isEmpty()) {
-                    "Level ${person.sheet.totalLevel()}"
-                } else {
-                    person.sheet.classLevels.joinToString(", ") { level ->
-                        "${level.className} ${level.level}"
-                    }
-                }
                 CampaignsViewState.PartyMember(
                     id = person.id,
                     name = person.name,
                     summary = listOfNotNull(
-                        person.sheet.race.takeIf { it.isNotBlank() },
-                        classes,
+                        person.sheet.lineageLabel().takeIf { it.isNotBlank() },
+                        partyClassLabel(person.sheet),
                     ).joinToString(" · "),
                 )
             }

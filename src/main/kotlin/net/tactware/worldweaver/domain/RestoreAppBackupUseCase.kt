@@ -59,6 +59,10 @@ internal class RestoreAppBackupUseCase(
                 dest = dataDirectory.voicesDir,
                 source = File(archive.extractedDataDir, WorldWeaverDataDirectory.VOICES_DIR_NAME),
             )
+            replaceDirectory(
+                dest = dataDirectory.srdDir,
+                source = File(archive.extractedDataDir, WorldWeaverDataDirectory.SRD_DIR_NAME),
+            )
             applyPrefs(archive.prefs)
             Result.Restored
         } catch (error: Exception) {
@@ -71,6 +75,7 @@ internal class RestoreAppBackupUseCase(
     private fun applyPrefs(prefs: AppBackupPrefs) {
         activeContextRepository.setActiveWorldId(prefs.activeWorldId)
         activeContextRepository.setActiveCampaignId(prefs.activeCampaignId)
+        activeContextRepository.setActiveSessionId(prefs.activeSessionId)
         shellSettingsStore.setThemeMode(parseThemeMode(prefs.themeMode))
         shellSettingsStore.setThemeSkin(parseThemeSkin(prefs.themeSkin))
         shellSettingsStore.setNavExpanded(prefs.navExpanded)

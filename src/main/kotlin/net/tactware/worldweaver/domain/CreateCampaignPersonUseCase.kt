@@ -5,6 +5,7 @@ internal class CreateCampaignPersonUseCase(
     private val activeContextRepository: ActiveContextRepository,
     private val entityIdFactory: EntityIdFactory,
     private val instantProvider: InstantProvider,
+    private val sheetFactory: PersonSheetFactory = PersonSheetFactory(),
 ) {
     sealed interface Result {
         data class Created(val person: CampaignPerson) : Result
@@ -32,10 +33,7 @@ internal class CreateCampaignPersonUseCase(
             kind = draft.kind,
             name = name,
             description = draft.description.trim(),
-            sheet = draft.sheet.copy(
-                race = draft.sheet.race.trim(),
-                notes = draft.sheet.notes.trim(),
-            ),
+            sheet = sheetFactory.sanitize(draft.sheet),
             overlayHitPoints = draft.overlayHitPoints,
             overlayNotes = draft.overlayNotes.trim(),
             createdAt = now,
@@ -45,11 +43,17 @@ internal class CreateCampaignPersonUseCase(
         return Result.Created(person)
     }
 
-    private fun classLevelsMatch(sheet: FifthEditionSheet): Boolean {
-        val classLevels = sheet.classLevels.filter { it.className.isNotBlank() }
-        if (classLevels.isEmpty()) {
-            return true
+    private fun classLevelsMatch(sheet: PersonSheet): Boolean {
+        return when (sheet) {
+            is FifthEditionSheet -> {
+                val classLevels = sheet.classLevels.filter { it.className.isNotBlank() }
+                if (classLevels.isEmpty()) {
+                    true
+                } else {
+                    classLevels.sumOf { it.level } == sheet.totalLevel()
+                }
+            }
+            is Pathfinder2ESheet -> true
         }
-        return classLevels.sumOf { it.level } == sheet.totalLevel()
     }
 }

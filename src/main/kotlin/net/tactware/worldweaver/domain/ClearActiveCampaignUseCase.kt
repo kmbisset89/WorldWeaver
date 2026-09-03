@@ -5,5 +5,6 @@ internal class ClearActiveCampaignUseCase(
 ) {
     operator fun invoke() {
         activeContextRepository.setActiveCampaignId(null)
+        activeContextRepository.setActiveSessionId(null)
     }
 }

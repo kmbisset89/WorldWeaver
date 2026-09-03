@@ -41,7 +41,7 @@ internal class CreateBattleMapSituationUseCase(
             id = entityIdFactory.create(),
             battleMapId = battleMap.id,
             name = trimmedName,
-            visible = true,
+            visible = draft.visible,
             sortIndex = sortIndex,
             createdAt = now,
             updatedAt = now,

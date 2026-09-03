@@ -17,6 +17,7 @@ internal class CreateCampaignUseCase(
         name: String,
         description: String,
         notes: String,
+        gameSystem: GameSystem,
     ): Result {
         val worldId = activeContextRepository.get().activeWorldId ?: return Result.NoActiveWorld
         val trimmedName = name.trim()
@@ -30,7 +31,7 @@ internal class CreateCampaignUseCase(
             name = trimmedName,
             description = description.trim(),
             notes = notes.trim(),
-            gameSystem = null,
+            gameSystem = gameSystem,
             status = CampaignStatus.Active,
             createdAt = now,
             updatedAt = now,

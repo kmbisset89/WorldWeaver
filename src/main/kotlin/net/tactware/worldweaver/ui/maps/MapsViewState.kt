@@ -20,6 +20,7 @@ internal sealed class MapsViewState {
     data class Empty(
         val worldName: String,
         val campaignName: String,
+        val starterCatalogAvailable: Boolean,
     ) : MapsViewState()
 
     data class Content(
@@ -41,10 +42,31 @@ internal sealed class MapsViewState {
         val measureDistance: GridDistance?,
         val fogPaintEnabled: Boolean,
         val fogRevealBrush: Boolean,
+        val terrainPaint: TerrainPaintKind?,
+        val itemDropEnabled: Boolean,
+        val itemNameText: String,
+        val selectedItemId: String?,
+        val selectedItemName: String?,
         val tokens: List<BattleMapBoardToken>,
         val selectedTokenName: String?,
         val unplacedTokenCount: Int,
+        val starterCatalogAvailable: Boolean,
     ) : MapsViewState()
+
+    data class StarterCatalog(
+        val worldName: String,
+        val campaignName: String,
+        val entries: List<StarterCatalogEntry>,
+        val importingId: String?,
+        val error: String?,
+    ) : MapsViewState()
+
+    data class StarterCatalogEntry(
+        val id: String,
+        val name: String,
+        val detail: String,
+        val alreadyAdded: Boolean,
+    )
 
     data class Maker(
         val worldName: String,
@@ -64,6 +86,8 @@ internal sealed class MapsViewState {
         val scalePercentText: String,
         val showGrid: Boolean,
         val showRenderTiles: Boolean,
+        val sceneryText: String,
+        val imagePrompt: String,
         val nameError: String?,
         val imageError: String?,
         val gridError: String?,

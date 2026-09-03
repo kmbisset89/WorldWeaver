@@ -37,6 +37,8 @@ internal class DemoWorldBundleFactory(
             campaigns = listOf(campaign),
             locations = locations,
             loreEntries = loreEntries,
+            factions = factions(world.id),
+            memberships = memberships(worldPeople, campaignPeople),
             worldPeople = worldPeople,
             campaignPeople = campaignPeople,
             locationOverlays = locationOverlays,
@@ -708,7 +710,7 @@ internal class DemoWorldBundleFactory(
         kind: PersonKind,
         name: String,
         description: String,
-        sheet: FifthEditionSheet,
+        sheet: PersonSheet,
         overlayHitPoints: Int?,
         overlayNotes: String,
         worldPersonId: String? = null,
@@ -1311,7 +1313,7 @@ internal class DemoWorldBundleFactory(
                 to = PersonRef.World(vessa.id),
                 type = RelationshipType.Sibling,
                 description = "Iria came to Duskhaven for Vessa. She will take the satchel second.",
-                factionLean = "Salt Law",
+                factionId = "fac-salt-law",
             ),
             PersonRelationship(
                 id = "rel-jor-nim",
@@ -1319,7 +1321,7 @@ internal class DemoWorldBundleFactory(
                 to = PersonRef.Campaign(nim.id),
                 type = RelationshipType.Other,
                 description = "Jor raised Nim after the wrecks. Not blood. Still family.",
-                factionLean = "The Lantern",
+                factionId = "fac-lantern",
             ),
             PersonRelationship(
                 id = "rel-calder-vessa",
@@ -1327,7 +1329,7 @@ internal class DemoWorldBundleFactory(
                 to = PersonRef.World(vessa.id),
                 type = RelationshipType.Ally,
                 description = "Calder hired her. He wants the bag more than he wants to admit he likes her.",
-                factionLean = "Harbor council",
+                factionId = "fac-harbor-council",
             ),
             PersonRelationship(
                 id = "rel-bram-calder",
@@ -1335,7 +1337,7 @@ internal class DemoWorldBundleFactory(
                 to = PersonRef.World(calder.id),
                 type = RelationshipType.Ally,
                 description = "Old watch. Bram still limps from a job Calder sent him on.",
-                factionLean = "Harbor watch",
+                factionId = "fac-harbor-watch",
             ),
             PersonRelationship(
                 id = "rel-olan-lysa",
@@ -1343,7 +1345,70 @@ internal class DemoWorldBundleFactory(
                 to = PersonRef.World(lysa.id),
                 type = RelationshipType.Other,
                 description = "Olan knows she lives. He has been using the Crown seal for shrine coin.",
-                factionLean = "Tide shrine",
+                factionId = "fac-tide-shrine",
+            ),
+        )
+    }
+
+    private fun factions(worldId: String): List<Faction> {
+        return listOf(
+            faction("fac-salt-law", worldId, "Salt Law", "The harbor's written rules."),
+            faction("fac-lantern", worldId, "The Lantern", "A quiet rescue net."),
+            faction("fac-harbor-council", worldId, "Harbor council", "Who signs the manifests."),
+            faction("fac-harbor-watch", worldId, "Harbor watch", "Old badges, older debts."),
+            faction("fac-tide-shrine", worldId, "Tide shrine", "Coin for the next high water."),
+        )
+    }
+
+    private fun faction(
+        id: String,
+        worldId: String,
+        name: String,
+        description: String,
+    ): Faction {
+        return Faction(
+            id = id,
+            worldId = worldId,
+            name = name,
+            description = description,
+            goals = "",
+            notes = "",
+            createdAt = now,
+            updatedAt = now,
+        )
+    }
+
+    private fun memberships(
+        worldPeople: List<WorldPerson>,
+        campaignPeople: List<CampaignPerson>,
+    ): List<FactionMembership> {
+        val vessa = worldPeople.first { it.id == WP_VESSA }
+        val calder = worldPeople.first { it.id == WP_CALDER }
+        val iria = campaignPeople.first { it.id == CP_IRIA }
+        return listOf(
+            FactionMembership(
+                id = "mem-vessa-salt",
+                person = PersonRef.World(vessa.id),
+                factionId = "fac-salt-law",
+                role = "Courier",
+                notes = "",
+                createdAt = now,
+            ),
+            FactionMembership(
+                id = "mem-calder-council",
+                person = PersonRef.World(calder.id),
+                factionId = "fac-harbor-council",
+                role = "Broker",
+                notes = "",
+                createdAt = now,
+            ),
+            FactionMembership(
+                id = "mem-iria-lantern",
+                person = PersonRef.Campaign(iria.id),
+                factionId = "fac-lantern",
+                role = "Seeker",
+                notes = "",
+                createdAt = now,
             ),
         )
     }

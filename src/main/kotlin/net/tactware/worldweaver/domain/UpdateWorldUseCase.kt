@@ -14,6 +14,7 @@ internal class UpdateWorldUseCase(
         worldId: String,
         name: String,
         description: String,
+        defaultGameSystem: GameSystem,
     ): Result {
         val existing = worldRepository.getById(worldId) ?: return Result.NotFound
         val trimmedName = name.trim()
@@ -24,6 +25,7 @@ internal class UpdateWorldUseCase(
             existing.copy(
                 name = trimmedName,
                 description = description.trim(),
+                defaultGameSystem = defaultGameSystem,
                 updatedAt = instantProvider.now(),
             )
         )

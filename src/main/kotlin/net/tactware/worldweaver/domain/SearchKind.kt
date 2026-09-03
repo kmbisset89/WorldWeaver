@@ -7,6 +7,7 @@ internal enum class SearchKind(
     Campaign("Campaigns"),
     Location("Locations"),
     Lore("Lore"),
+    Faction("Factions"),
     WorldPerson("People"),
     CampaignPerson("People"),
     Quest("Quests"),

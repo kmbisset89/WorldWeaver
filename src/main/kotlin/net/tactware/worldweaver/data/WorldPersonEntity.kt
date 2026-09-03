@@ -38,6 +38,12 @@ internal data class WorldPersonEntity(
     val features: String,
     val spells: String,
     val notes: String,
+    val skills: String = "",
+    val spellSlots: String = "",
+    val concentratingSpell: String = "",
+    val creatureSize: String = "Medium",
+    val sheetSystem: String,
+    val pf2ePayload: String,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -65,6 +66,8 @@ import net.tactware.worldweaver.ui.theme.TextSecondary
 import ovh.plrapps.mapcompose.ui.state.MapState
 import java.awt.FileDialog
 import java.awt.Frame
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FilenameFilter
@@ -121,20 +124,34 @@ internal fun MapsScreen(
                 MapsHeader(
                     subtitle = "${viewState.campaignName} · ${viewState.worldName}",
                     showImport = true,
+                    showStarterCatalog = viewState.starterCatalogAvailable,
                     onInteraction = onInteraction,
                 )
                 FeatureEmptyState(
                     icon = Icons.Default.Map,
                     title = "No battle maps yet",
-                    message = "Open the maker to preview a PNG, set a grid, and save tiles.",
-                    actionLabel = "New map",
-                    onAction = { onInteraction(MapsInteraction.ImportSelected) },
+                    message = if (viewState.starterCatalogAvailable) {
+                        "Add a starter encounter map, or open the maker to import your own PNG."
+                    } else {
+                        "Open the maker to preview a PNG, set a grid, and save tiles."
+                    },
+                    actionLabel = if (viewState.starterCatalogAvailable) "Starter maps" else "New map",
+                    onAction = {
+                        onInteraction(
+                            if (viewState.starterCatalogAvailable) {
+                                MapsInteraction.StarterCatalogSelected
+                            } else {
+                                MapsInteraction.ImportSelected
+                            }
+                        )
+                    },
                 )
             }
             is MapsViewState.Content -> {
                 MapsHeader(
                     subtitle = "${viewState.campaignName} · ${viewState.worldName}",
                     showImport = true,
+                    showStarterCatalog = viewState.starterCatalogAvailable,
                     onInteraction = onInteraction,
                 )
                 MapsContent(state = viewState, mapState = mapState, onInteraction = onInteraction)
@@ -147,6 +164,14 @@ internal fun MapsScreen(
                 )
                 BattleMapMakerPane(editor = viewState.editor, onInteraction = onInteraction)
             }
+            is MapsViewState.StarterCatalog -> {
+                MapsHeader(
+                    subtitle = "Starter maps · ${viewState.campaignName}",
+                    showImport = false,
+                    onInteraction = onInteraction,
+                )
+                StarterCatalogPane(state = viewState, onInteraction = onInteraction)
+            }
         }
     }
 }
@@ -155,6 +180,7 @@ internal fun MapsScreen(
 private fun MapsHeader(
     subtitle: String,
     showImport: Boolean,
+    showStarterCatalog: Boolean = false,
     onInteraction: (MapsInteraction) -> Unit,
 ) {
     Row(
@@ -172,14 +198,96 @@ private fun MapsHeader(
             Text(text = subtitle, fontSize = 13.sp, color = TextSecondary)
         }
         if (showImport) {
-            Button(
-                onClick = { onInteraction(MapsInteraction.ImportSelected) },
-                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("New map")
+                if (showStarterCatalog) {
+                    TextButton(onClick = { onInteraction(MapsInteraction.StarterCatalogSelected) }) {
+                        Text("Starter maps")
+                    }
+                }
+                Button(
+                    onClick = { onInteraction(MapsInteraction.ImportSelected) },
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("New map")
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun StarterCatalogPane(
+    state: MapsViewState.StarterCatalog,
+    onInteraction: (MapsInteraction) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Add a starter encounter map to this campaign. Small maps are 20×20; medium maps are 30×30. Dynamic maps include extra stages you can toggle as situation layers.",
+            fontSize = 13.sp,
+            color = TextSecondary,
+        )
+        if (state.error != null) {
+            Text(text = state.error, fontSize = 13.sp, color = TextSecondary)
+        }
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(state.entries, key = { it.id }) { entry ->
+                val importing = state.importingId == entry.id
+                val enabled = state.importingId == null && !entry.alreadyAdded
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = enabled) {
+                            onInteraction(MapsInteraction.BundledMapSelected(entry.id))
+                        },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = entry.name,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = when {
+                                    importing -> "Adding…"
+                                    entry.alreadyAdded -> "Already in this campaign"
+                                    else -> entry.detail
+                                },
+                                fontSize = 12.sp,
+                                color = TextSecondary
+                            )
+                        }
+                        if (importing) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+        }
+        TextButton(
+            onClick = { onInteraction(MapsInteraction.StarterCatalogDismissed) },
+            enabled = state.importingId == null,
+        ) {
+            Text("Back")
         }
     }
 }
@@ -261,6 +369,9 @@ private fun MapsContent(
                     onMarkerClicked = { markerId ->
                         BattleMapTokenOverlay.participantIdFrom(markerId)?.let { participantId ->
                             onInteraction(MapsInteraction.TokenSelected(participantId))
+                        }
+                        BattleMapItemOverlay.itemIdFrom(markerId)?.let { itemId ->
+                            onInteraction(MapsInteraction.ItemSelected(itemId))
                         }
                     },
                 )
@@ -356,7 +467,7 @@ private fun FogPaintRow(
     onInteraction: (MapsInteraction) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -391,6 +502,57 @@ private fun FogPaintRow(
                 fontSize = 13.sp,
                 color = TextSecondary,
             )
+        }
+        FilterChip(
+            selected = state.terrainPaint == TerrainPaintKind.Blocked,
+            onClick = { onInteraction(MapsInteraction.TerrainPaintSelected(TerrainPaintKind.Blocked)) },
+            label = { Text("Blocked") },
+        )
+        FilterChip(
+            selected = state.terrainPaint == TerrainPaintKind.Difficult,
+            onClick = { onInteraction(MapsInteraction.TerrainPaintSelected(TerrainPaintKind.Difficult)) },
+            label = { Text("Difficult") },
+        )
+        FilterChip(
+            selected = state.terrainPaint == TerrainPaintKind.Clear,
+            onClick = { onInteraction(MapsInteraction.TerrainPaintSelected(TerrainPaintKind.Clear)) },
+            label = { Text("Clear terrain") },
+        )
+        if (state.terrainPaint != null) {
+            Text(
+                text = "Click cells to paint ${state.terrainPaint.name.lowercase()} terrain",
+                fontSize = 13.sp,
+                color = TextSecondary,
+            )
+        }
+        FilterChip(
+            selected = state.itemDropEnabled,
+            onClick = { onInteraction(MapsInteraction.ItemDropToggled) },
+            label = { Text("Item") },
+        )
+        if (state.itemDropEnabled) {
+            OutlinedTextField(
+                value = state.itemNameText,
+                onValueChange = { onInteraction(MapsInteraction.ItemNameChanged(it)) },
+                label = { Text("Item name") },
+                singleLine = true,
+                modifier = Modifier.width(160.dp),
+            )
+            Text(
+                text = if (state.itemNameText.isBlank()) {
+                    "Name the item, then click a cell"
+                } else {
+                    "Click a cell to drop ${state.itemNameText.trim()}"
+                },
+                fontSize = 13.sp,
+                color = TextSecondary,
+            )
+        }
+        if (state.selectedItemName != null) {
+            Text(text = state.selectedItemName, fontSize = 13.sp, color = TextSecondary)
+            TextButton(onClick = { onInteraction(MapsInteraction.ItemRemoved) }) {
+                Text("Remove")
+            }
         }
     }
 }
@@ -532,6 +694,7 @@ private fun BattleMapMakerPane(
                 modifier = Modifier.weight(1f)
             )
         }
+        MakerPromptHelper(editor = editor, onInteraction = onInteraction)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -598,6 +761,47 @@ private fun BattleMapMakerPane(
             ) {
                 Text("Cancel")
             }
+        }
+    }
+}
+
+@Composable
+private fun MakerPromptHelper(
+    editor: MapsViewState.MakerEditorState,
+    onInteraction: (MapsInteraction) -> Unit,
+) {
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(editor.imagePrompt) {
+        copied = false
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Describe the scene, copy the prompt into an image generator, then choose the PNG.",
+            fontSize = 13.sp,
+            color = TextSecondary,
+        )
+        OutlinedTextField(
+            value = editor.sceneryText,
+            onValueChange = { onInteraction(MapsInteraction.MakerSceneryChanged(it)) },
+            label = { Text("Scenery") },
+            minLines = 3,
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = editor.imagePrompt,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("AI image prompt") },
+            minLines = 4,
+            modifier = Modifier.fillMaxWidth()
+        )
+        TextButton(
+            onClick = {
+                copyPromptToClipboard(editor.imagePrompt)
+                copied = true
+            }
+        ) {
+            Text(if (copied) "Copied" else "Copy prompt")
         }
     }
 }
@@ -731,6 +935,11 @@ private fun loadPreviewBitmap(
     } catch (_: Exception) {
         null
     }
+}
+
+private fun copyPromptToClipboard(text: String) {
+    val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+    clipboard.setContents(StringSelection(text), null)
 }
 
 private fun choosePngPath(title: String): String? {

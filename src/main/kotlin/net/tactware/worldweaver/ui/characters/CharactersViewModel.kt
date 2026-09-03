@@ -22,19 +22,40 @@ import net.tactware.worldweaver.domain.CampaignPersonDraft
 import net.tactware.worldweaver.domain.ClassLevel
 import net.tactware.worldweaver.domain.CompanionKind
 import net.tactware.worldweaver.domain.CreateCampaignPersonUseCase
+import net.tactware.worldweaver.domain.CreateFactionMembershipUseCase
 import net.tactware.worldweaver.domain.CreatePersonCompanionUseCase
 import net.tactware.worldweaver.domain.CreatePersonRelationshipUseCase
+import net.tactware.worldweaver.domain.CreateWorldPersonFromSrdMonsterUseCase
 import net.tactware.worldweaver.domain.CreateWorldPersonUseCase
+import net.tactware.worldweaver.domain.FifthEditionPickerCatalog
+import net.tactware.worldweaver.domain.FifthEditionPickerCatalogResolver
+import net.tactware.worldweaver.domain.GameSystem
+import net.tactware.worldweaver.domain.Pathfinder2EFeat
+import net.tactware.worldweaver.domain.Pathfinder2EReference
+import net.tactware.worldweaver.domain.Pathfinder2ESheet
+import net.tactware.worldweaver.domain.Pathfinder2ESkill
+import net.tactware.worldweaver.domain.Pathfinder2ESpell
+import net.tactware.worldweaver.domain.Pathfinder2ESkillRank
+import net.tactware.worldweaver.domain.PersonSheet
 import net.tactware.worldweaver.domain.DeathSaves
 import net.tactware.worldweaver.domain.DeleteCampaignPersonUseCase
+import net.tactware.worldweaver.domain.DeleteFactionMembershipUseCase
 import net.tactware.worldweaver.domain.DeletePersonCompanionUseCase
 import net.tactware.worldweaver.domain.DeletePersonRelationshipUseCase
 import net.tactware.worldweaver.domain.DeleteWorldPersonUseCase
 import net.tactware.worldweaver.domain.FifthEditionSheet
+import net.tactware.worldweaver.domain.FifthEditionSkill
+import net.tactware.worldweaver.domain.FifthEditionSkillCatalog
+import net.tactware.worldweaver.domain.FifthEditionSpellSlot
 import net.tactware.worldweaver.domain.GenerateRandomNpcUseCase
 import net.tactware.worldweaver.domain.InventoryItem
 import net.tactware.worldweaver.domain.Lore
+import net.tactware.worldweaver.domain.Faction
+import net.tactware.worldweaver.domain.FactionMembership
 import net.tactware.worldweaver.domain.ObserveActiveContextDetailsUseCase
+import net.tactware.worldweaver.domain.ObserveFactionMembershipsUseCase
+import net.tactware.worldweaver.domain.ObserveFactionsForActiveWorldUseCase
+import net.tactware.worldweaver.domain.ObserveFifthEditionPickerCatalogUseCase
 import net.tactware.worldweaver.domain.ObserveLoreForActiveWorldUseCase
 import net.tactware.worldweaver.domain.ObservePeopleForActiveContextUseCase
 import net.tactware.worldweaver.domain.ObservePersonCompanionsUseCase
@@ -49,6 +70,7 @@ import net.tactware.worldweaver.domain.PersonKind
 import net.tactware.worldweaver.domain.PersonAvatarFileStore
 import net.tactware.worldweaver.domain.PersonRef
 import net.tactware.worldweaver.domain.SetPersonAvatarUseCase
+import net.tactware.worldweaver.domain.SrdMonsterEntry
 import net.tactware.worldweaver.domain.SetVoiceClipUseCase
 import net.tactware.worldweaver.domain.VoiceClipFileStore
 import net.tactware.worldweaver.domain.VoiceClipPlayer
@@ -70,6 +92,8 @@ internal class CharactersViewModel(
     private val observeCompanions: ObservePersonCompanionsUseCase,
     private val observeLore: ObserveLoreForActiveWorldUseCase,
     private val observeQuests: ObserveQuestsForActiveCampaignUseCase,
+    private val observeFactions: ObserveFactionsForActiveWorldUseCase,
+    private val observeMemberships: ObserveFactionMembershipsUseCase,
     private val createWorldPerson: CreateWorldPersonUseCase,
     private val updateWorldPerson: UpdateWorldPersonUseCase,
     private val deleteWorldPerson: DeleteWorldPersonUseCase,
@@ -86,8 +110,12 @@ internal class CharactersViewModel(
     private val voiceClipRecorder: VoiceClipRecorder,
     private val voiceClipPlayer: VoiceClipPlayer,
     private val generateRandomNpc: GenerateRandomNpcUseCase,
+    private val observePickerCatalog: ObserveFifthEditionPickerCatalogUseCase,
+    private val createFromSrdMonster: CreateWorldPersonFromSrdMonsterUseCase,
     private val createPersonRelationship: CreatePersonRelationshipUseCase,
     private val deletePersonRelationship: DeletePersonRelationshipUseCase,
+    private val createFactionMembership: CreateFactionMembershipUseCase,
+    private val deleteFactionMembership: DeleteFactionMembershipUseCase,
     private val createPersonCompanion: CreatePersonCompanionUseCase,
     private val deletePersonCompanion: DeletePersonCompanionUseCase,
 ) {
@@ -98,7 +126,7 @@ internal class CharactersViewModel(
     val effects: SharedFlow<CharactersViewEffect> = _effects.asSharedFlow()
 
     private var observeJob: Job? = null
-    private var openCreateOnNextLoad = false
+    private var pendingCreate: PendingCreate? = null
     private var searchQuery = ""
     private var kindFilter: PersonKind? = null
     private var membershipFilter: PersonMembership? = null
@@ -109,9 +137,16 @@ internal class CharactersViewModel(
     private var latestCompanions: List<PersonCompanion> = emptyList()
     private var latestLore: List<Lore> = emptyList()
     private var latestQuests: List<Quest> = emptyList()
+    private var latestFactions: List<Faction> = emptyList()
+    private var latestMemberships: List<FactionMembership> = emptyList()
+    private var latestPickerCatalog: FifthEditionPickerCatalog =
+        FifthEditionPickerCatalogResolver().resolve(null)
+    private var srdMonsterPickerOpen = false
     private var latestWorldName: String = ""
     private var latestCampaignName: String? = null
     private var hasActiveCampaign = false
+    private var latestWorldSystem = GameSystem.FifthEdition
+    private var latestCampaignSystem = GameSystem.FifthEdition
     private var isRecordingVoice = false
     private var isPlayingVoice = false
 
@@ -127,6 +162,7 @@ internal class CharactersViewModel(
                 _effects.tryEmit(CharactersViewEffect.OpenWorlds)
             }
             CharactersInteraction.NewPersonSelected -> openCreateWizard()
+            CharactersInteraction.NewPlayerCharacterSelected -> openCreatePcWizard()
             CharactersInteraction.RandomNpcSelected -> openGenerator()
             is CharactersInteraction.PersonSelected,
             is CharactersInteraction.PersonOpened,
@@ -137,6 +173,9 @@ internal class CharactersViewModel(
                 }
                 selectedKey = nextKey
                 refreshContent()
+            }
+            is CharactersInteraction.SheetSelected -> {
+                _effects.tryEmit(CharactersViewEffect.OpenSheet(interaction.key))
             }
             is CharactersInteraction.EditPersonSelected -> openEditEditor(interaction.key)
             is CharactersInteraction.DeletePersonSelected -> requestDelete(interaction.key)
@@ -188,22 +227,46 @@ internal class CharactersViewModel(
             is CharactersInteraction.RelationshipDescriptionChanged -> updateRelationshipEditor { editor ->
                 editor.copy(description = interaction.description)
             }
-            is CharactersInteraction.RelationshipFactionChanged -> updateRelationshipEditor { editor ->
-                editor.copy(factionLean = interaction.factionLean)
+            is CharactersInteraction.RelationshipFactionSelected -> updateRelationshipEditor { editor ->
+                editor.copy(factionId = interaction.factionId)
             }
             CharactersInteraction.RelationshipSaved -> saveRelationship()
             is CharactersInteraction.RelationshipDeleted -> deleteRelationship(interaction.relationshipId)
-            is CharactersInteraction.EditorMembershipSelected -> updateEditor { editor ->
-                editor?.let { changeMembership(it, interaction.membership) }
+            CharactersInteraction.MembershipEditorOpened -> openMembershipEditor()
+            CharactersInteraction.MembershipEditorDismissed -> updateContentOverlays(
+                membershipEditor = null,
+            )
+            is CharactersInteraction.MembershipFactionSelected -> updateMembershipEditor { editor ->
+                editor.copy(factionId = interaction.factionId, factionError = null)
             }
-            is CharactersInteraction.EditorKindSelected -> updateEditor { editor ->
-                editor?.copy(kind = interaction.kind)
+            is CharactersInteraction.MembershipRoleChanged -> updateMembershipEditor { editor ->
+                editor.copy(role = interaction.role)
             }
-            is CharactersInteraction.EditorNameChanged -> updateEditor { editor ->
-                editor?.copy(name = interaction.name, nameError = null)
+            CharactersInteraction.MembershipSaved -> saveMembership()
+            is CharactersInteraction.MembershipDeleted -> deleteMembership(interaction.membershipId)
+            is CharactersInteraction.EditorMembershipSelected -> {
+                updateEditor { editor ->
+                    editor?.let { changeMembership(it, interaction.membership) }
+                }
+                updatePathfinderEditor { editor ->
+                    editor?.let { changePathfinderMembership(it, interaction.membership) }
+                }
             }
-            is CharactersInteraction.EditorDescriptionChanged -> updateEditor { editor ->
-                editor?.copy(description = interaction.description)
+            is CharactersInteraction.EditorKindSelected -> {
+                updateEditor { editor -> editor?.copy(kind = interaction.kind) }
+                updatePathfinderEditor { editor -> editor?.copy(kind = interaction.kind) }
+            }
+            is CharactersInteraction.EditorNameChanged -> {
+                updateEditor { editor -> editor?.copy(name = interaction.name, nameError = null) }
+                updatePathfinderEditor { editor ->
+                    editor?.copy(name = interaction.name, nameError = null)
+                }
+            }
+            is CharactersInteraction.EditorDescriptionChanged -> {
+                updateEditor { editor -> editor?.copy(description = interaction.description) }
+                updatePathfinderEditor { editor ->
+                    editor?.copy(description = interaction.description)
+                }
             }
             is CharactersInteraction.EditorRaceChanged -> updateEditor { editor ->
                 editor?.copy(race = interaction.race)
@@ -233,38 +296,116 @@ internal class CharactersViewModel(
             is CharactersInteraction.EditorClassLevelChanged -> updateClassLevel(interaction.index) { level ->
                 level.copy(levelText = interaction.level)
             }
-            is CharactersInteraction.EditorStrengthChanged -> updateEditor { editor ->
-                editor?.copy(strength = interaction.value)
+            is CharactersInteraction.EditorStrengthChanged -> {
+                updateEditor { editor -> editor?.copy(strength = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(strength = interaction.value) }
             }
-            is CharactersInteraction.EditorDexterityChanged -> updateEditor { editor ->
-                editor?.copy(dexterity = interaction.value)
+            is CharactersInteraction.EditorDexterityChanged -> {
+                updateEditor { editor -> editor?.copy(dexterity = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(dexterity = interaction.value) }
             }
-            is CharactersInteraction.EditorConstitutionChanged -> updateEditor { editor ->
-                editor?.copy(constitution = interaction.value)
+            is CharactersInteraction.EditorConstitutionChanged -> {
+                updateEditor { editor -> editor?.copy(constitution = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(constitution = interaction.value) }
             }
-            is CharactersInteraction.EditorIntelligenceChanged -> updateEditor { editor ->
-                editor?.copy(intelligence = interaction.value)
+            is CharactersInteraction.EditorIntelligenceChanged -> {
+                updateEditor { editor -> editor?.copy(intelligence = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(intelligence = interaction.value) }
             }
-            is CharactersInteraction.EditorWisdomChanged -> updateEditor { editor ->
-                editor?.copy(wisdom = interaction.value)
+            is CharactersInteraction.EditorWisdomChanged -> {
+                updateEditor { editor -> editor?.copy(wisdom = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(wisdom = interaction.value) }
             }
-            is CharactersInteraction.EditorCharismaChanged -> updateEditor { editor ->
-                editor?.copy(charisma = interaction.value)
+            is CharactersInteraction.EditorCharismaChanged -> {
+                updateEditor { editor -> editor?.copy(charisma = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(charisma = interaction.value) }
             }
-            is CharactersInteraction.EditorHitPointsChanged -> updateEditor { editor ->
-                editor?.copy(hitPoints = interaction.value)
+            is CharactersInteraction.EditorHitPointsChanged -> {
+                updateEditor { editor -> editor?.copy(hitPoints = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(hitPoints = interaction.value) }
             }
-            is CharactersInteraction.EditorMaxHitPointsChanged -> updateEditor { editor ->
-                editor?.copy(maxHitPoints = interaction.value)
+            is CharactersInteraction.EditorMaxHitPointsChanged -> {
+                updateEditor { editor -> editor?.copy(maxHitPoints = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(maxHitPoints = interaction.value) }
             }
-            is CharactersInteraction.EditorTemporaryHitPointsChanged -> updateEditor { editor ->
-                editor?.copy(temporaryHitPoints = interaction.value)
+            is CharactersInteraction.EditorTemporaryHitPointsChanged -> {
+                updateEditor { editor -> editor?.copy(temporaryHitPoints = interaction.value) }
+                updatePathfinderEditor { editor ->
+                    editor?.copy(temporaryHitPoints = interaction.value)
+                }
             }
-            is CharactersInteraction.EditorArmorClassChanged -> updateEditor { editor ->
-                editor?.copy(armorClass = interaction.value)
+            is CharactersInteraction.EditorArmorClassChanged -> {
+                updateEditor { editor -> editor?.copy(armorClass = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(armorClass = interaction.value) }
             }
             is CharactersInteraction.EditorWalkSpeedChanged -> updateEditor { editor ->
                 editor?.copy(walkSpeed = interaction.value.filter { it.isDigit() }.take(3))
+            }
+            is CharactersInteraction.EditorCreatureSizeSelected -> updateEditor { editor ->
+                editor?.copy(creatureSize = interaction.size)
+            }
+            is CharactersInteraction.EditorConcentratingSpellChanged -> updateEditor { editor ->
+                editor?.copy(concentratingSpell = interaction.value)
+            }
+            is CharactersInteraction.EditorSkillProficiencyToggled -> updateEditor { editor ->
+                editor?.copy(
+                    skills = editor.skills.map { skill ->
+                        if (skill.name == interaction.name) {
+                            skill.copy(proficient = !skill.proficient)
+                        } else {
+                            skill
+                        }
+                    },
+                )
+            }
+            CharactersInteraction.EditorSpellSlotAdded -> updateEditor { editor ->
+                editor?.copy(
+                    spellSlots = editor.spellSlots + CharactersViewState.SpellSlotEditor(
+                        levelText = (editor.spellSlots.size + 1).toString(),
+                        maximumText = "1",
+                        usedText = "0",
+                    ),
+                )
+            }
+            is CharactersInteraction.EditorSpellSlotRemoved -> updateEditor { editor ->
+                editor?.copy(
+                    spellSlots = editor.spellSlots.filterIndexed { index, _ ->
+                        index != interaction.index
+                    },
+                )
+            }
+            is CharactersInteraction.EditorSpellSlotLevelChanged -> updateEditor { editor ->
+                editor?.copy(
+                    spellSlots = editor.spellSlots.mapIndexed { index, slot ->
+                        if (index == interaction.index) {
+                            slot.copy(levelText = interaction.value.filter { it.isDigit() }.take(1))
+                        } else {
+                            slot
+                        }
+                    },
+                )
+            }
+            is CharactersInteraction.EditorSpellSlotMaximumChanged -> updateEditor { editor ->
+                editor?.copy(
+                    spellSlots = editor.spellSlots.mapIndexed { index, slot ->
+                        if (index == interaction.index) {
+                            slot.copy(maximumText = interaction.value.filter { it.isDigit() }.take(2))
+                        } else {
+                            slot
+                        }
+                    },
+                )
+            }
+            is CharactersInteraction.EditorSpellSlotUsedChanged -> updateEditor { editor ->
+                editor?.copy(
+                    spellSlots = editor.spellSlots.mapIndexed { index, slot ->
+                        if (index == interaction.index) {
+                            slot.copy(usedText = interaction.value.filter { it.isDigit() }.take(2))
+                        } else {
+                            slot
+                        }
+                    },
+                )
             }
             is CharactersInteraction.EditorDeathSuccessesChanged -> updateEditor { editor ->
                 editor?.copy(deathSuccesses = interaction.value)
@@ -320,7 +461,11 @@ internal class CharactersViewModel(
                 )
             }
             is CharactersInteraction.EditorSpellNameChanged -> updateSpell(interaction.index) { spell ->
-                spell.copy(name = interaction.name)
+                val level = latestPickerCatalog.spellLevelFor(interaction.name)
+                spell.copy(
+                    name = interaction.name,
+                    levelText = level?.toString() ?: spell.levelText,
+                )
             }
             is CharactersInteraction.EditorSpellLevelChanged -> updateSpell(interaction.index) { spell ->
                 spell.copy(levelText = interaction.level)
@@ -328,17 +473,29 @@ internal class CharactersViewModel(
             is CharactersInteraction.EditorSpellPreparedChanged -> updateSpell(interaction.index) { spell ->
                 spell.copy(prepared = interaction.prepared)
             }
-            is CharactersInteraction.EditorNotesChanged -> updateEditor { editor ->
-                editor?.copy(notes = interaction.notes)
+            is CharactersInteraction.EditorNotesChanged -> {
+                updateEditor { editor -> editor?.copy(notes = interaction.notes) }
+                updatePathfinderEditor { editor -> editor?.copy(notes = interaction.notes) }
             }
-            is CharactersInteraction.EditorOverlayHitPointsChanged -> updateEditor { editor ->
-                editor?.copy(overlayHitPoints = interaction.value)
+            is CharactersInteraction.EditorOverlayHitPointsChanged -> {
+                updateEditor { editor -> editor?.copy(overlayHitPoints = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(overlayHitPoints = interaction.value) }
             }
-            is CharactersInteraction.EditorOverlayNotesChanged -> updateEditor { editor ->
-                editor?.copy(overlayNotes = interaction.notes)
+            is CharactersInteraction.EditorOverlayNotesChanged -> {
+                updateEditor { editor -> editor?.copy(overlayNotes = interaction.notes) }
+                updatePathfinderEditor { editor -> editor?.copy(overlayNotes = interaction.notes) }
             }
-            CharactersInteraction.EditorSaved -> saveEditor()
-            CharactersInteraction.EditorDismissed -> updateEditor { null }
+            CharactersInteraction.EditorSaved -> {
+                if (pathfinderEditorFrom(_state.value) != null) {
+                    savePathfinderEditor()
+                } else {
+                    saveEditor()
+                }
+            }
+            CharactersInteraction.EditorDismissed -> {
+                updateEditor { null }
+                updatePathfinderEditor { null }
+            }
             is CharactersInteraction.GeneratorMethodSelected -> updateGenerator { generator ->
                 generator.copy(method = interaction.method)
             }
@@ -366,17 +523,24 @@ internal class CharactersViewModel(
             }
             CharactersInteraction.CompanionSaved -> saveCompanionEditor()
             is CharactersInteraction.CompanionDeleted -> deleteCompanion(interaction.companionId)
-            is CharactersInteraction.WizardMembershipSelected -> updateWizard { wizard ->
-                changeWizardMembership(wizard, interaction.membership)
+            is CharactersInteraction.WizardMembershipSelected -> {
+                applyWizardMembership(interaction.membership)
             }
-            is CharactersInteraction.WizardKindSelected -> updateWizard { wizard ->
-                wizard.copy(kind = interaction.kind)
+            is CharactersInteraction.WizardKindSelected -> {
+                updateWizard { wizard -> wizard.copy(kind = interaction.kind) }
+                updatePathfinderWizard { wizard -> wizard.copy(kind = interaction.kind) }
             }
-            is CharactersInteraction.WizardNameChanged -> updateWizard { wizard ->
-                wizard.copy(name = interaction.name, nameError = null)
+            is CharactersInteraction.WizardNameChanged -> {
+                updateWizard { wizard -> wizard.copy(name = interaction.name, nameError = null) }
+                updatePathfinderWizard { wizard ->
+                    wizard.copy(name = interaction.name, nameError = null)
+                }
             }
-            is CharactersInteraction.WizardDescriptionChanged -> updateWizard { wizard ->
-                wizard.copy(description = interaction.description)
+            is CharactersInteraction.WizardDescriptionChanged -> {
+                updateWizard { wizard -> wizard.copy(description = interaction.description) }
+                updatePathfinderWizard { wizard ->
+                    wizard.copy(description = interaction.description)
+                }
             }
             is CharactersInteraction.WizardRaceChanged -> updateWizard { wizard ->
                 wizard.copy(race = interaction.race)
@@ -412,32 +576,41 @@ internal class CharactersViewModel(
             ) { level ->
                 level.copy(levelText = interaction.level)
             }
-            is CharactersInteraction.WizardStrengthChanged -> updateWizard { wizard ->
-                wizard.copy(strength = interaction.value)
+            is CharactersInteraction.WizardStrengthChanged -> {
+                updateWizard { wizard -> wizard.copy(strength = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(strength = interaction.value) }
             }
-            is CharactersInteraction.WizardDexterityChanged -> updateWizard { wizard ->
-                wizard.copy(dexterity = interaction.value)
+            is CharactersInteraction.WizardDexterityChanged -> {
+                updateWizard { wizard -> wizard.copy(dexterity = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(dexterity = interaction.value) }
             }
-            is CharactersInteraction.WizardConstitutionChanged -> updateWizard { wizard ->
-                wizard.copy(constitution = interaction.value)
+            is CharactersInteraction.WizardConstitutionChanged -> {
+                updateWizard { wizard -> wizard.copy(constitution = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(constitution = interaction.value) }
             }
-            is CharactersInteraction.WizardIntelligenceChanged -> updateWizard { wizard ->
-                wizard.copy(intelligence = interaction.value)
+            is CharactersInteraction.WizardIntelligenceChanged -> {
+                updateWizard { wizard -> wizard.copy(intelligence = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(intelligence = interaction.value) }
             }
-            is CharactersInteraction.WizardWisdomChanged -> updateWizard { wizard ->
-                wizard.copy(wisdom = interaction.value)
+            is CharactersInteraction.WizardWisdomChanged -> {
+                updateWizard { wizard -> wizard.copy(wisdom = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(wisdom = interaction.value) }
             }
-            is CharactersInteraction.WizardCharismaChanged -> updateWizard { wizard ->
-                wizard.copy(charisma = interaction.value)
+            is CharactersInteraction.WizardCharismaChanged -> {
+                updateWizard { wizard -> wizard.copy(charisma = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(charisma = interaction.value) }
             }
-            is CharactersInteraction.WizardHitPointsChanged -> updateWizard { wizard ->
-                wizard.copy(hitPoints = interaction.value)
+            is CharactersInteraction.WizardHitPointsChanged -> {
+                updateWizard { wizard -> wizard.copy(hitPoints = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(hitPoints = interaction.value) }
             }
-            is CharactersInteraction.WizardMaxHitPointsChanged -> updateWizard { wizard ->
-                wizard.copy(maxHitPoints = interaction.value)
+            is CharactersInteraction.WizardMaxHitPointsChanged -> {
+                updateWizard { wizard -> wizard.copy(maxHitPoints = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(maxHitPoints = interaction.value) }
             }
-            is CharactersInteraction.WizardArmorClassChanged -> updateWizard { wizard ->
-                wizard.copy(armorClass = interaction.value)
+            is CharactersInteraction.WizardArmorClassChanged -> {
+                updateWizard { wizard -> wizard.copy(armorClass = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(armorClass = interaction.value) }
             }
             is CharactersInteraction.WizardWalkSpeedChanged -> updateWizard { wizard ->
                 wizard.copy(walkSpeed = interaction.value.filter { it.isDigit() }.take(3))
@@ -481,10 +654,176 @@ internal class CharactersViewModel(
             ) { draft ->
                 draft.copy(newCreature = interaction.creature)
             }
-            CharactersInteraction.WizardNextSelected -> advanceWizard()
-            CharactersInteraction.WizardBackSelected -> rewindWizard()
-            CharactersInteraction.WizardSaved -> saveWizard()
-            CharactersInteraction.WizardDismissed -> updateWizardState(null)
+            CharactersInteraction.WizardNextSelected -> {
+                if (pathfinderWizardFrom(_state.value) != null) {
+                    advancePathfinderWizard()
+                } else {
+                    advanceWizard()
+                }
+            }
+            CharactersInteraction.WizardBackSelected -> {
+                if (pathfinderWizardFrom(_state.value) != null) {
+                    rewindPathfinderWizard()
+                } else {
+                    rewindWizard()
+                }
+            }
+            CharactersInteraction.WizardSaved -> {
+                if (pathfinderWizardFrom(_state.value) != null) {
+                    savePathfinderWizard()
+                } else {
+                    saveWizard()
+                }
+            }
+            CharactersInteraction.WizardDismissed -> {
+                updateWizardState(null)
+                updatePathfinderWizardState(null)
+            }
+            CharactersInteraction.SrdMonsterImportOpened -> openSrdMonsterPicker()
+            CharactersInteraction.SrdMonsterImportDismissed -> setSrdMonsterPicker(open = false)
+            is CharactersInteraction.SrdMonsterSelected -> addSrdMonster(interaction.name)
+            is CharactersInteraction.PathfinderAncestryChanged -> {
+                updatePathfinderEditor { editor ->
+                    editor?.copy(ancestry = interaction.ancestry, heritage = "")
+                }
+                updatePathfinderWizard { wizard ->
+                    wizard.copy(ancestry = interaction.ancestry, heritage = "")
+                }
+            }
+            is CharactersInteraction.PathfinderHeritageChanged -> {
+                updatePathfinderEditor { editor -> editor?.copy(heritage = interaction.heritage) }
+                updatePathfinderWizard { wizard -> wizard.copy(heritage = interaction.heritage) }
+            }
+            is CharactersInteraction.PathfinderBackgroundChanged -> {
+                updatePathfinderEditor { editor ->
+                    editor?.copy(background = interaction.background)
+                }
+                updatePathfinderWizard { wizard -> wizard.copy(background = interaction.background) }
+            }
+            is CharactersInteraction.PathfinderClassChanged -> {
+                updatePathfinderEditor { editor ->
+                    editor?.copy(className = interaction.className, subclass = "")
+                }
+                updatePathfinderWizard { wizard ->
+                    wizard.copy(className = interaction.className, subclass = "")
+                }
+            }
+            is CharactersInteraction.PathfinderSubclassChanged -> {
+                updatePathfinderEditor { editor -> editor?.copy(subclass = interaction.subclass) }
+                updatePathfinderWizard { wizard -> wizard.copy(subclass = interaction.subclass) }
+            }
+            is CharactersInteraction.PathfinderLevelChanged -> {
+                updatePathfinderEditor { editor -> editor?.copy(levelText = interaction.level) }
+                updatePathfinderWizard { wizard -> wizard.copy(levelText = interaction.level) }
+            }
+            is CharactersInteraction.PathfinderPerceptionChanged -> {
+                updatePathfinderEditor { editor -> editor?.copy(perception = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(perception = interaction.value) }
+            }
+            is CharactersInteraction.PathfinderLandSpeedChanged -> {
+                updatePathfinderEditor { editor -> editor?.copy(landSpeed = interaction.value) }
+                updatePathfinderWizard { wizard -> wizard.copy(landSpeed = interaction.value) }
+            }
+            is CharactersInteraction.PathfinderDyingChanged -> updatePathfinderEditor { editor ->
+                editor?.copy(dying = interaction.value)
+            }
+            is CharactersInteraction.PathfinderWoundedChanged -> updatePathfinderEditor { editor ->
+                editor?.copy(wounded = interaction.value)
+            }
+            CharactersInteraction.PathfinderSkillAdded -> {
+                updatePathfinderEditor { editor ->
+                    editor?.copy(
+                        skills = editor.skills + CharactersViewState.PathfinderSkillEditor(
+                            name = "",
+                            rank = Pathfinder2ESkillRank.Untrained,
+                        ),
+                    )
+                }
+                updatePathfinderWizard { wizard ->
+                    wizard.copy(
+                        skills = wizard.skills + CharactersViewState.PathfinderSkillEditor(
+                            name = "",
+                            rank = Pathfinder2ESkillRank.Untrained,
+                        ),
+                    )
+                }
+            }
+            is CharactersInteraction.PathfinderSkillRemoved -> {
+                updatePathfinderEditor { editor ->
+                    editor?.copy(
+                        skills = editor.skills.filterIndexed { index, _ -> index != interaction.index },
+                    )
+                }
+                updatePathfinderWizard { wizard ->
+                    wizard.copy(
+                        skills = wizard.skills.filterIndexed { index, _ -> index != interaction.index },
+                    )
+                }
+            }
+            is CharactersInteraction.PathfinderSkillNameChanged -> {
+                updatePathfinderSkill(interaction.index) { skill -> skill.copy(name = interaction.name) }
+            }
+            is CharactersInteraction.PathfinderSkillRankChanged -> {
+                updatePathfinderSkill(interaction.index) { skill -> skill.copy(rank = interaction.rank) }
+            }
+            CharactersInteraction.PathfinderFeatAdded -> updatePathfinderEditor { editor ->
+                editor?.copy(
+                    feats = editor.feats + CharactersViewState.PathfinderFeatEditor(
+                        name = "",
+                        type = "",
+                        description = "",
+                    ),
+                )
+            }
+            is CharactersInteraction.PathfinderFeatRemoved -> updatePathfinderEditor { editor ->
+                editor?.copy(
+                    feats = editor.feats.filterIndexed { index, _ -> index != interaction.index },
+                )
+            }
+            is CharactersInteraction.PathfinderFeatNameChanged -> updatePathfinderFeat(
+                interaction.index,
+            ) { feat ->
+                feat.copy(name = interaction.name)
+            }
+            is CharactersInteraction.PathfinderFeatTypeChanged -> updatePathfinderFeat(
+                interaction.index,
+            ) { feat ->
+                feat.copy(type = interaction.type)
+            }
+            is CharactersInteraction.PathfinderFeatDescriptionChanged -> updatePathfinderFeat(
+                interaction.index,
+            ) { feat ->
+                feat.copy(description = interaction.description)
+            }
+            CharactersInteraction.PathfinderSpellAdded -> updatePathfinderEditor { editor ->
+                editor?.copy(
+                    spells = editor.spells + CharactersViewState.PathfinderSpellEditor(
+                        name = "",
+                        rankText = "1",
+                        prepared = false,
+                    ),
+                )
+            }
+            is CharactersInteraction.PathfinderSpellRemoved -> updatePathfinderEditor { editor ->
+                editor?.copy(
+                    spells = editor.spells.filterIndexed { index, _ -> index != interaction.index },
+                )
+            }
+            is CharactersInteraction.PathfinderSpellNameChanged -> updatePathfinderSpell(
+                interaction.index,
+            ) { spell ->
+                spell.copy(name = interaction.name)
+            }
+            is CharactersInteraction.PathfinderSpellRankChanged -> updatePathfinderSpell(
+                interaction.index,
+            ) { spell ->
+                spell.copy(rankText = interaction.rank)
+            }
+            is CharactersInteraction.PathfinderSpellPreparedChanged -> updatePathfinderSpell(
+                interaction.index,
+            ) { spell ->
+                spell.copy(prepared = interaction.prepared)
+            }
         }
     }
 
@@ -502,15 +841,25 @@ internal class CharactersViewModel(
                 ) { details, people, relationships, lore, quests ->
                     PeopleLoad(details, people, relationships, lore, quests)
                 },
-                observeCompanions(),
-            ) { load, companions ->
+                combine(
+                    observeCompanions(),
+                    observeFactions(),
+                    observeMemberships(),
+                    observePickerCatalog(),
+                ) { companions, factions, memberships, pickerCatalog ->
+                    ExtraLoad(companions, factions, memberships, pickerCatalog)
+                },
+            ) { load, extra ->
                 LoadedSnapshot(
                     load.details,
                     load.people,
                     load.relationships,
-                    companions,
+                    extra.companions,
                     load.lore,
                     load.quests,
+                    extra.factions,
+                    extra.memberships,
+                    extra.pickerCatalog,
                 )
             }
                 .catch { error ->
@@ -527,6 +876,9 @@ internal class CharactersViewModel(
                         snapshot.companions,
                         snapshot.lore,
                         snapshot.quests,
+                        snapshot.factions,
+                        snapshot.memberships,
+                        snapshot.pickerCatalog,
                     )
                 }
         }
@@ -539,6 +891,9 @@ internal class CharactersViewModel(
         companions: List<PersonCompanion>,
         lore: List<Lore>,
         quests: List<Quest>,
+        factions: List<Faction>,
+        memberships: List<FactionMembership>,
+        pickerCatalog: FifthEditionPickerCatalog,
     ) {
         val world = details.world
         if (world == null) {
@@ -554,16 +909,31 @@ internal class CharactersViewModel(
         latestCompanions = companions
         latestLore = lore
         latestQuests = quests
+        latestFactions = factions
+        latestMemberships = memberships
+        latestPickerCatalog = pickerCatalog
         latestWorldName = world.name
         latestCampaignName = details.campaign?.name
+        latestWorldSystem = world.defaultGameSystem
+        latestCampaignSystem = details.campaign?.resolvedGameSystem(world.defaultGameSystem)
+            ?: world.defaultGameSystem
         hasActiveCampaign = details.campaign != null
         val current = _state.value
         val editor = editorFrom(current)
-        val wizard = if (openCreateOnNextLoad) {
-            openCreateOnNextLoad = false
-            createWizard()
+        val pending = pendingCreate
+        val pendingWizard = pendingWizardFrom(pending)
+        if (pendingWizard != null || pending != PendingCreate.PlayerCharacter) {
+            pendingCreate = null
+        }
+        val wizard = if (pendingWizard != null) {
+            pendingWizard.fifthEdition
         } else {
             wizardFrom(current)?.copy(companionTargets = companionTargets(null))
+        }
+        val pathfinderWizard = if (pendingWizard != null) {
+            pendingWizard.pathfinder
+        } else {
+            pathfinderWizardFrom(current)
         }
         val generator = generatorFrom(current)
         if (people.worldPeople.isEmpty() && people.campaignPeople.isEmpty()) {
@@ -572,17 +942,28 @@ internal class CharactersViewModel(
                 worldName = world.name,
                 campaignName = details.campaign?.name,
                 editor = editor,
+                pathfinderEditor = pathfinderEditorFrom(current),
                 generator = generator,
                 wizard = wizard,
+                pathfinderWizard = pathfinderWizard,
+                pickerCatalog = latestPickerCatalog,
+                srdMonsterPicker = srdMonsterPicker(),
+                worldGameSystemIsFifthEdition = latestWorldSystem == GameSystem.FifthEdition,
             )
             return
         }
         _state.value = contentState(
             editor = editor,
+            pathfinderEditor = pathfinderEditorFrom(current),
             generator = generator,
             wizard = wizard,
+            pathfinderWizard = pathfinderWizard,
             relationshipEditor = relationshipEditorFrom(current)?.copy(
                 targets = relationshipTargets(selectedKey),
+                factions = factionOptions(),
+            ),
+            membershipEditor = membershipEditorFrom(current)?.copy(
+                factions = availableMembershipFactions(selectedKey),
             ),
             companionEditor = companionEditorFrom(current)?.copy(
                 targets = companionTargets(selectedKey),
@@ -599,9 +980,12 @@ internal class CharactersViewModel(
         }
         _state.value = contentState(
             editor = current.editor,
+            pathfinderEditor = current.pathfinderEditor,
             generator = current.generator,
             wizard = current.wizard,
+            pathfinderWizard = current.pathfinderWizard,
             relationshipEditor = current.relationshipEditor,
+            membershipEditor = current.membershipEditor,
             companionEditor = current.companionEditor,
             pendingDelete = current.pendingDelete,
             blockDeleteReason = current.blockDeleteReason,
@@ -610,9 +994,12 @@ internal class CharactersViewModel(
 
     private fun contentState(
         editor: CharactersViewState.CharacterEditorState?,
+        pathfinderEditor: CharactersViewState.PathfinderEditorState?,
         generator: CharactersViewState.GeneratorState?,
         wizard: CharactersViewState.CreationWizardState?,
+        pathfinderWizard: CharactersViewState.PathfinderWizardState?,
         relationshipEditor: CharactersViewState.RelationshipEditorState?,
+        membershipEditor: CharactersViewState.MembershipEditorState?,
         companionEditor: CharactersViewState.CompanionEditorState?,
         pendingDelete: CharactersViewState.PendingDelete?,
         blockDeleteReason: String?,
@@ -632,12 +1019,18 @@ internal class CharactersViewModel(
             membershipFilter = membershipFilter,
             searchQuery = searchQuery,
             editor = editor,
+            pathfinderEditor = pathfinderEditor,
             generator = generator,
             wizard = wizard,
+            pathfinderWizard = pathfinderWizard,
             relationshipEditor = relationshipEditor,
+            membershipEditor = membershipEditor,
             companionEditor = companionEditor,
             pendingDelete = pendingDelete,
             blockDeleteReason = blockDeleteReason,
+            pickerCatalog = latestPickerCatalog,
+            srdMonsterPicker = srdMonsterPicker(),
+            worldGameSystemIsFifthEdition = latestWorldSystem == GameSystem.FifthEdition,
         )
     }
 
@@ -674,7 +1067,7 @@ internal class CharactersViewModel(
     private fun rowSubtitle(
         kind: PersonKind,
         membership: PersonMembership,
-        sheet: FifthEditionSheet,
+        sheet: PersonSheet,
         isReference: Boolean = false,
     ): String {
         val membershipLabel = if (isReference) {
@@ -682,9 +1075,9 @@ internal class CharactersViewModel(
         } else {
             membership.displayName
         }
-        val race = sheet.race.takeIf { it.isNotBlank() }
+        val lineage = sheet.lineageLabel().takeIf { it.isNotBlank() }
         val level = "Lv ${sheet.totalLevel()}"
-        return listOfNotNull(kind.displayName, membershipLabel, race, level).joinToString(" · ")
+        return listOfNotNull(kind.displayName, membershipLabel, lineage, level).joinToString(" · ")
     }
 
     private fun personKeyFrom(interaction: CharactersInteraction): CharactersViewState.PersonKey {
@@ -711,6 +1104,8 @@ internal class CharactersViewModel(
                     isWorldReference = false,
                     canAddToCampaign = hasActiveCampaign && !alreadyAdded,
                     relationships = relationshipsFor(PersonRef.World(person.id)),
+                    memberships = membershipsFor(key, null),
+                    factionOptions = factionOptions(),
                     companions = companionsFor(PersonRef.World(person.id)),
                     attachedLore = attachedLore(person.id),
                     attachedQuests = attachedQuests(
@@ -737,6 +1132,8 @@ internal class CharactersViewModel(
                     isWorldReference = person.isWorldReference(),
                     canAddToCampaign = false,
                     relationships = relationshipsFor(PersonRef.Campaign(person.id)),
+                    memberships = membershipsFor(key, person),
+                    factionOptions = factionOptions(),
                     companions = companionsFor(PersonRef.Campaign(person.id)),
                     attachedLore = attachedLore(person.id, person.worldPersonId),
                     attachedQuests = attachedQuests(
@@ -884,9 +1281,16 @@ internal class CharactersViewModel(
         }
     }
 
-    private fun resolvedSheet(person: CampaignPerson): FifthEditionSheet {
+    private fun resolvedSheet(person: CampaignPerson): PersonSheet {
         val worldId = person.worldPersonId ?: return person.sheet
         return latestWorldPeople.firstOrNull { it.id == worldId }?.sheet ?: person.sheet
+    }
+
+    private fun systemFor(membership: PersonMembership): GameSystem {
+        return when (membership) {
+            PersonMembership.WorldLibrary -> latestWorldSystem
+            PersonMembership.ThisCampaign -> latestCampaignSystem
+        }
     }
 
     private fun relationshipsFor(ref: PersonRef): List<CharactersViewState.RelationshipRow> {
@@ -901,7 +1305,9 @@ internal class CharactersViewModel(
                     label = personName(other),
                     type = relationship.type,
                     description = relationship.description,
-                    factionLean = relationship.factionLean,
+                    factionName = relationship.factionId?.let { factionId ->
+                        latestFactions.firstOrNull { it.id == factionId }?.name
+                    },
                 )
             }
     }
@@ -975,50 +1381,140 @@ internal class CharactersViewModel(
     }
 
     private fun openCreateWizard() {
-        val wizard = createWizard()
-        when (val current = _state.value) {
-            is CharactersViewState.Empty -> _state.value = current.copy(wizard = wizard)
-            is CharactersViewState.Content -> _state.value = current.copy(wizard = wizard)
+        openWizard(PendingCreate.Person)
+    }
+
+    private fun openCreatePcWizard() {
+        openWizard(PendingCreate.PlayerCharacter)
+    }
+
+    private fun openWizard(pending: PendingCreate) {
+        when (_state.value) {
+            is CharactersViewState.Empty,
+            is CharactersViewState.Content,
+            -> {
+                if (pending == PendingCreate.PlayerCharacter && !hasActiveCampaign) {
+                    pendingCreate = pending
+                } else {
+                    showCreateWizard(pending)
+                }
+            }
             CharactersViewState.Loading, is CharactersViewState.Error -> {
-                openCreateOnNextLoad = true
+                pendingCreate = pending
             }
             CharactersViewState.NoActiveWorld -> Unit
         }
     }
 
+    private fun showCreateWizard(pending: PendingCreate) {
+        val pendingWizard = pendingWizardFrom(pending) ?: return
+        when (val current = _state.value) {
+            is CharactersViewState.Empty -> {
+                _state.value = current.copy(
+                    wizard = pendingWizard.fifthEdition,
+                    pathfinderWizard = pendingWizard.pathfinder,
+                )
+            }
+            is CharactersViewState.Content -> {
+                _state.value = current.copy(
+                    wizard = pendingWizard.fifthEdition,
+                    pathfinderWizard = pendingWizard.pathfinder,
+                )
+            }
+            else -> Unit
+        }
+    }
+
+    private fun pendingWizardFrom(pending: PendingCreate?): PendingWizard? {
+        if (pending == null) {
+            return null
+        }
+        if (pending == PendingCreate.PlayerCharacter && !hasActiveCampaign) {
+            return null
+        }
+        val membership = pending.membership()
+        val kind = pending.kind()
+        return when (systemFor(membership)) {
+            GameSystem.FifthEdition -> PendingWizard(
+                fifthEdition = createWizard(membership, kind),
+                pathfinder = null,
+            )
+            GameSystem.Pathfinder2E -> PendingWizard(
+                fifthEdition = null,
+                pathfinder = createPathfinderWizard(membership, kind),
+            )
+        }
+    }
+
     private fun openEditEditor(key: CharactersViewState.PersonKey) {
-        val editor = when (key.membership) {
+        val personId: String
+        val membership: PersonMembership
+        val isWorldReference: Boolean
+        val kind: PersonKind
+        val name: String
+        val description: String
+        val sheet: PersonSheet
+        val overlayHitPoints: String
+        val overlayNotes: String
+        when (key.membership) {
             PersonMembership.WorldLibrary -> {
                 val person = latestWorldPeople.firstOrNull { it.id == key.id } ?: return
-                editorFromPerson(
-                    personId = person.id,
-                    membership = PersonMembership.WorldLibrary,
-                    isWorldReference = false,
-                    kind = person.kind,
-                    name = person.name,
-                    description = person.description,
-                    sheet = person.sheet,
-                    overlayHitPoints = "",
-                    overlayNotes = "",
-                )
+                personId = person.id
+                membership = PersonMembership.WorldLibrary
+                isWorldReference = false
+                kind = person.kind
+                name = person.name
+                description = person.description
+                sheet = person.sheet
+                overlayHitPoints = ""
+                overlayNotes = ""
             }
             PersonMembership.ThisCampaign -> {
                 val person = latestCampaignPeople.firstOrNull { it.id == key.id } ?: return
-                editorFromPerson(
-                    personId = person.id,
-                    membership = PersonMembership.ThisCampaign,
-                    isWorldReference = person.isWorldReference(),
-                    kind = person.kind,
-                    name = person.name,
-                    description = person.description,
-                    sheet = resolvedSheet(person),
-                    overlayHitPoints = person.overlayHitPoints?.toString().orEmpty(),
-                    overlayNotes = person.overlayNotes,
-                )
+                personId = person.id
+                membership = PersonMembership.ThisCampaign
+                isWorldReference = person.isWorldReference()
+                kind = person.kind
+                name = person.name
+                description = person.description
+                sheet = resolvedSheet(person)
+                overlayHitPoints = person.overlayHitPoints?.toString().orEmpty()
+                overlayNotes = person.overlayNotes
             }
         }
         when (val current = _state.value) {
-            is CharactersViewState.Content -> _state.value = current.copy(editor = editor)
+            is CharactersViewState.Content -> {
+                _state.value = when (sheet) {
+                    is FifthEditionSheet -> current.copy(
+                        editor = editorFromPerson(
+                            personId = personId,
+                            membership = membership,
+                            isWorldReference = isWorldReference,
+                            kind = kind,
+                            name = name,
+                            description = description,
+                            sheet = sheet,
+                            overlayHitPoints = overlayHitPoints,
+                            overlayNotes = overlayNotes,
+                        ),
+                        pathfinderEditor = null,
+                    )
+                    is Pathfinder2ESheet -> current.copy(
+                        editor = null,
+                        pathfinderEditor = pathfinderEditorFromPerson(
+                            personId = personId,
+                            membership = membership,
+                            isWorldReference = isWorldReference,
+                            kind = kind,
+                            name = name,
+                            description = description,
+                            sheet = sheet,
+                            overlayHitPoints = overlayHitPoints,
+                            overlayNotes = overlayNotes,
+                        ),
+                    )
+                }
+            }
             else -> Unit
         }
     }
@@ -1062,6 +1558,16 @@ internal class CharactersViewModel(
             temporaryHitPoints = sheet.temporaryHitPoints.toString(),
             armorClass = sheet.armorClass.toString(),
             walkSpeed = sheet.walkSpeed.toString(),
+            creatureSize = sheet.creatureSize,
+            concentratingSpell = sheet.concentratingSpell,
+            skills = skillEditorsFrom(sheet),
+            spellSlots = sheet.spellSlots.map { slot ->
+                CharactersViewState.SpellSlotEditor(
+                    levelText = slot.level.toString(),
+                    maximumText = slot.maximum.toString(),
+                    usedText = slot.used.toString(),
+                )
+            },
             deathSuccesses = sheet.deathSaves.successes.toString(),
             deathFailures = sheet.deathSaves.failures.toString(),
             items = sheet.items.map { item ->
@@ -1092,6 +1598,78 @@ internal class CharactersViewModel(
         )
     }
 
+    private fun pathfinderEditorFromPerson(
+        personId: String?,
+        membership: PersonMembership,
+        isWorldReference: Boolean,
+        kind: PersonKind,
+        name: String,
+        description: String,
+        sheet: Pathfinder2ESheet,
+        overlayHitPoints: String,
+        overlayNotes: String,
+    ): CharactersViewState.PathfinderEditorState {
+        return CharactersViewState.PathfinderEditorState(
+            personId = personId,
+            membership = membership,
+            isWorldReference = isWorldReference,
+            canChangeMembership = personId == null && hasActiveCampaign,
+            hasActiveCampaign = hasActiveCampaign,
+            kind = kind,
+            name = name,
+            description = description,
+            ancestry = sheet.ancestry,
+            heritage = sheet.heritage,
+            background = sheet.background,
+            className = sheet.className,
+            subclass = sheet.subclass,
+            levelText = sheet.level.toString(),
+            strength = sheet.abilityScores.strength.toString(),
+            dexterity = sheet.abilityScores.dexterity.toString(),
+            constitution = sheet.abilityScores.constitution.toString(),
+            intelligence = sheet.abilityScores.intelligence.toString(),
+            wisdom = sheet.abilityScores.wisdom.toString(),
+            charisma = sheet.abilityScores.charisma.toString(),
+            hitPoints = sheet.hitPoints.toString(),
+            maxHitPoints = sheet.maxHitPoints.toString(),
+            temporaryHitPoints = sheet.temporaryHitPoints.toString(),
+            armorClass = sheet.armorClass.toString(),
+            perception = sheet.perception.toString(),
+            landSpeed = sheet.landSpeed.toString(),
+            dying = sheet.dying.toString(),
+            wounded = sheet.wounded.toString(),
+            skills = if (sheet.skills.isEmpty()) {
+                defaultPathfinderSkills()
+            } else {
+                sheet.skills.map { skill ->
+                    CharactersViewState.PathfinderSkillEditor(
+                        name = skill.name,
+                        rank = skill.rank,
+                    )
+                }
+            },
+            feats = sheet.feats.map { feat ->
+                CharactersViewState.PathfinderFeatEditor(
+                    name = feat.name,
+                    type = feat.type,
+                    description = feat.description,
+                )
+            },
+            spells = sheet.spells.map { spell ->
+                CharactersViewState.PathfinderSpellEditor(
+                    name = spell.name,
+                    rankText = spell.rank.toString(),
+                    prepared = spell.prepared,
+                )
+            },
+            notes = sheet.notes,
+            overlayHitPoints = overlayHitPoints,
+            overlayNotes = overlayNotes,
+            nameError = null,
+            membershipError = null,
+        )
+    }
+
     private fun changeMembership(
         editor: CharactersViewState.CharacterEditorState,
         membership: PersonMembership,
@@ -1107,6 +1685,89 @@ internal class CharactersViewModel(
             kind = kind,
             membershipError = null,
         )
+    }
+
+    private fun changePathfinderMembership(
+        editor: CharactersViewState.PathfinderEditorState,
+        membership: PersonMembership,
+    ): CharactersViewState.PathfinderEditorState {
+        return editor.copy(
+            membership = membership,
+            kind = kindForMembership(membership, editor.kind),
+            membershipError = null,
+        )
+    }
+
+    private fun kindForMembership(
+        membership: PersonMembership,
+        kind: PersonKind,
+    ): PersonKind {
+        return when (membership) {
+            PersonMembership.WorldLibrary -> {
+                if (kind == PersonKind.PlayerCharacter) PersonKind.Npc else kind
+            }
+            PersonMembership.ThisCampaign -> kind
+        }
+    }
+
+    private fun applyWizardMembership(membership: PersonMembership) {
+        val nextSystem = systemFor(membership)
+        val pathfinder = pathfinderWizardFrom(_state.value)
+        val fifth = wizardFrom(_state.value)
+        when {
+            pathfinder != null && nextSystem == GameSystem.Pathfinder2E -> {
+                updatePathfinderWizard { wizard ->
+                    wizard.copy(
+                        membership = membership,
+                        kind = kindForMembership(membership, wizard.kind),
+                        membershipError = null,
+                    )
+                }
+            }
+            fifth != null && nextSystem == GameSystem.FifthEdition -> {
+                updateWizard { wizard -> changeWizardMembership(wizard, membership) }
+            }
+            pathfinder != null && nextSystem == GameSystem.FifthEdition -> {
+                updatePathfinderWizardState(null)
+                updateWizardState(
+                    createWizard().copy(
+                        membership = membership,
+                        kind = kindForMembership(membership, pathfinder.kind),
+                        name = pathfinder.name,
+                        description = pathfinder.description,
+                        strength = pathfinder.strength,
+                        dexterity = pathfinder.dexterity,
+                        constitution = pathfinder.constitution,
+                        intelligence = pathfinder.intelligence,
+                        wisdom = pathfinder.wisdom,
+                        charisma = pathfinder.charisma,
+                        hitPoints = pathfinder.hitPoints,
+                        maxHitPoints = pathfinder.maxHitPoints,
+                        armorClass = pathfinder.armorClass,
+                    ),
+                )
+            }
+            fifth != null && nextSystem == GameSystem.Pathfinder2E -> {
+                updateWizardState(null)
+                updatePathfinderWizardState(
+                    createPathfinderWizard().copy(
+                        membership = membership,
+                        kind = kindForMembership(membership, fifth.kind),
+                        name = fifth.name,
+                        description = fifth.description,
+                        strength = fifth.strength,
+                        dexterity = fifth.dexterity,
+                        constitution = fifth.constitution,
+                        intelligence = fifth.intelligence,
+                        wisdom = fifth.wisdom,
+                        charisma = fifth.charisma,
+                        hitPoints = fifth.hitPoints,
+                        maxHitPoints = fifth.maxHitPoints,
+                        armorClass = fifth.armorClass,
+                    ),
+                )
+            }
+        }
     }
 
     private fun saveEditor() {
@@ -1179,6 +1840,91 @@ internal class CharactersViewModel(
         }
     }
 
+    private fun savePathfinderEditor() {
+        val editor = pathfinderEditorFrom(_state.value) ?: return
+        if (editor.name.trim().isEmpty()) {
+            updatePathfinderEditor { current -> current?.copy(nameError = "Name is required") }
+            return
+        }
+        if (editor.membership == PersonMembership.ThisCampaign && !hasActiveCampaign) {
+            updatePathfinderEditor { current ->
+                current?.copy(membershipError = "Select a campaign first")
+            }
+            return
+        }
+        val sheet = sheetFrom(editor)
+        appScope.scope.launch {
+            val failed = when {
+                editor.personId == null && editor.membership == PersonMembership.WorldLibrary -> {
+                    createWorldPerson(
+                        WorldPersonDraft(
+                            kind = editor.kind,
+                            name = editor.name,
+                            description = editor.description,
+                            sheet = sheet,
+                        )
+                    ) !is CreateWorldPersonUseCase.Result.Created
+                }
+                editor.personId == null -> {
+                    createCampaignPerson(
+                        CampaignPersonDraft(
+                            kind = editor.kind,
+                            name = editor.name,
+                            description = editor.description,
+                            sheet = sheet,
+                            overlayHitPoints = editor.overlayHitPoints.toIntOrNull(),
+                            overlayNotes = editor.overlayNotes,
+                        )
+                    ) !is CreateCampaignPersonUseCase.Result.Created
+                }
+                editor.membership == PersonMembership.WorldLibrary -> {
+                    updateWorldPerson(
+                        editor.personId,
+                        WorldPersonDraft(
+                            kind = editor.kind,
+                            name = editor.name,
+                            description = editor.description,
+                            sheet = sheet,
+                        )
+                    ) !is UpdateWorldPersonUseCase.Result.Updated
+                }
+                else -> {
+                    updateCampaignPerson(
+                        editor.personId,
+                        CampaignPersonDraft(
+                            kind = editor.kind,
+                            name = editor.name,
+                            description = editor.description,
+                            sheet = sheet,
+                            overlayHitPoints = editor.overlayHitPoints.toIntOrNull(),
+                            overlayNotes = editor.overlayNotes,
+                        )
+                    ) !is UpdateCampaignPersonUseCase.Result.Updated
+                }
+            }
+            if (failed) {
+                updatePathfinderEditor { current ->
+                    current?.copy(nameError = "Could not save this person")
+                }
+            } else {
+                updatePathfinderEditor { null }
+            }
+        }
+    }
+
+    private fun skillEditorsFrom(sheet: FifthEditionSheet): List<CharactersViewState.SkillEditor> {
+        return FifthEditionSkillCatalog.skills.map { catalogSkill ->
+            val stored = sheet.skills.firstOrNull { skill ->
+                skill.name.equals(catalogSkill.name, ignoreCase = true)
+            }
+            CharactersViewState.SkillEditor(
+                name = catalogSkill.name,
+                ability = catalogSkill.ability,
+                proficient = stored?.proficient == true,
+            )
+        }
+    }
+
     private fun sheetFrom(editor: CharactersViewState.CharacterEditorState): FifthEditionSheet {
         return FifthEditionSheet(
             race = editor.race,
@@ -1244,6 +1990,88 @@ internal class CharactersViewModel(
                 }
             },
             notes = editor.notes,
+            skills = editor.skills.map { skill ->
+                FifthEditionSkill(
+                    name = skill.name,
+                    ability = skill.ability,
+                    proficient = skill.proficient,
+                )
+            },
+            spellSlots = editor.spellSlots.mapNotNull { slot ->
+                val level = slot.levelText.toIntOrNull()?.coerceIn(1, 9) ?: return@mapNotNull null
+                val maximum = slot.maximumText.toIntOrNull()?.coerceAtLeast(0) ?: 0
+                if (maximum <= 0) {
+                    null
+                } else {
+                    FifthEditionSpellSlot(
+                        level = level,
+                        maximum = maximum,
+                        used = slot.usedText.toIntOrNull()?.coerceIn(0, maximum) ?: 0,
+                    )
+                }
+            },
+            concentratingSpell = editor.concentratingSpell.trim(),
+            creatureSize = editor.creatureSize,
+        )
+    }
+
+    private fun sheetFrom(editor: CharactersViewState.PathfinderEditorState): Pathfinder2ESheet {
+        return Pathfinder2ESheet(
+            ancestry = editor.ancestry,
+            heritage = editor.heritage,
+            background = editor.background,
+            className = editor.className,
+            subclass = editor.subclass,
+            level = editor.levelText.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+            abilityScores = AbilityScores(
+                strength = editor.strength.toIntOrNull() ?: 10,
+                dexterity = editor.dexterity.toIntOrNull() ?: 10,
+                constitution = editor.constitution.toIntOrNull() ?: 10,
+                intelligence = editor.intelligence.toIntOrNull() ?: 10,
+                wisdom = editor.wisdom.toIntOrNull() ?: 10,
+                charisma = editor.charisma.toIntOrNull() ?: 10,
+            ),
+            hitPoints = editor.hitPoints.toIntOrNull() ?: 16,
+            maxHitPoints = editor.maxHitPoints.toIntOrNull() ?: 16,
+            temporaryHitPoints = editor.temporaryHitPoints.toIntOrNull() ?: 0,
+            armorClass = editor.armorClass.toIntOrNull() ?: 15,
+            perception = editor.perception.toIntOrNull() ?: 3,
+            landSpeed = editor.landSpeed.toIntOrNull()?.coerceAtLeast(0) ?: 25,
+            skills = editor.skills.mapNotNull { skill ->
+                val name = skill.name.trim()
+                if (name.isEmpty()) {
+                    null
+                } else {
+                    Pathfinder2ESkill(name = name, rank = skill.rank)
+                }
+            },
+            feats = editor.feats.mapNotNull { feat ->
+                val name = feat.name.trim()
+                if (name.isEmpty()) {
+                    null
+                } else {
+                    Pathfinder2EFeat(
+                        name = name,
+                        type = feat.type.trim(),
+                        description = feat.description.trim(),
+                    )
+                }
+            },
+            spells = editor.spells.mapNotNull { spell ->
+                val name = spell.name.trim()
+                if (name.isEmpty()) {
+                    null
+                } else {
+                    Pathfinder2ESpell(
+                        name = name,
+                        rank = spell.rankText.toIntOrNull()?.coerceIn(0, 10) ?: 1,
+                        prepared = spell.prepared,
+                    )
+                }
+            },
+            notes = editor.notes,
+            dying = editor.dying.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+            wounded = editor.wounded.toIntOrNull()?.coerceAtLeast(0) ?: 0,
         )
     }
 
@@ -1327,7 +2155,8 @@ internal class CharactersViewModel(
                 target = null,
                 type = RelationshipType.Ally,
                 description = "",
-                factionLean = "",
+                factionId = null,
+                factions = factionOptions(),
                 targets = relationshipTargets(selected),
                 targetError = null,
             ),
@@ -1348,7 +2177,7 @@ internal class CharactersViewModel(
                 to = toRef(target),
                 type = editor.type,
                 description = editor.description,
-                factionLean = editor.factionLean,
+                factionId = editor.factionId,
             )
             if (result is CreatePersonRelationshipUseCase.Result.Created) {
                 updateContentOverlays(relationshipEditor = null)
@@ -1367,6 +2196,9 @@ internal class CharactersViewModel(
     }
 
     private fun openGenerator() {
+        if (latestWorldSystem != GameSystem.FifthEdition) {
+            return
+        }
         val generator = CharactersViewState.GeneratorState(
             method = AbilityScoreMethod.FourD6DropLowest,
             draft = null,
@@ -1474,6 +2306,66 @@ internal class CharactersViewModel(
         }
     }
 
+    private fun updatePathfinderEditor(
+        transform: (CharactersViewState.PathfinderEditorState?) -> CharactersViewState.PathfinderEditorState?,
+    ) {
+        when (val current = _state.value) {
+            is CharactersViewState.Empty -> {
+                _state.value = current.copy(pathfinderEditor = transform(current.pathfinderEditor))
+            }
+            is CharactersViewState.Content -> {
+                _state.value = current.copy(pathfinderEditor = transform(current.pathfinderEditor))
+            }
+            else -> Unit
+        }
+    }
+
+    private fun updatePathfinderSkill(
+        index: Int,
+        transform: (CharactersViewState.PathfinderSkillEditor) -> CharactersViewState.PathfinderSkillEditor,
+    ) {
+        updatePathfinderEditor { editor ->
+            editor?.copy(
+                skills = editor.skills.mapIndexed { current, skill ->
+                    if (current == index) transform(skill) else skill
+                },
+            )
+        }
+        updatePathfinderWizard { wizard ->
+            wizard.copy(
+                skills = wizard.skills.mapIndexed { current, skill ->
+                    if (current == index) transform(skill) else skill
+                },
+            )
+        }
+    }
+
+    private fun updatePathfinderFeat(
+        index: Int,
+        transform: (CharactersViewState.PathfinderFeatEditor) -> CharactersViewState.PathfinderFeatEditor,
+    ) {
+        updatePathfinderEditor { editor ->
+            editor?.copy(
+                feats = editor.feats.mapIndexed { current, feat ->
+                    if (current == index) transform(feat) else feat
+                },
+            )
+        }
+    }
+
+    private fun updatePathfinderSpell(
+        index: Int,
+        transform: (CharactersViewState.PathfinderSpellEditor) -> CharactersViewState.PathfinderSpellEditor,
+    ) {
+        updatePathfinderEditor { editor ->
+            editor?.copy(
+                spells = editor.spells.mapIndexed { current, spell ->
+                    if (current == index) transform(spell) else spell
+                },
+            )
+        }
+    }
+
     private fun updateGenerator(
         transform: (CharactersViewState.GeneratorState) -> CharactersViewState.GeneratorState,
     ) {
@@ -1519,6 +2411,8 @@ internal class CharactersViewModel(
         blockDeleteReason: String? = blockReasonFrom(_state.value),
         relationshipEditor: CharactersViewState.RelationshipEditorState? =
             relationshipEditorFrom(_state.value),
+        membershipEditor: CharactersViewState.MembershipEditorState? =
+            membershipEditorFrom(_state.value),
         companionEditor: CharactersViewState.CompanionEditorState? =
             companionEditorFrom(_state.value),
     ) {
@@ -1528,6 +2422,7 @@ internal class CharactersViewModel(
                     pendingDelete = pendingDelete,
                     blockDeleteReason = blockDeleteReason,
                     relationshipEditor = relationshipEditor,
+                    membershipEditor = membershipEditor,
                     companionEditor = companionEditor,
                 )
             }
@@ -1539,6 +2434,16 @@ internal class CharactersViewModel(
         return when (state) {
             is CharactersViewState.Empty -> state.editor
             is CharactersViewState.Content -> state.editor
+            else -> null
+        }
+    }
+
+    private fun pathfinderEditorFrom(
+        state: CharactersViewState,
+    ): CharactersViewState.PathfinderEditorState? {
+        return when (state) {
+            is CharactersViewState.Empty -> state.pathfinderEditor
+            is CharactersViewState.Content -> state.pathfinderEditor
             else -> null
         }
     }
@@ -1555,6 +2460,12 @@ internal class CharactersViewModel(
         state: CharactersViewState,
     ): CharactersViewState.RelationshipEditorState? {
         return (state as? CharactersViewState.Content)?.relationshipEditor
+    }
+
+    private fun membershipEditorFrom(
+        state: CharactersViewState,
+    ): CharactersViewState.MembershipEditorState? {
+        return (state as? CharactersViewState.Content)?.membershipEditor
     }
 
     private fun pendingDeleteFrom(state: CharactersViewState): CharactersViewState.PendingDelete? {
@@ -1613,13 +2524,16 @@ internal class CharactersViewModel(
         }
     }
 
-    private fun createWizard(): CharactersViewState.CreationWizardState {
+    private fun createWizard(
+        membership: PersonMembership = PersonMembership.WorldLibrary,
+        kind: PersonKind = PersonKind.Npc,
+    ): CharactersViewState.CreationWizardState {
         return CharactersViewState.CreationWizardState(
             step = CharactersViewState.CreationStep.Identity,
-            membership = PersonMembership.WorldLibrary,
+            membership = membership,
             canChangeMembership = hasActiveCampaign,
             hasActiveCampaign = hasActiveCampaign,
-            kind = PersonKind.Npc,
+            kind = kindForMembership(membership, kind),
             name = "",
             description = "",
             race = "",
@@ -1640,6 +2554,51 @@ internal class CharactersViewModel(
             membershipError = null,
             companionError = null,
         )
+    }
+
+    private fun createPathfinderWizard(
+        membership: PersonMembership = PersonMembership.WorldLibrary,
+        kind: PersonKind = PersonKind.Npc,
+    ): CharactersViewState.PathfinderWizardState {
+        val empty = Pathfinder2ESheet.empty()
+        return CharactersViewState.PathfinderWizardState(
+            step = CharactersViewState.PathfinderCreationStep.Identity,
+            membership = membership,
+            canChangeMembership = hasActiveCampaign,
+            hasActiveCampaign = hasActiveCampaign,
+            kind = kindForMembership(membership, kind),
+            name = "",
+            description = "",
+            ancestry = "",
+            heritage = "",
+            background = "",
+            className = "",
+            subclass = "",
+            levelText = "1",
+            strength = empty.abilityScores.strength.toString(),
+            dexterity = empty.abilityScores.dexterity.toString(),
+            constitution = empty.abilityScores.constitution.toString(),
+            intelligence = empty.abilityScores.intelligence.toString(),
+            wisdom = empty.abilityScores.wisdom.toString(),
+            charisma = empty.abilityScores.charisma.toString(),
+            hitPoints = empty.hitPoints.toString(),
+            maxHitPoints = empty.maxHitPoints.toString(),
+            armorClass = empty.armorClass.toString(),
+            perception = empty.perception.toString(),
+            landSpeed = empty.landSpeed.toString(),
+            skills = defaultPathfinderSkills(),
+            nameError = null,
+            membershipError = null,
+        )
+    }
+
+    private fun defaultPathfinderSkills(): List<CharactersViewState.PathfinderSkillEditor> {
+        return Pathfinder2EReference.skills.map { name ->
+            CharactersViewState.PathfinderSkillEditor(
+                name = name,
+                rank = Pathfinder2ESkillRank.Untrained,
+            )
+        }
     }
 
     private fun emptyCompanionDraft(): CharactersViewState.CompanionDraftEditor {
@@ -1937,6 +2896,170 @@ internal class CharactersViewModel(
         )
     }
 
+    private fun sheetFromPathfinderWizard(
+        wizard: CharactersViewState.PathfinderWizardState,
+    ): Pathfinder2ESheet {
+        val empty = Pathfinder2ESheet.empty()
+        return empty.copy(
+            ancestry = wizard.ancestry,
+            heritage = wizard.heritage,
+            background = wizard.background,
+            className = wizard.className,
+            subclass = wizard.subclass,
+            level = wizard.levelText.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+            abilityScores = AbilityScores(
+                strength = wizard.strength.toIntOrNull() ?: empty.abilityScores.strength,
+                dexterity = wizard.dexterity.toIntOrNull() ?: empty.abilityScores.dexterity,
+                constitution = wizard.constitution.toIntOrNull() ?: empty.abilityScores.constitution,
+                intelligence = wizard.intelligence.toIntOrNull() ?: empty.abilityScores.intelligence,
+                wisdom = wizard.wisdom.toIntOrNull() ?: empty.abilityScores.wisdom,
+                charisma = wizard.charisma.toIntOrNull() ?: empty.abilityScores.charisma,
+            ),
+            hitPoints = wizard.hitPoints.toIntOrNull() ?: empty.hitPoints,
+            maxHitPoints = wizard.maxHitPoints.toIntOrNull() ?: empty.maxHitPoints,
+            armorClass = wizard.armorClass.toIntOrNull() ?: empty.armorClass,
+            perception = wizard.perception.toIntOrNull() ?: empty.perception,
+            landSpeed = wizard.landSpeed.toIntOrNull()?.coerceAtLeast(0) ?: empty.landSpeed,
+            skills = wizard.skills.mapNotNull { skill ->
+                val name = skill.name.trim()
+                if (name.isEmpty()) {
+                    null
+                } else {
+                    Pathfinder2ESkill(name = name, rank = skill.rank)
+                }
+            },
+        )
+    }
+
+    private fun advancePathfinderWizard() {
+        val wizard = pathfinderWizardFrom(_state.value) ?: return
+        if (wizard.step == CharactersViewState.PathfinderCreationStep.Identity) {
+            if (wizard.name.trim().isEmpty()) {
+                updatePathfinderWizard { current -> current.copy(nameError = "Name is required") }
+                return
+            }
+            if (wizard.membership == PersonMembership.ThisCampaign && !hasActiveCampaign) {
+                updatePathfinderWizard { current ->
+                    current.copy(membershipError = "Select a campaign first")
+                }
+                return
+            }
+        }
+        val next = when (wizard.step) {
+            CharactersViewState.PathfinderCreationStep.Identity -> {
+                CharactersViewState.PathfinderCreationStep.AncestryAndClass
+            }
+            CharactersViewState.PathfinderCreationStep.AncestryAndClass -> {
+                CharactersViewState.PathfinderCreationStep.Attributes
+            }
+            CharactersViewState.PathfinderCreationStep.Attributes -> {
+                CharactersViewState.PathfinderCreationStep.Skills
+            }
+            CharactersViewState.PathfinderCreationStep.Skills -> {
+                CharactersViewState.PathfinderCreationStep.Review
+            }
+            CharactersViewState.PathfinderCreationStep.Review -> {
+                CharactersViewState.PathfinderCreationStep.Review
+            }
+        }
+        updatePathfinderWizard { current -> current.copy(step = next) }
+    }
+
+    private fun rewindPathfinderWizard() {
+        val wizard = pathfinderWizardFrom(_state.value) ?: return
+        val previous = when (wizard.step) {
+            CharactersViewState.PathfinderCreationStep.Identity -> {
+                CharactersViewState.PathfinderCreationStep.Identity
+            }
+            CharactersViewState.PathfinderCreationStep.AncestryAndClass -> {
+                CharactersViewState.PathfinderCreationStep.Identity
+            }
+            CharactersViewState.PathfinderCreationStep.Attributes -> {
+                CharactersViewState.PathfinderCreationStep.AncestryAndClass
+            }
+            CharactersViewState.PathfinderCreationStep.Skills -> {
+                CharactersViewState.PathfinderCreationStep.Attributes
+            }
+            CharactersViewState.PathfinderCreationStep.Review -> {
+                CharactersViewState.PathfinderCreationStep.Skills
+            }
+        }
+        updatePathfinderWizard { current -> current.copy(step = previous) }
+    }
+
+    private fun savePathfinderWizard() {
+        val wizard = pathfinderWizardFrom(_state.value) ?: return
+        if (wizard.name.trim().isEmpty()) {
+            updatePathfinderWizard { current ->
+                current.copy(
+                    step = CharactersViewState.PathfinderCreationStep.Identity,
+                    nameError = "Name is required",
+                )
+            }
+            return
+        }
+        if (wizard.membership == PersonMembership.ThisCampaign && !hasActiveCampaign) {
+            updatePathfinderWizard { current ->
+                current.copy(
+                    step = CharactersViewState.PathfinderCreationStep.Identity,
+                    membershipError = "Select a campaign first",
+                )
+            }
+            return
+        }
+        appScope.scope.launch {
+            val ownerRef = createPathfinderWizardOwner(wizard)
+            if (ownerRef == null) {
+                updatePathfinderWizard { current ->
+                    current.copy(nameError = "Could not save this person")
+                }
+                return@launch
+            }
+            selectedKey = keyFrom(ownerRef)
+            updatePathfinderWizardState(null)
+        }
+    }
+
+    private suspend fun createPathfinderWizardOwner(
+        wizard: CharactersViewState.PathfinderWizardState,
+    ): PersonRef? {
+        val sheet = sheetFromPathfinderWizard(wizard)
+        return when (wizard.membership) {
+            PersonMembership.WorldLibrary -> {
+                val result = createWorldPerson(
+                    WorldPersonDraft(
+                        kind = wizard.kind,
+                        name = wizard.name,
+                        description = wizard.description,
+                        sheet = sheet,
+                    )
+                )
+                if (result is CreateWorldPersonUseCase.Result.Created) {
+                    PersonRef.World(result.person.id)
+                } else {
+                    null
+                }
+            }
+            PersonMembership.ThisCampaign -> {
+                val result = createCampaignPerson(
+                    CampaignPersonDraft(
+                        kind = wizard.kind,
+                        name = wizard.name,
+                        description = wizard.description,
+                        sheet = sheet,
+                        overlayHitPoints = null,
+                        overlayNotes = "",
+                    )
+                )
+                if (result is CreateCampaignPersonUseCase.Result.Created) {
+                    PersonRef.Campaign(result.person.id)
+                } else {
+                    null
+                }
+            }
+        }
+    }
+
     private fun openCompanionEditor() {
         val selected = selectedKey ?: return
         updateContentOverlays(
@@ -2072,10 +3195,195 @@ internal class CharactersViewModel(
         }
     }
 
+    private fun pathfinderWizardFrom(
+        state: CharactersViewState,
+    ): CharactersViewState.PathfinderWizardState? {
+        return when (state) {
+            is CharactersViewState.Empty -> state.pathfinderWizard
+            is CharactersViewState.Content -> state.pathfinderWizard
+            else -> null
+        }
+    }
+
+    private fun updatePathfinderWizard(
+        transform: (CharactersViewState.PathfinderWizardState) -> CharactersViewState.PathfinderWizardState,
+    ) {
+        when (val current = _state.value) {
+            is CharactersViewState.Empty -> {
+                current.pathfinderWizard?.let {
+                    _state.value = current.copy(pathfinderWizard = transform(it))
+                }
+            }
+            is CharactersViewState.Content -> {
+                current.pathfinderWizard?.let {
+                    _state.value = current.copy(pathfinderWizard = transform(it))
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    private fun updatePathfinderWizardState(wizard: CharactersViewState.PathfinderWizardState?) {
+        when (val current = _state.value) {
+            is CharactersViewState.Empty -> _state.value = current.copy(pathfinderWizard = wizard)
+            is CharactersViewState.Content -> _state.value = current.copy(pathfinderWizard = wizard)
+            else -> Unit
+        }
+    }
+
     private fun companionEditorFrom(
         state: CharactersViewState,
     ): CharactersViewState.CompanionEditorState? {
         return (state as? CharactersViewState.Content)?.companionEditor
+    }
+
+    private fun openMembershipEditor() {
+        val selected = selectedKey ?: return
+        updateContentOverlays(
+            membershipEditor = CharactersViewState.MembershipEditorState(
+                factionId = null,
+                role = "",
+                factions = availableMembershipFactions(selected),
+                factionError = null,
+            ),
+        )
+    }
+
+    private fun saveMembership() {
+        val selected = selectedKey ?: return
+        val editor = membershipEditorFrom(_state.value) ?: return
+        val factionId = editor.factionId
+        if (factionId == null) {
+            updateMembershipEditor { current -> current.copy(factionError = "Pick a faction") }
+            return
+        }
+        appScope.scope.launch {
+            val result = createFactionMembership(
+                person = membershipRef(selected),
+                factionId = factionId,
+                role = editor.role,
+                notes = "",
+            )
+            if (result is CreateFactionMembershipUseCase.Result.Created) {
+                updateContentOverlays(membershipEditor = null)
+            } else {
+                updateMembershipEditor { current ->
+                    current.copy(factionError = "Could not add that membership")
+                }
+            }
+        }
+    }
+
+    private fun deleteMembership(membershipId: String) {
+        appScope.scope.launch {
+            deleteFactionMembership(membershipId)
+        }
+    }
+
+    private fun updateMembershipEditor(
+        transform: (CharactersViewState.MembershipEditorState) -> CharactersViewState.MembershipEditorState,
+    ) {
+        val current = _state.value
+        if (current is CharactersViewState.Content && current.membershipEditor != null) {
+            _state.value = current.copy(membershipEditor = transform(current.membershipEditor))
+        }
+    }
+
+    private fun membershipsFor(
+        key: CharactersViewState.PersonKey,
+        campaignPerson: CampaignPerson?,
+    ): List<CharactersViewState.MembershipRow> {
+        val ref = membershipRef(key, campaignPerson)
+        return latestMemberships
+            .filter { membership -> sameRef(membership.person, ref) }
+            .map { membership ->
+                CharactersViewState.MembershipRow(
+                    id = membership.id,
+                    factionName = latestFactions.firstOrNull { it.id == membership.factionId }?.name
+                        ?: "Unknown faction",
+                    role = membership.role,
+                    notes = membership.notes,
+                )
+            }
+    }
+
+    private fun membershipRef(
+        key: CharactersViewState.PersonKey,
+        campaignPerson: CampaignPerson? = latestCampaignPeople.firstOrNull { it.id == key.id },
+    ): PersonRef {
+        return when (key.membership) {
+            PersonMembership.WorldLibrary -> PersonRef.World(key.id)
+            PersonMembership.ThisCampaign -> {
+                val worldPersonId = campaignPerson?.worldPersonId
+                if (worldPersonId != null) {
+                    PersonRef.World(worldPersonId)
+                } else {
+                    PersonRef.Campaign(key.id)
+                }
+            }
+        }
+    }
+
+    private fun factionOptions(): List<CharactersViewState.FactionOption> {
+        return latestFactions.map { faction ->
+            CharactersViewState.FactionOption(id = faction.id, name = faction.name)
+        }
+    }
+
+    private fun availableMembershipFactions(
+        selected: CharactersViewState.PersonKey?,
+    ): List<CharactersViewState.FactionOption> {
+        if (selected == null) {
+            return factionOptions()
+        }
+        val memberFactionIds = latestMemberships
+            .filter { membership -> sameRef(membership.person, membershipRef(selected)) }
+            .map { it.factionId }
+            .toSet()
+        return factionOptions().filter { option -> option.id !in memberFactionIds }
+    }
+
+    private fun openSrdMonsterPicker() {
+        if (latestWorldSystem != GameSystem.FifthEdition || latestPickerCatalog.monsters.isEmpty()) {
+            return
+        }
+        setSrdMonsterPicker(open = true)
+    }
+
+    private fun addSrdMonster(name: String) {
+        appScope.scope.launch {
+            when (createFromSrdMonster(name)) {
+                is CreateWorldPersonFromSrdMonsterUseCase.Result.Created -> {
+                    setSrdMonsterPicker(open = false)
+                }
+                CreateWorldPersonFromSrdMonsterUseCase.Result.NotFound -> {
+                    setSrdMonsterPicker(open = false)
+                }
+                CreateWorldPersonFromSrdMonsterUseCase.Result.NoActiveWorld,
+                CreateWorldPersonFromSrdMonsterUseCase.Result.InvalidName -> Unit
+            }
+        }
+    }
+
+    private fun setSrdMonsterPicker(open: Boolean) {
+        srdMonsterPickerOpen = open
+        val picker = srdMonsterPicker()
+        when (val current = _state.value) {
+            is CharactersViewState.Empty -> {
+                _state.value = current.copy(srdMonsterPicker = picker)
+            }
+            is CharactersViewState.Content -> {
+                _state.value = current.copy(srdMonsterPicker = picker)
+            }
+            else -> Unit
+        }
+    }
+
+    private fun srdMonsterPicker(): List<SrdMonsterEntry>? {
+        if (!srdMonsterPickerOpen) {
+            return null
+        }
+        return latestPickerCatalog.monsters
     }
 
     private data class PeopleLoad(
@@ -2086,6 +3394,13 @@ internal class CharactersViewModel(
         val quests: List<Quest>,
     )
 
+    private data class ExtraLoad(
+        val companions: List<PersonCompanion>,
+        val factions: List<Faction>,
+        val memberships: List<FactionMembership>,
+        val pickerCatalog: FifthEditionPickerCatalog,
+    )
+
     private data class LoadedSnapshot(
         val details: ActiveContextDetails,
         val people: PeopleSnapshot,
@@ -2093,5 +3408,33 @@ internal class CharactersViewModel(
         val companions: List<PersonCompanion>,
         val lore: List<Lore>,
         val quests: List<Quest>,
+        val factions: List<Faction>,
+        val memberships: List<FactionMembership>,
+        val pickerCatalog: FifthEditionPickerCatalog,
     )
+
+    private data class PendingWizard(
+        val fifthEdition: CharactersViewState.CreationWizardState?,
+        val pathfinder: CharactersViewState.PathfinderWizardState?,
+    )
+
+    private enum class PendingCreate {
+        Person,
+        PlayerCharacter,
+        ;
+
+        fun membership(): PersonMembership {
+            return when (this) {
+                Person -> PersonMembership.WorldLibrary
+                PlayerCharacter -> PersonMembership.ThisCampaign
+            }
+        }
+
+        fun kind(): PersonKind {
+            return when (this) {
+                Person -> PersonKind.Npc
+                PlayerCharacter -> PersonKind.PlayerCharacter
+            }
+        }
+    }
 }

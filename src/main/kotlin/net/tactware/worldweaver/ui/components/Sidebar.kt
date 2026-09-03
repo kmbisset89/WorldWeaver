@@ -17,7 +17,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Casino
@@ -124,7 +126,9 @@ internal fun Sidebar(
                 icon = destination.icon,
                 label = destination.label,
                 contentDescription = destination.contentDescription,
-                isSelected = currentScreen == destination.screen,
+                isSelected = currentScreen == destination.screen ||
+                    (destination.screen == Screen.HOME &&
+                        (currentScreen == Screen.RUN || currentScreen == Screen.ONE_SHOT_WIZARD)),
                 expanded = expanded,
                 onClick = { onNavigate(destination.screen) }
             )
@@ -233,6 +237,8 @@ private enum class NavDestination(
     Locations(Screen.LOCATIONS, Icons.Default.Place, "Locations", "Navigate to Locations"),
     Lore(Screen.LORE, Icons.AutoMirrored.Filled.MenuBook, "Lore", "Navigate to Lore"),
     Calendar(Screen.CALENDAR, Icons.Default.CalendarMonth, "Calendar", "Navigate to Calendar"),
+    Factions(Screen.FACTIONS, Icons.Default.AccountBalance, "Factions", "Navigate to Factions"),
+    Links(Screen.LINKS, Icons.Default.AccountTree, "Links", "Navigate to Links"),
     Characters(Screen.CHARACTERS, Icons.Default.Groups, "Characters", "Navigate to Characters"),
     Quests(Screen.QUESTS, Icons.AutoMirrored.Filled.Assignment, "Quests", "Navigate to Quests"),
     Sessions(Screen.SESSIONS, Icons.Default.Event, "Sessions", "Navigate to Sessions"),

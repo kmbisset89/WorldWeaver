@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import net.tactware.worldweaver.domain.CombatState
 import net.tactware.worldweaver.domain.DeathSaves
 import net.tactware.worldweaver.domain.EncounterParticipant
+import net.tactware.worldweaver.domain.EncounterParticipantSource
 import net.tactware.worldweaver.domain.FifthEditionCondition
 import net.tactware.worldweaver.ui.theme.ErrorRed
 import net.tactware.worldweaver.ui.theme.NavyBlue
@@ -204,6 +205,22 @@ private fun CombatantRow(
                     deathSaves = deathSaves,
                     onInteraction = onInteraction,
                 )
+            }
+            if (participant.source != EncounterParticipantSource.Nameless &&
+                participant.sourceId != null
+            ) {
+                TextButton(
+                    onClick = {
+                        onInteraction(
+                            EncountersInteraction.SheetSelected(
+                                source = participant.source,
+                                sourceId = participant.sourceId,
+                            )
+                        )
+                    }
+                ) {
+                    Text("Sheet")
+                }
             }
         }
     }

@@ -8,19 +8,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.PublicOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -28,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.tactware.worldweaver.domain.SrdMonsterEntry
 import net.tactware.worldweaver.ui.components.ConfirmDestructiveDialog
 import net.tactware.worldweaver.ui.components.FeatureEmptyState
 import net.tactware.worldweaver.ui.components.FeatureErrorState
@@ -88,29 +95,72 @@ internal fun CharactersScreen(
                 CharactersHeader(
                     subtitle = viewState.worldName,
                     showActions = true,
+                    canCreatePlayerCharacter = viewState.campaignName != null,
+                    canImportSrdMonster = viewState.worldGameSystemIsFifthEdition &&
+                        viewState.pickerCatalog.monsters.isNotEmpty(),
+                    canGenerateRandomNpc = viewState.worldGameSystemIsFifthEdition,
                     onInteraction = onInteraction,
                 )
                 FeatureEmptyState(
                     icon = Icons.Default.Groups,
                     title = "No people yet",
-                    message = "Add an NPC to the world library, create a campaign PC, or generate a random NPC.",
-                    actionLabel = "New person",
-                    onAction = { onInteraction(CharactersInteraction.NewPersonSelected) },
+                    message = if (viewState.campaignName != null) {
+                        "Create a campaign PC, add an NPC to the world library, or generate a random NPC."
+                    } else {
+                        "Add an NPC to the world library, or select a campaign to create a PC."
+                    },
+                    actionLabel = if (viewState.campaignName != null) "New PC" else "New person",
+                    onAction = {
+                        onInteraction(
+                            if (viewState.campaignName != null) {
+                                CharactersInteraction.NewPlayerCharacterSelected
+                            } else {
+                                CharactersInteraction.NewPersonSelected
+                            }
+                        )
+                    },
                 )
                 viewState.editor?.let { editor ->
-                    CharacterEditorDialog(editor = editor, onInteraction = onInteraction)
+                    CharacterEditorDialog(
+                        editor = editor,
+                        pickerCatalog = viewState.pickerCatalog,
+                        onInteraction = onInteraction,
+                    )
+                }
+                viewState.pathfinderEditor?.let { editor ->
+                    PathfinderCharacterEditorDialog(
+                        editor = editor,
+                        onInteraction = onInteraction,
+                    )
                 }
                 viewState.wizard?.let { wizard ->
-                    CharacterCreationWizardDialog(wizard = wizard, onInteraction = onInteraction)
+                    CharacterCreationWizardDialog(
+                        wizard = wizard,
+                        pickerCatalog = viewState.pickerCatalog,
+                        onInteraction = onInteraction,
+                    )
+                }
+                viewState.pathfinderWizard?.let { wizard ->
+                    PathfinderCharacterCreationWizardDialog(
+                        wizard = wizard,
+                        onInteraction = onInteraction,
+                    )
                 }
                 viewState.generator?.let { generator ->
                     RandomNpcDialog(generator = generator, onInteraction = onInteraction)
+                }
+                viewState.srdMonsterPicker?.let { monsters ->
+                    SrdMonsterPickerDialog(monsters = monsters, onInteraction = onInteraction)
                 }
             }
             is CharactersViewState.Content -> {
                 CharactersHeader(
                     subtitle = viewState.worldName,
                     showActions = true,
+                    canCreatePlayerCharacter = viewState.campaignName != null,
+                    canImportSrdMonster = viewState.worldGameSystemIsFifthEdition &&
+                        viewState.pickerCatalog.monsters.isNotEmpty(),
+                    canGenerateRandomNpc = viewState.worldGameSystemIsFifthEdition,
                     onInteraction = onInteraction,
                 )
                 CharactersContent(state = viewState, onInteraction = onInteraction)
@@ -123,6 +173,9 @@ internal fun CharactersScreen(
 private fun CharactersHeader(
     subtitle: String,
     showActions: Boolean,
+    canCreatePlayerCharacter: Boolean = false,
+    canImportSrdMonster: Boolean = false,
+    canGenerateRandomNpc: Boolean = false,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
     Row(
@@ -145,18 +198,45 @@ private fun CharactersHeader(
         }
         if (showActions) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { onInteraction(CharactersInteraction.RandomNpcSelected) }
-                ) {
-                    Text("Random NPC")
+                if (canImportSrdMonster) {
+                    OutlinedButton(
+                        onClick = { onInteraction(CharactersInteraction.SrdMonsterImportOpened) }
+                    ) {
+                        Text("Add SRD monster")
+                    }
                 }
-                Button(
-                    onClick = { onInteraction(CharactersInteraction.NewPersonSelected) },
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                    Text("New person")
+                if (canGenerateRandomNpc) {
+                    OutlinedButton(
+                        onClick = { onInteraction(CharactersInteraction.RandomNpcSelected) }
+                    ) {
+                        Text("Random NPC")
+                    }
+                }
+                if (canCreatePlayerCharacter) {
+                    Button(
+                        onClick = {
+                            onInteraction(CharactersInteraction.NewPlayerCharacterSelected)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                        Text("New PC")
+                    }
+                    OutlinedButton(
+                        onClick = { onInteraction(CharactersInteraction.NewPersonSelected) }
+                    ) {
+                        Text("New person")
+                    }
+                } else {
+                    Button(
+                        onClick = { onInteraction(CharactersInteraction.NewPersonSelected) },
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                        Text("New person")
+                    }
                 }
             }
         }
@@ -201,7 +281,9 @@ private fun CharactersContent(
             CharacterDetailPane(
                 selected = state.selected,
                 relationshipEditor = state.relationshipEditor,
+                membershipEditor = state.membershipEditor,
                 companionEditor = state.companionEditor,
+                pickerCatalog = state.pickerCatalog,
                 onInteraction = onInteraction,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
@@ -215,10 +297,33 @@ private fun CharactersContent(
     }
 
     state.editor?.let { editor ->
-        CharacterEditorDialog(editor = editor, onInteraction = onInteraction)
+        CharacterEditorDialog(
+            editor = editor,
+            pickerCatalog = state.pickerCatalog,
+            onInteraction = onInteraction,
+        )
+    }
+    state.pathfinderEditor?.let { editor ->
+        PathfinderCharacterEditorDialog(
+            editor = editor,
+            onInteraction = onInteraction,
+        )
     }
     state.wizard?.let { wizard ->
-        CharacterCreationWizardDialog(wizard = wizard, onInteraction = onInteraction)
+        CharacterCreationWizardDialog(
+            wizard = wizard,
+            pickerCatalog = state.pickerCatalog,
+            onInteraction = onInteraction,
+        )
+    }
+    state.pathfinderWizard?.let { wizard ->
+        PathfinderCharacterCreationWizardDialog(
+            wizard = wizard,
+            onInteraction = onInteraction,
+        )
+    }
+    state.srdMonsterPicker?.let { monsters ->
+        SrdMonsterPickerDialog(monsters = monsters, onInteraction = onInteraction)
     }
     state.generator?.let { generator ->
         RandomNpcDialog(generator = generator, onInteraction = onInteraction)
@@ -237,4 +342,55 @@ private fun CharactersContent(
             onDismiss = { onInteraction(CharactersInteraction.DeleteCancelled) },
         )
     }
+}
+
+@Composable
+private fun SrdMonsterPickerDialog(
+    monsters: List<SrdMonsterEntry>,
+    onInteraction: (CharactersInteraction) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = { onInteraction(CharactersInteraction.SrdMonsterImportDismissed) },
+        title = { Text("Add SRD monster") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 480.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "Adds a world-library monster with name, HP, AC, and walk speed from the imported catalog.",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                )
+                monsters.forEach { monster ->
+                    FilterChip(
+                        selected = false,
+                        onClick = {
+                            onInteraction(CharactersInteraction.SrdMonsterSelected(monster.name))
+                        },
+                        label = { Text(monsterSubtitle(monster)) },
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = { onInteraction(CharactersInteraction.SrdMonsterImportDismissed) }) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+private fun monsterSubtitle(monster: SrdMonsterEntry): String {
+    val details = listOfNotNull(
+        monster.creatureType.takeIf { it.isNotBlank() },
+        monster.challengeRating.takeIf { it.isNotBlank() }?.let { "CR $it" },
+        "HP ${monster.hitPoints}",
+        "AC ${monster.armorClass}",
+    )
+    return "${monster.name} · ${details.joinToString(" · ")}"
 }

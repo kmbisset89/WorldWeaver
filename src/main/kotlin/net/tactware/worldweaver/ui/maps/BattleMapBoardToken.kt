@@ -7,6 +7,7 @@ internal data class BattleMapBoardToken(
     val participantId: String,
     val name: String,
     val cell: GridCell,
+    val span: Int = 1,
     val avatarPath: String?,
     val selected: Boolean,
     val isCurrentTurn: Boolean,

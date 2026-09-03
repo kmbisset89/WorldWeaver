@@ -15,8 +15,23 @@ internal sealed class SettingsViewState {
         val profileError: String? = null,
         val isTransferring: Boolean = false,
         val pendingRestorePath: String? = null,
+        val srdStatus: SrdStatus = SrdStatus.BundledPickers,
+        val pendingClearSrd: Boolean = false,
     ) : SettingsViewState() {
         val isProfileDirty: Boolean
             get() = draftDisplayName != savedDisplayName || draftEmail != savedEmail
+    }
+
+    sealed interface SrdStatus {
+        data object BundledPickers : SrdStatus
+
+        data class Imported(
+            val sourceLabel: String,
+            val importedAtEpochMillis: Long,
+            val raceCount: Int,
+            val classCount: Int,
+            val spellCount: Int,
+            val monsterCount: Int,
+        ) : SrdStatus
     }
 }

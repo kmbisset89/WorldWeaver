@@ -28,8 +28,10 @@ import net.tactware.worldweaver.ui.campaigns.CampaignsScreen
 import net.tactware.worldweaver.ui.characters.CharactersScreen
 import net.tactware.worldweaver.ui.components.Sidebar
 import net.tactware.worldweaver.ui.home.HomeScreen
+import net.tactware.worldweaver.ui.oneshot.OneShotWizardScreen
 import net.tactware.worldweaver.ui.locations.LocationsScreen
 import net.tactware.worldweaver.ui.lore.LoreScreen
+import net.tactware.worldweaver.ui.maps.BattleMapItemOverlay
 import net.tactware.worldweaver.ui.maps.BattleMapTokenOverlay
 import net.tactware.worldweaver.ui.maps.BattleMapViewerComposeWidget
 import net.tactware.worldweaver.ui.maps.MapsInteraction
@@ -37,11 +39,20 @@ import net.tactware.worldweaver.ui.maps.MapsScreen
 import net.tactware.worldweaver.ui.maps.MapsViewState
 import net.tactware.worldweaver.ui.navigation.Screen
 import net.tactware.worldweaver.ui.search.SearchBar
+import net.tactware.worldweaver.ui.factions.FactionsScreen
+import net.tactware.worldweaver.ui.links.LinksScreen
+import net.tactware.worldweaver.ui.dice.DiceFloatingWindow
+import net.tactware.worldweaver.ui.dice.DiceInteraction
 import net.tactware.worldweaver.ui.dice.DiceScreen
+import net.tactware.worldweaver.ui.dice.DiceViewState
 import net.tactware.worldweaver.ui.encounters.EncountersInteraction
 import net.tactware.worldweaver.ui.encounters.EncountersScreen
 import net.tactware.worldweaver.ui.encounters.EncountersViewState
+import net.tactware.worldweaver.ui.sheet.CharacterSheetInteraction
+import net.tactware.worldweaver.ui.sheet.CharacterSheetScreen
+import net.tactware.worldweaver.ui.sheet.CharacterSheetViewState
 import net.tactware.worldweaver.ui.quests.QuestsScreen
+import net.tactware.worldweaver.ui.run.RunScreen
 import net.tactware.worldweaver.ui.sessions.SessionsScreen
 import net.tactware.worldweaver.ui.settings.SettingsScreen
 import net.tactware.worldweaver.ui.theme.ErrorRed
@@ -59,6 +70,8 @@ internal fun App(
     ) {
         val mapsState by viewModel.mapsViewModel.state.collectAsState()
         val encountersState by viewModel.encountersViewModel.state.collectAsState()
+        val sheetState by viewModel.characterSheetViewModel.state.collectAsState()
+        val diceState by viewModel.diceViewModel.state.collectAsState()
         val mapsPlayerMapState = viewModel.mapsViewModel.playerMapState
         val encounterPlayerMapState = viewModel.encountersViewModel.playerMapState
         val mapsPlayerContent = mapsState as? MapsViewState.Content
@@ -71,6 +84,32 @@ internal fun App(
         val playerTitle = encounterPlayerContent?.battleMapName
             ?: mapsPlayerContent?.selectedMap?.name
             ?: "Battle map"
+        if (sheetState !is CharacterSheetViewState.Hidden) {
+            val sheetWindowState = remember {
+                WindowState(size = DpSize(1100.dp, 800.dp))
+            }
+            val sheetTitle = (sheetState as? CharacterSheetViewState.Content)?.name
+                ?: "Character sheet"
+            Window(
+                title = sheetTitle,
+                onCloseRequest = {
+                    viewModel.characterSheetViewModel.onInteraction(
+                        CharacterSheetInteraction.SheetDismissed
+                    )
+                },
+                state = sheetWindowState,
+            ) {
+                WorldWeaverTheme(
+                    themeMode = viewModel.themeMode,
+                    themeSkin = viewModel.themeSkin,
+                ) {
+                    CharacterSheetScreen(
+                        viewState = sheetState,
+                        onInteraction = viewModel.characterSheetViewModel::onInteraction,
+                    )
+                }
+            }
+        }
         if (playerMapState != null) {
             val playerWindowState = remember {
                 WindowState(size = DpSize(1024.dp, 768.dp))
@@ -120,7 +159,44 @@ internal fun App(
                                     )
                                 }
                             }
+                            BattleMapItemOverlay.itemIdFrom(markerId)?.let { itemId ->
+                                if (encounterPlayerContent != null &&
+                                    encounterPlayerContent.playerViewOpen
+                                ) {
+                                    viewModel.encountersViewModel.onInteraction(
+                                        EncountersInteraction.ItemSelected(itemId)
+                                    )
+                                } else {
+                                    viewModel.mapsViewModel.onInteraction(
+                                        MapsInteraction.ItemSelected(itemId)
+                                    )
+                                }
+                            }
                         },
+                    )
+                }
+            }
+        }
+        val diceContent = diceState as? DiceViewState.Content
+        if (diceContent?.isFloatingOpen == true) {
+            val diceWindowState = remember {
+                WindowState(size = DpSize(440.dp, 720.dp))
+            }
+            Window(
+                title = "Dice",
+                alwaysOnTop = diceContent.isAlwaysOnTop,
+                onCloseRequest = {
+                    viewModel.diceViewModel.onInteraction(DiceInteraction.FloatingClosed)
+                },
+                state = diceWindowState,
+            ) {
+                WorldWeaverTheme(
+                    themeMode = viewModel.themeMode,
+                    themeSkin = viewModel.themeSkin,
+                ) {
+                    DiceFloatingWindow(
+                        viewState = diceState,
+                        onInteraction = viewModel.diceViewModel::onInteraction,
                     )
                 }
             }
@@ -200,6 +276,14 @@ internal fun App(
                         )
                     }
 
+                    Screen.ONE_SHOT_WIZARD -> {
+                        val oneShotState by viewModel.oneShotWizardViewModel.state.collectAsState()
+                        OneShotWizardScreen(
+                            viewState = oneShotState,
+                            onInteraction = viewModel.oneShotWizardViewModel::onInteraction
+                        )
+                    }
+
                     Screen.WORLDS -> {
                         val worldsState by viewModel.worldsViewModel.state.collectAsState()
                         WorldsScreen(
@@ -237,6 +321,22 @@ internal fun App(
                         CalendarScreen(
                             viewState = calendarState,
                             onInteraction = viewModel.calendarViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.FACTIONS -> {
+                        val factionsState by viewModel.factionsViewModel.state.collectAsState()
+                        FactionsScreen(
+                            viewState = factionsState,
+                            onInteraction = viewModel.factionsViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.LINKS -> {
+                        val linksState by viewModel.linksViewModel.state.collectAsState()
+                        LinksScreen(
+                            viewState = linksState,
+                            onInteraction = viewModel.linksViewModel::onInteraction
                         )
                     }
 
@@ -280,8 +380,15 @@ internal fun App(
                         )
                     }
 
+                    Screen.RUN -> {
+                        val runState by viewModel.runViewModel.state.collectAsState()
+                        RunScreen(
+                            viewState = runState,
+                            onInteraction = viewModel.runViewModel::onInteraction
+                        )
+                    }
+
                     Screen.DICE -> {
-                        val diceState by viewModel.diceViewModel.state.collectAsState()
                         DiceScreen(
                             viewState = diceState,
                             onInteraction = viewModel.diceViewModel::onInteraction

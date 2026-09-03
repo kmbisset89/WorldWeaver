@@ -72,7 +72,7 @@ private fun SettingsContent(
                     color = TextPrimary
                 )
                 Text(
-                    text = "Appearance, local profile, and backups",
+                    text = "Appearance, local profile, backups, and 5E SRD",
                     fontSize = 14.sp,
                     color = TextSecondary
                 )
@@ -186,7 +186,7 @@ private fun SettingsContent(
         item {
             SettingsCard(title = "Backup and restore") {
                 Text(
-                    text = "Export a single backup of this machine’s worlds, campaigns, maps, avatars, and voice clips. Restore replaces everything on this computer. WorldWeaver will quit after restore.",
+                    text = "Export a single backup of this machine’s worlds, campaigns, maps, avatars, voice clips, and imported SRD. Restore replaces everything on this computer. WorldWeaver will quit after restore.",
                     fontSize = 13.sp,
                     color = TextSecondary,
                 )
@@ -207,15 +207,54 @@ private fun SettingsContent(
                 }
             }
         }
+
+        item {
+            SettingsCard(title = "5E SRD catalog") {
+                SrdStatusCopy(status = state.srdStatus)
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onInteraction(SettingsInteraction.ImportBundledSrdSelected) },
+                        enabled = !state.isTransferring,
+                    ) {
+                        Text("Import bundled SRD")
+                    }
+                    OutlinedButton(
+                        onClick = { chooseSrdFilePath(onInteraction) },
+                        enabled = !state.isTransferring,
+                    ) {
+                        Text("Import from file")
+                    }
+                    if (state.srdStatus is SettingsViewState.SrdStatus.Imported) {
+                        OutlinedButton(
+                            onClick = { onInteraction(SettingsInteraction.ClearSrdSelected) },
+                            enabled = !state.isTransferring,
+                        ) {
+                            Text("Clear import")
+                        }
+                    }
+                }
+            }
+        }
     }
 
     state.pendingRestorePath?.let {
         ConfirmDestructiveDialog(
             title = "Replace all WorldWeaver data?",
-            message = "This replaces all local worlds, campaigns, maps, avatars, and voice clips. Profile and appearance come from the backup. WorldWeaver will quit so you can reopen with the restored files. This cannot be undone unless you exported first.",
+            message = "This replaces all local worlds, campaigns, maps, avatars, voice clips, and imported SRD. Profile and appearance come from the backup. WorldWeaver will quit so you can reopen with the restored files. This cannot be undone unless you exported first.",
             confirmLabel = "Restore and quit",
             onConfirm = { onInteraction(SettingsInteraction.RestoreConfirmed) },
             onDismiss = { onInteraction(SettingsInteraction.RestoreCancelled) },
+        )
+    }
+
+    if (state.pendingClearSrd) {
+        ConfirmDestructiveDialog(
+            title = "Clear imported SRD?",
+            message = "Character pickers will go back to the bundled 5E lists. World people you already created stay as they are.",
+            confirmLabel = "Clear import",
+            onConfirm = { onInteraction(SettingsInteraction.ClearSrdConfirmed) },
+            onDismiss = { onInteraction(SettingsInteraction.ClearSrdCancelled) },
         )
     }
 }
@@ -227,6 +266,31 @@ private fun chooseExportPath(onInteraction: (SettingsInteraction) -> Unit) {
         defaultFileName = defaultBackupFileName(),
     )?.let { path ->
         onInteraction(SettingsInteraction.ExportPathChosen(path))
+    }
+}
+
+private fun chooseSrdFilePath(onInteraction: (SettingsInteraction) -> Unit) {
+    val dialog = FileDialog(null as Frame?, "Import SRD catalog", FileDialog.LOAD)
+    dialog.setFilenameFilter { _, name -> name.endsWith(".json", ignoreCase = true) }
+    dialog.isVisible = true
+    val fileName = dialog.file ?: return
+    val directory = dialog.directory ?: return
+    onInteraction(SettingsInteraction.SrdFilePathChosen(File(directory, fileName).absolutePath))
+}
+
+@Composable
+private fun SrdStatusCopy(status: SettingsViewState.SrdStatus) {
+    when (status) {
+        SettingsViewState.SrdStatus.BundledPickers -> Text(
+            text = "Character pickers use the bundled 5E lists. Import the SRD to add official races, classes, spells, and monsters.",
+            fontSize = 13.sp,
+            color = TextSecondary,
+        )
+        is SettingsViewState.SrdStatus.Imported -> Text(
+            text = "Using ${status.sourceLabel}: ${status.raceCount} races, ${status.classCount} classes, ${status.spellCount} spells, ${status.monsterCount} monsters.",
+            fontSize = 13.sp,
+            color = TextSecondary,
+        )
     }
 }
 

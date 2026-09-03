@@ -16,19 +16,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.tactware.worldweaver.domain.CompanionKind
-import net.tactware.worldweaver.domain.FifthEditionReference
+import net.tactware.worldweaver.domain.FifthEditionPickerCatalog
 import net.tactware.worldweaver.domain.PersonKind
 
 @Composable
 internal fun CharacterCreationWizardDialog(
     wizard: CharactersViewState.CreationWizardState,
+    pickerCatalog: FifthEditionPickerCatalog,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
     val isLast = wizard.step == CharactersViewState.CreationStep.Review
     AlertDialog(
         onDismissRequest = { onInteraction(CharactersInteraction.WizardDismissed) },
         title = {
-            Text("New person · ${stepTitle(wizard.step)}")
+            Text("${wizardTitle(wizard.kind)} · ${stepTitle(wizard.step)}")
         },
         text = {
             Column(
@@ -46,6 +47,7 @@ internal fun CharacterCreationWizardDialog(
                     )
                     CharactersViewState.CreationStep.RaceAndClass -> RaceAndClassStep(
                         wizard = wizard,
+                        pickerCatalog = pickerCatalog,
                         onInteraction = onInteraction,
                     )
                     CharactersViewState.CreationStep.Abilities -> AbilitiesStep(
@@ -54,6 +56,7 @@ internal fun CharacterCreationWizardDialog(
                     )
                     CharactersViewState.CreationStep.Companions -> CompanionsStep(
                         wizard = wizard,
+                        pickerCatalog = pickerCatalog,
                         onInteraction = onInteraction,
                     )
                     CharactersViewState.CreationStep.Review -> ReviewStep(wizard = wizard)
@@ -139,6 +142,7 @@ private fun IdentityStep(
 @Composable
 private fun RaceAndClassStep(
     wizard: CharactersViewState.CreationWizardState,
+    pickerCatalog: FifthEditionPickerCatalog,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
     Text("Race")
@@ -149,7 +153,7 @@ private fun RaceAndClassStep(
         singleLine = true,
         modifier = Modifier.fillMaxWidth()
     )
-    FifthEditionReference.races.forEach { race ->
+    pickerCatalog.races.forEach { race ->
         FilterChip(
             selected = wizard.race == race,
             onClick = { onInteraction(CharactersInteraction.WizardRaceChanged(race)) },
@@ -167,7 +171,7 @@ private fun RaceAndClassStep(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        FifthEditionReference.classes.forEach { className ->
+        pickerCatalog.classes.forEach { className ->
             FilterChip(
                 selected = level.className == className,
                 onClick = {
@@ -176,7 +180,7 @@ private fun RaceAndClassStep(
                 label = { Text(className) },
             )
         }
-        val subclasses = FifthEditionReference.subclassesFor(level.className)
+        val subclasses = pickerCatalog.subclassesFor(level.className)
         if (subclasses.isNotEmpty()) {
             Text("Subclass")
             subclasses.forEach { subclass ->
@@ -263,6 +267,7 @@ private fun AbilitiesStep(
 @Composable
 private fun CompanionsStep(
     wizard: CharactersViewState.CreationWizardState,
+    pickerCatalog: FifthEditionPickerCatalog,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
     Text("Add a familiar or animal companion, or skip this step.")
@@ -335,7 +340,7 @@ private fun CompanionsStep(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
-            creatureOptions(draft.kind).forEach { creature ->
+            creatureOptions(draft.kind, pickerCatalog).forEach { creature ->
                 FilterChip(
                     selected = draft.newCreature == creature,
                     onClick = {
@@ -410,6 +415,10 @@ private fun WizardScoreField(
     )
 }
 
+private fun wizardTitle(kind: PersonKind): String {
+    return if (kind == PersonKind.PlayerCharacter) "New PC" else "New person"
+}
+
 private fun stepTitle(step: CharactersViewState.CreationStep): String {
     return when (step) {
         CharactersViewState.CreationStep.Identity -> "Identity"
@@ -437,9 +446,12 @@ private fun wizardKindOptions(
     }
 }
 
-private fun creatureOptions(kind: CompanionKind): List<String> {
+private fun creatureOptions(
+    kind: CompanionKind,
+    pickerCatalog: FifthEditionPickerCatalog,
+): List<String> {
     return when (kind) {
-        CompanionKind.Familiar -> FifthEditionReference.familiars
-        CompanionKind.AnimalCompanion -> FifthEditionReference.animalCompanions
+        CompanionKind.Familiar -> pickerCatalog.familiars
+        CompanionKind.AnimalCompanion -> pickerCatalog.animalCompanions
     }
 }

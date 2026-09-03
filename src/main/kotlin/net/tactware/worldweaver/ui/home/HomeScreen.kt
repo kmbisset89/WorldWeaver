@@ -19,6 +19,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -101,13 +102,23 @@ private fun HomeEmpty(
     ) {
         item { HomeGreeting(state.displayName) }
         item {
-            FeatureEmptyState(
-                icon = Icons.Default.Public,
-                title = "No recent worlds",
-                message = "Create a world to start building places, people, and stories.",
-                actionLabel = "New world",
-                onAction = { onInteraction(HomeInteraction.NewWorldSelected) },
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                FeatureEmptyState(
+                    icon = Icons.Default.Public,
+                    title = "No recent worlds",
+                    message = "Create a world to start building places, people, and stories.",
+                    actionLabel = "New world",
+                    onAction = { onInteraction(HomeInteraction.NewWorldSelected) },
+                )
+                TextButton(
+                    onClick = { onInteraction(HomeInteraction.OneShotSelected) },
+                ) {
+                    Text("Create a one-shot")
+                }
+            }
         }
     }
 }
@@ -219,20 +230,24 @@ private fun ContinueCard(
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
             Text(
-                text = "Continue",
+                text = "Continue tonight",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary
             )
             Text(
-                text = continueCampaign.campaignName,
+                text = continueCampaign.sessionName ?: continueCampaign.campaignName,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
-                text = continueCampaign.worldName,
+                text = if (continueCampaign.sessionName != null) {
+                    "${continueCampaign.campaignName} · ${continueCampaign.worldName}"
+                } else {
+                    continueCampaign.worldName
+                },
                 fontSize = 13.sp,
                 color = TextSecondary,
                 modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
@@ -241,7 +256,7 @@ private fun ContinueCard(
                 onClick = { onInteraction(HomeInteraction.ContinueCampaignSelected) },
                 colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
             ) {
-                Text("Open campaign")
+                Text("Continue")
             }
         }
     }

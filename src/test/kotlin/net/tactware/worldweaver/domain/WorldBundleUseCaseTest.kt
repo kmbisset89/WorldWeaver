@@ -128,6 +128,137 @@ internal class WorldBundleUseCaseTest {
     }
 
     @Test
+    fun missingPersonSheetSystemDecodesAsFifthEdition() {
+        val json = Json { ignoreUnknownKeys = true }
+        val record = json.decodeFromString(
+            WorldBundle.WorldPersonRecord.serializer(),
+            """
+            {
+              "id": "wp-1",
+              "worldId": "world-1",
+              "kind": "Npc",
+              "name": "Bram",
+              "description": "",
+              "sheet": {
+                "race": "Human",
+                "classLevels": [],
+                "abilityScores": {
+                  "strength": 10,
+                  "dexterity": 10,
+                  "constitution": 10,
+                  "intelligence": 10,
+                  "wisdom": 10,
+                  "charisma": 10
+                },
+                "hitPoints": 10,
+                "maxHitPoints": 10,
+                "temporaryHitPoints": 0,
+                "armorClass": 10,
+                "walkSpeed": 30,
+                "deathSaves": { "successes": 0, "failures": 0 },
+                "items": [],
+                "features": [],
+                "spells": [],
+                "notes": ""
+              },
+              "createdAtEpochMillis": 1756560000000,
+              "updatedAtEpochMillis": 1756560000000
+            }
+            """.trimIndent(),
+        )
+        val person = record.toDomain()
+        val sheet = assertIs<FifthEditionSheet>(person.sheet)
+        assertEquals("Human", sheet.race)
+        assertEquals(GameSystem.FifthEdition, sheet.gameSystem())
+    }
+
+    @Test
+    fun pathfinderPersonSheetRoundTripsThroughBundleRecord() {
+        val person = WorldPerson(
+            id = "wp-pf2e",
+            worldId = "world-1",
+            kind = PersonKind.Npc,
+            name = "Harsk",
+            description = "",
+            sheet = Pathfinder2ESheet.empty().copy(
+                ancestry = "Dwarf",
+                className = "Ranger",
+                level = 4,
+            ),
+            createdAt = now,
+            updatedAt = now,
+        )
+
+        val decoded = WorldBundle.WorldPersonRecord.from(person).toDomain()
+        val sheet = assertIs<Pathfinder2ESheet>(decoded.sheet)
+        assertEquals("Dwarf", sheet.ancestry)
+        assertEquals("Ranger", sheet.className)
+        assertEquals(4, sheet.level)
+    }
+
+    @Test
+    fun oldRelationshipLeanCreatesFactionOnRead() {
+        val world = World(
+            id = "world-1",
+            name = "Faerun",
+            description = "",
+            defaultGameSystem = GameSystem.FifthEdition,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val bram = WorldPerson(
+            id = "wp-1",
+            worldId = world.id,
+            kind = PersonKind.Npc,
+            name = "Bram",
+            description = "",
+            sheet = FifthEditionSheet.empty(),
+            createdAt = now,
+            updatedAt = now,
+        )
+        val cora = bram.copy(id = "wp-2", name = "Cora")
+        val payload = WorldBundle.Payload(
+            world = WorldBundle.WorldRecord.from(world),
+            campaigns = emptyList(),
+            locations = emptyList(),
+            loreEntries = emptyList(),
+            worldPeople = listOf(
+                WorldBundle.WorldPersonRecord.from(bram),
+                WorldBundle.WorldPersonRecord.from(cora),
+            ),
+            campaignPeople = emptyList(),
+            locationOverlays = emptyList(),
+            quests = emptyList(),
+            sessions = emptyList(),
+            plotThreads = emptyList(),
+            referenceDocs = emptyList(),
+            battleMaps = emptyList(),
+            battleMapSituations = emptyList(),
+            encounters = emptyList(),
+            relationships = listOf(
+                WorldBundle.PersonRelationshipRecord(
+                    id = "rel-1",
+                    from = WorldBundle.PersonRefRecord.from(PersonRef.World(bram.id)),
+                    to = WorldBundle.PersonRefRecord.from(PersonRef.World(cora.id)),
+                    type = "Ally",
+                    description = "",
+                    factionLean = "Harpers",
+                )
+            ),
+            companions = emptyList(),
+        )
+        val bundle = WorldBundle.fromRecords(
+            manifest = WorldBundle.Manifest(1, now.toEpochMilli(), "Faerun"),
+            payload = payload,
+            avatarFiles = emptyList(),
+            mapFiles = emptyList(),
+        )
+        assertEquals(1, bundle.factions.size)
+        assertEquals("Harpers", bundle.factions.single().name)
+        assertEquals(bundle.factions.single().id, bundle.relationships.single().factionId)
+    }
+
+    @Test
     fun unknownFormatVersionIsRejected() = runTest {
         val harness = Harness()
         val source = harness.insertWorld(id = "world-1", name = "Faerun")
@@ -179,6 +310,8 @@ internal class WorldBundleUseCaseTest {
         val campaigns = FakeCampaignRepository()
         val locations = FakeLocationRepository()
         val lore = FakeLoreRepository()
+        val factions = FakeFactionRepository()
+        val memberships = FakeFactionMembershipRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
         val overlays = FakeLocationOverlayRepository()
@@ -205,6 +338,8 @@ internal class WorldBundleUseCaseTest {
             campaignRepository = campaigns,
             locationRepository = locations,
             loreRepository = lore,
+            factionRepository = factions,
+            factionMembershipRepository = memberships,
             worldPersonRepository = worldPeople,
             campaignPersonRepository = campaignPeople,
             locationOverlayRepository = overlays,
@@ -234,6 +369,8 @@ internal class WorldBundleUseCaseTest {
             campaignRepository = campaigns,
             locationRepository = locations,
             loreRepository = lore,
+            factionRepository = factions,
+            factionMembershipRepository = memberships,
             worldPersonRepository = worldPeople,
             campaignPersonRepository = campaignPeople,
             locationOverlayRepository = overlays,
@@ -486,7 +623,7 @@ internal class WorldBundleUseCaseTest {
                 to = PersonRef.Campaign(campaignPerson.id),
                 type = RelationshipType.Ally,
                 description = "Friend",
-                factionLean = "",
+                factionId = null,
             )
             relationships.insert(relationship)
             return SourceGraph(

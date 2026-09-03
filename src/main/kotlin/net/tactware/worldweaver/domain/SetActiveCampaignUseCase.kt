@@ -6,7 +6,11 @@ internal class SetActiveCampaignUseCase(
 ) {
     suspend operator fun invoke(campaignId: String) {
         val campaign = campaignRepository.getById(campaignId) ?: return
+        val previousCampaignId = activeContextRepository.get().activeCampaignId
         activeContextRepository.setActiveWorldId(campaign.worldId)
         activeContextRepository.setActiveCampaignId(campaignId)
+        if (previousCampaignId != campaignId) {
+            activeContextRepository.setActiveSessionId(null)
+        }
     }
 }

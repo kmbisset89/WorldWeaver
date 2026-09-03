@@ -4,6 +4,7 @@ internal class DeleteWorldPersonUseCase(
     private val worldPersonRepository: WorldPersonRepository,
     private val campaignPersonRepository: CampaignPersonRepository,
     private val personRelationshipRepository: PersonRelationshipRepository,
+    private val factionMembershipRepository: FactionMembershipRepository,
     private val personCompanionRepository: PersonCompanionRepository,
     private val questRepository: QuestRepository,
     private val avatarFileStore: PersonAvatarFileStore,
@@ -22,6 +23,7 @@ internal class DeleteWorldPersonUseCase(
             return Result.Blocked(referenceCount)
         }
         personRelationshipRepository.deleteByPerson(PersonRef.World(personId))
+        factionMembershipRepository.deleteByPerson(PersonRef.World(personId))
         personCompanionRepository.deleteByPerson(PersonRef.World(personId))
         questRepository.deleteLinksByTarget(QuestLinkKind.WORLD_PERSON, personId)
         avatarFileStore.delete(PersonRef.World(personId))

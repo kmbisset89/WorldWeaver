@@ -41,6 +41,7 @@ internal class CreateSessionUseCase(
             updatedAt = now,
         )
         sessionRepository.insert(session)
+        activeContextRepository.setActiveSessionId(session.id)
         return Result.Created(session)
     }
 

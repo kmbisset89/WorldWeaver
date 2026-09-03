@@ -16,6 +16,7 @@ internal class CreateWorldUseCase(
     suspend operator fun invoke(
         name: String,
         description: String,
+        defaultGameSystem: GameSystem = GameSystem.FifthEdition,
     ): Result {
         val trimmedName = name.trim()
         if (trimmedName.isEmpty()) {
@@ -26,7 +27,7 @@ internal class CreateWorldUseCase(
             id = entityIdFactory.create(),
             name = trimmedName,
             description = description.trim(),
-            defaultGameSystem = GameSystem.FifthEdition,
+            defaultGameSystem = defaultGameSystem,
             createdAt = now,
             updatedAt = now,
         )

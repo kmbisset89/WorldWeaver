@@ -26,6 +26,7 @@ internal class AppBackupArchiveConverter {
         avatarsDir: File,
         mapsDir: File,
         voicesDir: File,
+        srdDir: File,
     ) {
         destFile.parentFile?.mkdirs()
         ZipOutputStream(destFile.outputStream().buffered()).use { zip ->
@@ -37,6 +38,7 @@ internal class AppBackupArchiveConverter {
             zip.writeTree(AVATARS_PREFIX, avatarsDir)
             zip.writeTree(MAPS_PREFIX, mapsDir)
             zip.writeTree(VOICES_PREFIX, voicesDir)
+            zip.writeTree(SRD_PREFIX, srdDir)
         }
     }
 
@@ -58,6 +60,9 @@ internal class AppBackupArchiveConverter {
                 if (manifest.formatVersion != AppBackupManifest.FORMAT_VERSION) {
                     return ReadResult.InvalidArchive
                 }
+                if (manifest.dbSchemaVersion > AppBackupManifest.DB_SCHEMA_VERSION) {
+                    return ReadResult.UnsupportedVersion
+                }
                 val prefs = json.decodeFromString(
                     AppBackupPrefs.serializer(),
                     prefsBytes.decodeToString(),
@@ -77,7 +82,8 @@ internal class AppBackupArchiveConverter {
                         }
                         entry.name.startsWith(AVATARS_PREFIX) ||
                             entry.name.startsWith(MAPS_PREFIX) ||
-                            entry.name.startsWith(VOICES_PREFIX) -> {
+                            entry.name.startsWith(VOICES_PREFIX) ||
+                            entry.name.startsWith(SRD_PREFIX) -> {
                             val relative = entry.name.removePrefix(DATA_PREFIX)
                             val dest = File(extractTo, relative)
                             writeExtractedFile(extractTo, dest, zip.readBytes(entry))
@@ -152,6 +158,7 @@ internal class AppBackupArchiveConverter {
         const val AVATARS_PREFIX = "${DATA_PREFIX}avatars/"
         const val MAPS_PREFIX = "${DATA_PREFIX}maps/"
         const val VOICES_PREFIX = "${DATA_PREFIX}voices/"
+        const val SRD_PREFIX = "${DATA_PREFIX}srd/"
 
         val json = Json {
             prettyPrint = true

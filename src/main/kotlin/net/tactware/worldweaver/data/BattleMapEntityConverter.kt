@@ -5,6 +5,7 @@ import java.time.Instant
 
 internal class BattleMapEntityConverter(
     private val fogCellsConverter: BattleMapFogCellsConverter = BattleMapFogCellsConverter(),
+    private val itemsConverter: BattleMapItemsConverter = BattleMapItemsConverter(),
 ) {
     fun toBattleMap(entity: BattleMapEntity): BattleMap {
         return BattleMap(
@@ -22,6 +23,9 @@ internal class BattleMapEntityConverter(
             unitsPerTile = entity.unitsPerTile,
             fogEnabled = entity.fogEnabled,
             revealedCells = fogCellsConverter.decode(entity.revealedCells),
+            blockedCells = fogCellsConverter.decode(entity.blockedCells),
+            difficultCells = fogCellsConverter.decode(entity.difficultCells),
+            items = itemsConverter.decode(entity.items),
             createdAt = Instant.ofEpochMilli(entity.createdAtEpochMillis),
             updatedAt = Instant.ofEpochMilli(entity.updatedAtEpochMillis),
         )
@@ -43,6 +47,9 @@ internal class BattleMapEntityConverter(
             unitsPerTile = battleMap.unitsPerTile,
             fogEnabled = battleMap.fogEnabled,
             revealedCells = fogCellsConverter.encode(battleMap.revealedCells),
+            blockedCells = fogCellsConverter.encode(battleMap.blockedCells),
+            difficultCells = fogCellsConverter.encode(battleMap.difficultCells),
+            items = itemsConverter.encode(battleMap.items),
             createdAtEpochMillis = battleMap.createdAt.toEpochMilli(),
             updatedAtEpochMillis = battleMap.updatedAt.toEpochMilli(),
         )

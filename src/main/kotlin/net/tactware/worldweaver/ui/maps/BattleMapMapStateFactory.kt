@@ -12,6 +12,7 @@ import ovh.plrapps.mapcompose.ui.state.MapState
 internal class BattleMapMapStateFactory(
     private val fileStore: BattleMapFileStore,
     private val fogTileFactory: BattleMapFogTileFactory = BattleMapFogTileFactory(),
+    private val terrainTileFactory: BattleMapTerrainTileFactory = BattleMapTerrainTileFactory(),
 ) {
     fun create(battleMap: BattleMap): MapState {
         val state = MapState(
@@ -57,6 +58,29 @@ internal class BattleMapMapStateFactory(
                 layerIds[situation.id] = layerId
             }
         return signature
+    }
+
+    fun syncTerrainLayer(
+        mapState: MapState,
+        battleMap: BattleMap,
+        layerId: String?,
+    ): String? {
+        if (layerId != null) {
+            mapState.removeLayer(layerId)
+        }
+        if (battleMap.blockedCells.isEmpty() && battleMap.difficultCells.isEmpty()) {
+            return null
+        }
+        return mapState.addLayer(
+            tileProvider(battleMap.maxZoom) { dbZoom, col, row ->
+                terrainTileFactory.tilePng(
+                    battleMap = battleMap,
+                    dbZoom = dbZoom,
+                    col = col,
+                    row = row,
+                )
+            }
+        )
     }
 
     fun syncFogLayer(

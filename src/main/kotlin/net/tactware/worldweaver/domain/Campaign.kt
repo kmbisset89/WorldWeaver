@@ -12,4 +12,8 @@ internal data class Campaign(
     val status: CampaignStatus,
     val createdAt: Instant,
     val updatedAt: Instant,
-)
+) {
+    fun resolvedGameSystem(worldDefault: GameSystem): GameSystem {
+        return GameSystem.resolve(gameSystem, worldDefault)
+    }
+}

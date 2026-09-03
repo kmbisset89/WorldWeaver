@@ -8,6 +8,7 @@ internal class DeleteCampaignUseCase(
         campaignRepository.delete(campaignId)
         if (activeContextRepository.get().activeCampaignId == campaignId) {
             activeContextRepository.setActiveCampaignId(null)
+            activeContextRepository.setActiveSessionId(null)
         }
     }
 }

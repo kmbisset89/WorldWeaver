@@ -8,11 +8,17 @@ import kotlinx.coroutines.yield
 import kotlinx.coroutines.withTimeout
 import net.tactware.worldweaver.core.AppCoroutineScope
 import net.tactware.worldweaver.domain.AppBackupArchiveConverter
+import net.tactware.worldweaver.domain.BundledSrdCatalogLoader
+import net.tactware.worldweaver.domain.ClearSrdCatalogUseCase
 import net.tactware.worldweaver.domain.DatabaseSnapshotExporter
 import net.tactware.worldweaver.domain.ExportAppBackupUseCase
 import net.tactware.worldweaver.domain.FakeActiveContextRepository
+import net.tactware.worldweaver.domain.FakeSrdCatalogRepository
+import net.tactware.worldweaver.domain.ImportSrdCatalogUseCase
 import net.tactware.worldweaver.domain.InstantProvider
+import net.tactware.worldweaver.domain.ObserveSrdCatalogUseCase
 import net.tactware.worldweaver.domain.RestoreAppBackupUseCase
+import net.tactware.worldweaver.domain.SrdCatalogJsonConverter
 import net.tactware.worldweaver.domain.WorldWeaverDataDirectory
 import net.tactware.worldweaver.ui.theme.ThemeMode
 import net.tactware.worldweaver.ui.theme.ThemeSkin
@@ -108,6 +114,21 @@ internal class SettingsViewModelTest {
     }
 
     @Test
+    fun importBundledSrdUpdatesStatus() = runBlocking {
+        val catalogs = FakeSrdCatalogRepository()
+        val viewModel = viewModel(catalogs = catalogs)
+        val effect = async { viewModel.effects.first() }
+        yield()
+        viewModel.onInteraction(SettingsInteraction.ImportBundledSrdSelected)
+        assertIs<SettingsViewEffect.SrdImported>(withTimeout(2_000) { effect.await() })
+        val state = assertIs<SettingsViewState.Content>(viewModel.state.value)
+        val imported = assertIs<SettingsViewState.SrdStatus.Imported>(state.srdStatus)
+        assertEquals("5E SRD 5.1", imported.sourceLabel)
+        assertTrue(imported.monsterCount > 0)
+        assertEquals("5E SRD 5.1", catalogs.get()?.sourceLabel)
+    }
+
+    @Test
     fun exportSetsTransferringThenClearsIt() = runBlocking {
         val gate = CompletableDeferred<Unit>()
         val viewModel = viewModel(snapshot = GatedSnapshotExporter(gate))
@@ -128,11 +149,13 @@ internal class SettingsViewModelTest {
     private fun viewModel(
         store: ShellSettingsStore = ShellSettingsStore(preferences),
         snapshot: DatabaseSnapshotExporter = ImmediateSnapshotExporter(),
+        catalogs: FakeSrdCatalogRepository = FakeSrdCatalogRepository(),
     ): SettingsViewModel {
         val dataDirectory = WorldWeaverDataDirectory(File(tempDir, "data"))
         val converter = AppBackupArchiveConverter()
         val context = FakeActiveContextRepository()
         val instantProvider = InstantProvider { Instant.parse("2026-08-30T12:00:00Z") }
+        val srdConverter = SrdCatalogJsonConverter()
         return SettingsViewModel(
             shellSettingsStore = store,
             exportAppBackup = ExportAppBackupUseCase(
@@ -152,6 +175,14 @@ internal class SettingsViewModelTest {
                 shellSettingsStore = store,
                 dicePreferences = dicePreferences,
             ),
+            observeSrdCatalog = ObserveSrdCatalogUseCase(catalogs),
+            importSrdCatalog = ImportSrdCatalogUseCase(
+                catalogRepository = catalogs,
+                bundledLoader = BundledSrdCatalogLoader(srdConverter),
+                converter = srdConverter,
+                instantProvider = instantProvider,
+            ),
+            clearSrdCatalog = ClearSrdCatalogUseCase(catalogs),
             appScope = scope,
         )
     }

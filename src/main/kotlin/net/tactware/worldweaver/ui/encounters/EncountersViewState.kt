@@ -12,6 +12,7 @@ import net.tactware.worldweaver.domain.GridCell
 import net.tactware.worldweaver.domain.GridDistance
 import net.tactware.worldweaver.domain.Location
 import net.tactware.worldweaver.ui.maps.BattleMapBoardToken
+import net.tactware.worldweaver.ui.maps.TerrainPaintKind
 
 internal sealed class EncountersViewState {
     data object Loading : EncountersViewState()
@@ -69,6 +70,11 @@ internal sealed class EncountersViewState {
         val measureDistance: GridDistance?,
         val fogPaintEnabled: Boolean,
         val fogRevealBrush: Boolean,
+        val terrainPaint: TerrainPaintKind?,
+        val itemDropEnabled: Boolean,
+        val itemNameText: String,
+        val selectedItemId: String?,
+        val selectedItemName: String?,
         val playerViewOpen: Boolean,
         val pendingEnd: PendingEnd?,
     ) : EncountersViewState()

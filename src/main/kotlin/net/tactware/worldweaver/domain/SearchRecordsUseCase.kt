@@ -5,6 +5,7 @@ internal class SearchRecordsUseCase(
     private val campaignRepository: CampaignRepository,
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
+    private val factionRepository: FactionRepository,
     private val worldPersonRepository: WorldPersonRepository,
     private val campaignPersonRepository: CampaignPersonRepository,
     private val questRepository: QuestRepository,
@@ -55,6 +56,16 @@ internal class SearchRecordsUseCase(
                 campaignId = null,
             )
         }
+        val factions = factionRepository.search(trimmed).map { faction ->
+            hit(
+                kind = SearchKind.Faction,
+                id = faction.id,
+                title = faction.name,
+                snippet = snippet(faction.description.ifBlank { faction.goals }),
+                worldId = faction.worldId,
+                campaignId = null,
+            )
+        }
         val worldPeople = worldPersonRepository.search(trimmed).map { person ->
             hit(
                 kind = SearchKind.WorldPerson,
@@ -98,7 +109,7 @@ internal class SearchRecordsUseCase(
                 campaignId = session.campaignId,
             )
         }
-        return worlds + campaigns + locations + lore + worldPeople + campaignPeople + quests + sessions
+        return worlds + campaigns + locations + lore + factions + worldPeople + campaignPeople + quests + sessions
     }
 
     private fun hit(

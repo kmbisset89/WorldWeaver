@@ -11,6 +11,8 @@ internal data class WorldBundle(
     val campaigns: List<Campaign>,
     val locations: List<Location>,
     val loreEntries: List<Lore>,
+    val factions: List<Faction> = emptyList(),
+    val memberships: List<FactionMembership> = emptyList(),
     val worldPeople: List<WorldPerson>,
     val campaignPeople: List<CampaignPerson>,
     val locationOverlays: List<LocationOverlay>,
@@ -58,6 +60,8 @@ internal data class WorldBundle(
             campaigns = campaigns.map(CampaignRecord::from),
             locations = locations.map(LocationRecord::from),
             loreEntries = loreEntries.map(LoreRecord::from),
+            factions = factions.map(FactionRecord::from),
+            memberships = memberships.map(FactionMembershipRecord::from),
             worldPeople = worldPeople.map(WorldPersonRecord::from),
             campaignPeople = campaignPeople.map(CampaignPersonRecord::from),
             locationOverlays = locationOverlays.map(LocationOverlayRecord::from),
@@ -83,6 +87,10 @@ internal data class WorldBundle(
             mapFiles: List<MapFile>,
             voiceFiles: List<VoiceFile> = emptyList(),
         ): WorldBundle {
+            val (factions, relationships) = resolveLegacyFactions(
+                payload = payload,
+                exportedAt = Instant.ofEpochMilli(manifest.exportedAtEpochMillis),
+            )
             return WorldBundle(
                 formatVersion = manifest.formatVersion,
                 exportedAt = Instant.ofEpochMilli(manifest.exportedAtEpochMillis),
@@ -91,6 +99,8 @@ internal data class WorldBundle(
                 campaigns = payload.campaigns.map { it.toDomain() },
                 locations = payload.locations.map { it.toDomain() },
                 loreEntries = payload.loreEntries.map { it.toDomain() },
+                factions = factions,
+                memberships = payload.memberships.map { it.toDomain() },
                 worldPeople = payload.worldPeople.map { it.toDomain() },
                 campaignPeople = payload.campaignPeople.map { it.toDomain() },
                 locationOverlays = payload.locationOverlays.map { it.toDomain() },
@@ -101,12 +111,53 @@ internal data class WorldBundle(
                 battleMaps = payload.battleMaps.map { it.toDomain() },
                 battleMapSituations = payload.battleMapSituations.map { it.toDomain() },
                 encounters = payload.encounters.map { it.toDomain() },
-                relationships = payload.relationships.map { it.toDomain() },
+                relationships = relationships,
                 companions = payload.companions.map { it.toDomain() },
                 avatarFiles = avatarFiles,
                 mapFiles = mapFiles,
                 voiceFiles = voiceFiles,
             )
+        }
+
+        private fun resolveLegacyFactions(
+            payload: Payload,
+            exportedAt: Instant,
+        ): Pair<List<Faction>, List<PersonRelationship>> {
+            val factions = payload.factions.map { it.toDomain() }.toMutableList()
+            val worldByPerson = mutableMapOf<Pair<String, String>, String>()
+            payload.worldPeople.forEach { person ->
+                worldByPerson["World" to person.id] = person.worldId
+            }
+            val campaignWorlds = payload.campaigns.associate { it.id to it.worldId }
+            payload.campaignPeople.forEach { person ->
+                campaignWorlds[person.campaignId]?.let { worldId ->
+                    worldByPerson["Campaign" to person.id] = worldId
+                }
+            }
+            val relationships = payload.relationships.map { record ->
+                val existingId = record.factionId?.takeIf { it.isNotBlank() }
+                if (existingId != null || record.factionLean.isBlank()) {
+                    return@map record.toDomain()
+                }
+                val lean = record.factionLean.trim()
+                val worldId = worldByPerson[record.from.kind to record.from.id]
+                    ?: worldByPerson[record.to.kind to record.to.id]
+                    ?: payload.world.id
+                val faction = factions.firstOrNull { existing ->
+                    existing.worldId == worldId && existing.name.equals(lean, ignoreCase = true)
+                } ?: Faction(
+                    id = "legacy-fac-$worldId-${lean.lowercase()}",
+                    worldId = worldId,
+                    name = lean,
+                    description = "",
+                    goals = "",
+                    notes = "",
+                    createdAt = exportedAt,
+                    updatedAt = exportedAt,
+                ).also { factions += it }
+                record.toDomain().copy(factionId = faction.id)
+            }
+            return factions to relationships
         }
     }
 
@@ -124,6 +175,8 @@ internal data class WorldBundle(
         val campaigns: List<CampaignRecord>,
         val locations: List<LocationRecord>,
         val loreEntries: List<LoreRecord>,
+        val factions: List<FactionRecord> = emptyList(),
+        val memberships: List<FactionMembershipRecord> = emptyList(),
         val worldPeople: List<WorldPersonRecord>,
         val campaignPeople: List<CampaignPersonRecord>,
         val locationOverlays: List<LocationOverlayRecord>,
@@ -462,6 +515,8 @@ internal data class WorldBundle(
         val name: String,
         val description: String,
         val sheet: FifthEditionSheetRecord,
+        val sheetSystem: String = GameSystem.FifthEdition.name,
+        val pf2eSheet: Pathfinder2ESheetRecord? = null,
         val createdAtEpochMillis: Long,
         val updatedAtEpochMillis: Long,
     ) {
@@ -472,7 +527,7 @@ internal data class WorldBundle(
                 kind = PersonKind.fromStorage(kind),
                 name = name,
                 description = description,
-                sheet = sheet.toDomain(),
+                sheet = PersonSheetRecord.decode(sheetSystem, sheet, pf2eSheet),
                 createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
                 updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
             )
@@ -480,13 +535,16 @@ internal data class WorldBundle(
 
         companion object {
             fun from(person: WorldPerson): WorldPersonRecord {
+                val encoded = PersonSheetRecord.encode(person.sheet)
                 return WorldPersonRecord(
                     id = person.id,
                     worldId = person.worldId,
                     kind = person.kind.name,
                     name = person.name,
                     description = person.description,
-                    sheet = FifthEditionSheetRecord.from(person.sheet),
+                    sheet = encoded.fifthEdition,
+                    sheetSystem = encoded.sheetSystem,
+                    pf2eSheet = encoded.pf2eSheet,
                     createdAtEpochMillis = person.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = person.updatedAt.toEpochMilli(),
                 )
@@ -503,6 +561,8 @@ internal data class WorldBundle(
         val name: String,
         val description: String,
         val sheet: FifthEditionSheetRecord,
+        val sheetSystem: String = GameSystem.FifthEdition.name,
+        val pf2eSheet: Pathfinder2ESheetRecord? = null,
         val overlayHitPoints: Int?,
         val overlayNotes: String,
         val createdAtEpochMillis: Long,
@@ -516,7 +576,7 @@ internal data class WorldBundle(
                 kind = PersonKind.fromStorage(kind),
                 name = name,
                 description = description,
-                sheet = sheet.toDomain(),
+                sheet = PersonSheetRecord.decode(sheetSystem, sheet, pf2eSheet),
                 overlayHitPoints = overlayHitPoints,
                 overlayNotes = overlayNotes,
                 createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
@@ -526,6 +586,7 @@ internal data class WorldBundle(
 
         companion object {
             fun from(person: CampaignPerson): CampaignPersonRecord {
+                val encoded = PersonSheetRecord.encode(person.sheet)
                 return CampaignPersonRecord(
                     id = person.id,
                     campaignId = person.campaignId,
@@ -533,7 +594,9 @@ internal data class WorldBundle(
                     kind = person.kind.name,
                     name = person.name,
                     description = person.description,
-                    sheet = FifthEditionSheetRecord.from(person.sheet),
+                    sheet = encoded.fifthEdition,
+                    sheetSystem = encoded.sheetSystem,
+                    pf2eSheet = encoded.pf2eSheet,
                     overlayHitPoints = person.overlayHitPoints,
                     overlayNotes = person.overlayNotes,
                     createdAtEpochMillis = person.createdAt.toEpochMilli(),
@@ -558,6 +621,10 @@ internal data class WorldBundle(
         val features: List<PersonFeatureRecord>,
         val spells: List<PersonSpellRecord>,
         val notes: String,
+        val skills: List<FifthEditionSkillRecord> = emptyList(),
+        val spellSlots: List<FifthEditionSpellSlotRecord> = emptyList(),
+        val concentratingSpell: String = "",
+        val creatureSize: String = "Medium",
     ) {
         fun toDomain(): FifthEditionSheet {
             return FifthEditionSheet(
@@ -574,6 +641,10 @@ internal data class WorldBundle(
                 features = features.map { it.toDomain() },
                 spells = spells.map { it.toDomain() },
                 notes = notes,
+                skills = skills.map { it.toDomain() },
+                spellSlots = spellSlots.map { it.toDomain() },
+                concentratingSpell = concentratingSpell,
+                creatureSize = CreatureSize.fromStorage(creatureSize),
             )
         }
 
@@ -593,6 +664,181 @@ internal data class WorldBundle(
                     features = sheet.features.map(PersonFeatureRecord::from),
                     spells = sheet.spells.map(PersonSpellRecord::from),
                     notes = sheet.notes,
+                    skills = sheet.skills.map(FifthEditionSkillRecord::from),
+                    spellSlots = sheet.spellSlots.map(FifthEditionSpellSlotRecord::from),
+                    concentratingSpell = sheet.concentratingSpell,
+                    creatureSize = sheet.creatureSize.name,
+                )
+            }
+        }
+    }
+
+    data class EncodedPersonSheetRecord(
+        val sheetSystem: String,
+        val fifthEdition: FifthEditionSheetRecord,
+        val pf2eSheet: Pathfinder2ESheetRecord?,
+    )
+
+    object PersonSheetRecord {
+        fun decode(
+            sheetSystem: String,
+            fifthEdition: FifthEditionSheetRecord,
+            pf2eSheet: Pathfinder2ESheetRecord?,
+        ): PersonSheet {
+            return when (GameSystem.fromStorage(sheetSystem)) {
+                GameSystem.Pathfinder2E -> pf2eSheet?.toDomain() ?: Pathfinder2ESheet.empty()
+                GameSystem.FifthEdition -> fifthEdition.toDomain()
+            }
+        }
+
+        fun encode(sheet: PersonSheet): EncodedPersonSheetRecord {
+            return when (sheet) {
+                is FifthEditionSheet -> EncodedPersonSheetRecord(
+                    sheetSystem = GameSystem.FifthEdition.name,
+                    fifthEdition = FifthEditionSheetRecord.from(sheet),
+                    pf2eSheet = null,
+                )
+                is Pathfinder2ESheet -> EncodedPersonSheetRecord(
+                    sheetSystem = GameSystem.Pathfinder2E.name,
+                    fifthEdition = FifthEditionSheetRecord.from(FifthEditionSheet.empty()),
+                    pf2eSheet = Pathfinder2ESheetRecord.from(sheet),
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class Pathfinder2ESheetRecord(
+        val ancestry: String,
+        val heritage: String,
+        val background: String,
+        val className: String,
+        val subclass: String,
+        val level: Int,
+        val abilityScores: AbilityScoresRecord,
+        val hitPoints: Int,
+        val maxHitPoints: Int,
+        val temporaryHitPoints: Int,
+        val armorClass: Int,
+        val perception: Int,
+        val landSpeed: Int,
+        val skills: List<Pathfinder2ESkillRecord> = emptyList(),
+        val feats: List<Pathfinder2EFeatRecord> = emptyList(),
+        val spells: List<Pathfinder2ESpellRecord> = emptyList(),
+        val notes: String,
+        val dying: Int = 0,
+        val wounded: Int = 0,
+        val creatureSize: String = "Medium",
+    ) {
+        fun toDomain(): Pathfinder2ESheet {
+            return Pathfinder2ESheet(
+                ancestry = ancestry,
+                heritage = heritage,
+                background = background,
+                className = className,
+                subclass = subclass,
+                level = level,
+                abilityScores = abilityScores.toDomain(),
+                hitPoints = hitPoints,
+                maxHitPoints = maxHitPoints,
+                temporaryHitPoints = temporaryHitPoints,
+                armorClass = armorClass,
+                perception = perception,
+                landSpeed = landSpeed,
+                skills = skills.map { it.toDomain() },
+                feats = feats.map { it.toDomain() },
+                spells = spells.map { it.toDomain() },
+                notes = notes,
+                dying = dying,
+                wounded = wounded,
+                creatureSize = CreatureSize.fromStorage(creatureSize),
+            )
+        }
+
+        companion object {
+            fun from(sheet: Pathfinder2ESheet): Pathfinder2ESheetRecord {
+                return Pathfinder2ESheetRecord(
+                    ancestry = sheet.ancestry,
+                    heritage = sheet.heritage,
+                    background = sheet.background,
+                    className = sheet.className,
+                    subclass = sheet.subclass,
+                    level = sheet.level,
+                    abilityScores = AbilityScoresRecord.from(sheet.abilityScores),
+                    hitPoints = sheet.hitPoints,
+                    maxHitPoints = sheet.maxHitPoints,
+                    temporaryHitPoints = sheet.temporaryHitPoints,
+                    armorClass = sheet.armorClass,
+                    perception = sheet.perception,
+                    landSpeed = sheet.landSpeed,
+                    skills = sheet.skills.map(Pathfinder2ESkillRecord::from),
+                    feats = sheet.feats.map(Pathfinder2EFeatRecord::from),
+                    spells = sheet.spells.map(Pathfinder2ESpellRecord::from),
+                    notes = sheet.notes,
+                    dying = sheet.dying,
+                    wounded = sheet.wounded,
+                    creatureSize = sheet.creatureSize.name,
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class Pathfinder2ESkillRecord(
+        val name: String,
+        val rank: String,
+    ) {
+        fun toDomain(): Pathfinder2ESkill {
+            return Pathfinder2ESkill(
+                name = name,
+                rank = Pathfinder2ESkillRank.fromStorage(rank),
+            )
+        }
+
+        companion object {
+            fun from(skill: Pathfinder2ESkill): Pathfinder2ESkillRecord {
+                return Pathfinder2ESkillRecord(name = skill.name, rank = skill.rank.name)
+            }
+        }
+    }
+
+    @Serializable
+    data class Pathfinder2EFeatRecord(
+        val name: String,
+        val type: String,
+        val description: String,
+    ) {
+        fun toDomain(): Pathfinder2EFeat {
+            return Pathfinder2EFeat(name = name, type = type, description = description)
+        }
+
+        companion object {
+            fun from(feat: Pathfinder2EFeat): Pathfinder2EFeatRecord {
+                return Pathfinder2EFeatRecord(
+                    name = feat.name,
+                    type = feat.type,
+                    description = feat.description,
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class Pathfinder2ESpellRecord(
+        val name: String,
+        val rank: Int,
+        val prepared: Boolean,
+    ) {
+        fun toDomain(): Pathfinder2ESpell {
+            return Pathfinder2ESpell(name = name, rank = rank, prepared = prepared)
+        }
+
+        companion object {
+            fun from(spell: Pathfinder2ESpell): Pathfinder2ESpellRecord {
+                return Pathfinder2ESpellRecord(
+                    name = spell.name,
+                    rank = spell.rank,
+                    prepared = spell.prepared,
                 )
             }
         }
@@ -715,6 +961,48 @@ internal data class WorldBundle(
         companion object {
             fun from(spell: PersonSpell): PersonSpellRecord {
                 return PersonSpellRecord(name = spell.name, level = spell.level, prepared = spell.prepared)
+            }
+        }
+    }
+
+    @Serializable
+    data class FifthEditionSkillRecord(
+        val name: String,
+        val ability: String,
+        val proficient: Boolean,
+    ) {
+        fun toDomain(): FifthEditionSkill {
+            return FifthEditionSkill(name = name, ability = ability, proficient = proficient)
+        }
+
+        companion object {
+            fun from(skill: FifthEditionSkill): FifthEditionSkillRecord {
+                return FifthEditionSkillRecord(
+                    name = skill.name,
+                    ability = skill.ability,
+                    proficient = skill.proficient,
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class FifthEditionSpellSlotRecord(
+        val level: Int,
+        val maximum: Int,
+        val used: Int,
+    ) {
+        fun toDomain(): FifthEditionSpellSlot {
+            return FifthEditionSpellSlot(level = level, maximum = maximum, used = used)
+        }
+
+        companion object {
+            fun from(slot: FifthEditionSpellSlot): FifthEditionSpellSlotRecord {
+                return FifthEditionSpellSlotRecord(
+                    level = slot.level,
+                    maximum = slot.maximum,
+                    used = slot.used,
+                )
             }
         }
     }
@@ -853,6 +1141,7 @@ internal data class WorldBundle(
         val inWorldDay: Int? = null,
         val scenes: List<SessionSceneRecord>,
         val marchOrder: List<MarchOrderEntryRecord>,
+        val recap: String = "",
         val createdAtEpochMillis: Long,
         val updatedAtEpochMillis: Long,
     ) {
@@ -865,6 +1154,7 @@ internal data class WorldBundle(
                 inWorldDate = toInWorldDate(),
                 scenes = scenes.map { it.toDomain() },
                 marchOrder = marchOrder.map { it.toDomain() },
+                recap = recap,
                 createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
                 updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
             )
@@ -882,6 +1172,7 @@ internal data class WorldBundle(
                     inWorldDay = session.inWorldDate?.day,
                     scenes = session.scenes.map(SessionSceneRecord::from),
                     marchOrder = session.marchOrder.map(MarchOrderEntryRecord::from),
+                    recap = session.recap,
                     createdAtEpochMillis = session.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = session.updatedAt.toEpochMilli(),
                 )
@@ -1030,6 +1321,9 @@ internal data class WorldBundle(
         val unitsPerTile: Double,
         val fogEnabled: Boolean = false,
         val revealedCells: List<String> = emptyList(),
+        val blockedCells: List<String> = emptyList(),
+        val difficultCells: List<String> = emptyList(),
+        val items: List<BattleMapItemRecord> = emptyList(),
         val createdAtEpochMillis: Long,
         val updatedAtEpochMillis: Long,
     ) {
@@ -1049,6 +1343,9 @@ internal data class WorldBundle(
                 unitsPerTile = unitsPerTile,
                 fogEnabled = fogEnabled,
                 revealedCells = revealedCells.mapNotNull(::cellFromToken).toSet(),
+                blockedCells = blockedCells.mapNotNull(::cellFromToken).toSet(),
+                difficultCells = difficultCells.mapNotNull(::cellFromToken).toSet(),
+                items = items.map { it.toDomain() },
                 createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
                 updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
             )
@@ -1073,6 +1370,13 @@ internal data class WorldBundle(
                     revealedCells = map.revealedCells
                         .sortedWith(compareBy({ it.column }, { it.row }))
                         .map { cell -> "${cell.column},${cell.row}" },
+                    blockedCells = map.blockedCells
+                        .sortedWith(compareBy({ it.column }, { it.row }))
+                        .map { cell -> "${cell.column},${cell.row}" },
+                    difficultCells = map.difficultCells
+                        .sortedWith(compareBy({ it.column }, { it.row }))
+                        .map { cell -> "${cell.column},${cell.row}" },
+                    items = map.items.map(BattleMapItemRecord::from),
                     createdAtEpochMillis = map.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = map.updatedAt.toEpochMilli(),
                 )
@@ -1086,6 +1390,33 @@ internal data class WorldBundle(
                 val column = bits[0].toIntOrNull() ?: return null
                 val row = bits[1].toIntOrNull() ?: return null
                 return GridCell(column = column, row = row)
+            }
+        }
+    }
+
+    @Serializable
+    data class BattleMapItemRecord(
+        val id: String,
+        val name: String,
+        val column: Int,
+        val row: Int,
+    ) {
+        fun toDomain(): BattleMapItem {
+            return BattleMapItem(
+                id = id,
+                name = name,
+                cell = GridCell(column = column, row = row),
+            )
+        }
+
+        companion object {
+            fun from(item: BattleMapItem): BattleMapItemRecord {
+                return BattleMapItemRecord(
+                    id = item.id,
+                    name = item.name,
+                    column = item.cell.column,
+                    row = item.cell.row,
+                )
             }
         }
     }
@@ -1262,13 +1593,88 @@ internal data class WorldBundle(
     }
 
     @Serializable
+    data class FactionRecord(
+        val id: String,
+        val worldId: String,
+        val name: String,
+        val description: String,
+        val goals: String,
+        val notes: String,
+        val createdAtEpochMillis: Long,
+        val updatedAtEpochMillis: Long,
+    ) {
+        fun toDomain(): Faction {
+            return Faction(
+                id = id,
+                worldId = worldId,
+                name = name,
+                description = description,
+                goals = goals,
+                notes = notes,
+                createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+                updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+            )
+        }
+
+        companion object {
+            fun from(faction: Faction): FactionRecord {
+                return FactionRecord(
+                    id = faction.id,
+                    worldId = faction.worldId,
+                    name = faction.name,
+                    description = faction.description,
+                    goals = faction.goals,
+                    notes = faction.notes,
+                    createdAtEpochMillis = faction.createdAt.toEpochMilli(),
+                    updatedAtEpochMillis = faction.updatedAt.toEpochMilli(),
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class FactionMembershipRecord(
+        val id: String,
+        val person: PersonRefRecord,
+        val factionId: String,
+        val role: String,
+        val notes: String,
+        val createdAtEpochMillis: Long,
+    ) {
+        fun toDomain(): FactionMembership {
+            return FactionMembership(
+                id = id,
+                person = person.toDomain(),
+                factionId = factionId,
+                role = role,
+                notes = notes,
+                createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+            )
+        }
+
+        companion object {
+            fun from(membership: FactionMembership): FactionMembershipRecord {
+                return FactionMembershipRecord(
+                    id = membership.id,
+                    person = PersonRefRecord.from(membership.person),
+                    factionId = membership.factionId,
+                    role = membership.role,
+                    notes = membership.notes,
+                    createdAtEpochMillis = membership.createdAt.toEpochMilli(),
+                )
+            }
+        }
+    }
+
+    @Serializable
     data class PersonRelationshipRecord(
         val id: String,
         val from: PersonRefRecord,
         val to: PersonRefRecord,
         val type: String,
         val description: String,
-        val factionLean: String,
+        val factionId: String? = null,
+        val factionLean: String = "",
     ) {
         fun toDomain(): PersonRelationship {
             return PersonRelationship(
@@ -1277,7 +1683,7 @@ internal data class WorldBundle(
                 to = to.toDomain(),
                 type = RelationshipType.fromStorage(type),
                 description = description,
-                factionLean = factionLean,
+                factionId = factionId?.takeIf { it.isNotBlank() },
             )
         }
 
@@ -1289,7 +1695,8 @@ internal data class WorldBundle(
                     to = PersonRefRecord.from(relationship.to),
                     type = relationship.type.name,
                     description = relationship.description,
-                    factionLean = relationship.factionLean,
+                    factionId = relationship.factionId,
+                    factionLean = "",
                 )
             }
         }

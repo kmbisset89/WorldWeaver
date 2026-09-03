@@ -92,7 +92,7 @@ internal class UpdateSessionUseCaseTest {
         val campaigns = FakeCampaignRepository()
         val calendars = FakeWorldCalendarRepository()
         val updateSession = UpdateSessionUseCase(sessions, campaigns, calendars, ids, instant)
-        val deleteSession = DeleteSessionUseCase(sessions, quests)
+        val deleteSession = DeleteSessionUseCase(sessions, quests, FakeActiveContextRepository())
 
         suspend fun insertSession(): Session {
             val now = Instant.parse("2026-08-29T12:00:00Z")

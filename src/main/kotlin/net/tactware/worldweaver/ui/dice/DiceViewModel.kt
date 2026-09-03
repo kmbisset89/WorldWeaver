@@ -4,8 +4,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import net.tactware.worldweaver.core.AppCoroutineScope
+import net.tactware.worldweaver.domain.ActiveContextRepository
 import net.tactware.worldweaver.domain.DiceNotationParser
 import net.tactware.worldweaver.domain.DiceRollRequest
+import net.tactware.worldweaver.domain.DiceRollResult
 import net.tactware.worldweaver.domain.DiceRoller
 import net.tactware.worldweaver.domain.DieSides
 import net.tactware.worldweaver.domain.RollMode
@@ -15,13 +19,36 @@ internal class DiceViewModel(
     private val notationParser: DiceNotationParser = DiceNotationParser(),
     initialColorStyle: DiceColorStyle = DiceColorStyle.load(),
     private val persistColorStyle: (DiceColorStyle) -> Unit = { DiceColorStyle.save(it) },
+    initialAlwaysOnTop: Boolean = DiceAlwaysOnTopStore.load(),
+    private val persistAlwaysOnTop: (Boolean) -> Unit = { DiceAlwaysOnTopStore.save(it) },
+    private val activeContextRepository: ActiveContextRepository? = null,
+    appScope: AppCoroutineScope? = null,
 ) {
-    private val _state = MutableStateFlow<DiceViewState>(initialContent(initialColorStyle))
+    private val _state = MutableStateFlow<DiceViewState>(
+        initialContent(
+            colorStyle = initialColorStyle,
+            alwaysOnTop = initialAlwaysOnTop,
+        ),
+    )
     val state: StateFlow<DiceViewState> = _state.asStateFlow()
+
+    private val historyBySession = mutableMapOf<String, List<DiceRollResult>>()
+    private val lastResultBySession = mutableMapOf<String, DiceRollResult?>()
+
+    init {
+        val repository = activeContextRepository
+        if (repository != null && appScope != null) {
+            appScope.scope.launch {
+                repository.observe().collect {
+                    showSessionHistory()
+                }
+            }
+        }
+    }
 
     fun onInteraction(interaction: DiceInteraction) {
         when (interaction) {
-            DiceInteraction.ScreenStarted -> Unit
+            DiceInteraction.ScreenStarted -> showSessionHistory()
             is DiceInteraction.DieSelected -> updateDie(interaction.die)
             is DiceInteraction.CountChanged -> updateCount(interaction.count)
             is DiceInteraction.ModifierChanged -> updateModifier(interaction.modifierText)
@@ -32,6 +59,9 @@ internal class DiceViewModel(
             is DiceInteraction.ColorStyleSelected -> updateColorStyle(interaction.style)
             DiceInteraction.RollSelected -> submitRoll()
             DiceInteraction.HistoryCleared -> clearHistory()
+            DiceInteraction.FloatingOpened -> setFloatingOpen(true)
+            DiceInteraction.FloatingClosed -> setFloatingOpen(false)
+            DiceInteraction.AlwaysOnTopToggled -> toggleAlwaysOnTop()
         }
     }
 
@@ -156,14 +186,7 @@ internal class DiceViewModel(
 
     private fun rollDigital(current: DiceViewState.Content) {
         val result = diceRoller.roll(requestFrom(current))
-        updateContent { state ->
-            state.copy(
-                lastResult = result,
-                history = (listOf(result) + state.history).take(HISTORY_LIMIT),
-                rollToken = state.rollToken + 1,
-                entryError = null,
-            )
-        }
+        recordResult(result, bumpToken = true)
     }
 
     private fun logTable(current: DiceViewState.Content) {
@@ -186,19 +209,65 @@ internal class DiceViewModel(
             }
             return
         }
+        recordResult(result, bumpToken = false)
+    }
+
+    private fun recordResult(result: DiceRollResult, bumpToken: Boolean) {
+        persistCurrentSession(result)
+        val key = sessionKey()
         updateContent { state ->
             state.copy(
-                lastResult = result,
-                history = (listOf(result) + state.history).take(HISTORY_LIMIT),
+                lastResult = lastResultBySession[key],
+                history = historyBySession[key].orEmpty(),
+                rollToken = if (bumpToken) state.rollToken + 1 else state.rollToken,
                 entryError = null,
             )
         }
     }
 
+    private fun persistCurrentSession(result: DiceRollResult) {
+        val key = sessionKey()
+        val history = historyForCurrentSession(listOf(result) + historyBySession[key].orEmpty())
+        historyBySession[key] = history
+        lastResultBySession[key] = result
+    }
+
+    private fun historyForCurrentSession(proposed: List<DiceRollResult>): List<DiceRollResult> {
+        return proposed.take(HISTORY_LIMIT)
+    }
+
+    private fun showSessionHistory() {
+        val key = sessionKey()
+        updateContent { state ->
+            state.copy(
+                lastResult = lastResultBySession[key],
+                history = historyBySession[key].orEmpty(),
+            )
+        }
+    }
+
+    private fun sessionKey(): String {
+        return activeContextRepository?.get()?.activeSessionId.orEmpty()
+    }
+
     private fun clearHistory() {
+        val key = sessionKey()
+        historyBySession[key] = emptyList()
+        lastResultBySession.remove(key)
         updateContent { current ->
             current.copy(lastResult = null, history = emptyList())
         }
+    }
+
+    private fun setFloatingOpen(open: Boolean) {
+        updateContent { current -> current.copy(isFloatingOpen = open) }
+    }
+
+    private fun toggleAlwaysOnTop() {
+        val current = _state.value as? DiceViewState.Content ?: return
+        val next = !current.isAlwaysOnTop
+        persistAlwaysOnTop(next)
+        updateContent { state -> state.copy(isAlwaysOnTop = next) }
     }
 
     private fun requestFrom(current: DiceViewState.Content): DiceRollRequest {
@@ -225,7 +294,10 @@ internal class DiceViewModel(
         const val MAX_COUNT = 20
         const val HISTORY_LIMIT = 50
 
-        fun initialContent(colorStyle: DiceColorStyle): DiceViewState.Content {
+        fun initialContent(
+            colorStyle: DiceColorStyle,
+            alwaysOnTop: Boolean,
+        ): DiceViewState.Content {
             val die = DieSides.D20
             val count = 1
             val modifier = 0
@@ -244,6 +316,8 @@ internal class DiceViewModel(
                 rollToken = 0L,
                 lastResult = null,
                 history = emptyList(),
+                isFloatingOpen = false,
+                isAlwaysOnTop = alwaysOnTop,
             )
         }
 
