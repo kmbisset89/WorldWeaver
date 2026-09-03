@@ -1,3 +1,4 @@
+import java.time.Year
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -13,6 +14,7 @@ version = "1.0.0"
 
 val appPublisher = "Kerry Bisset"
 val appHomepage = "https://github.com/kmbisset89/WorldWeaver"
+val appCopyright = "Copyright © ${Year.now()} $appPublisher"
 
 repositories {
     google()
@@ -22,8 +24,8 @@ repositories {
 
 dependencies {
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
-    implementation(compose.materialIconsExtended)
+    implementation("org.jetbrains.compose.material3:material3:1.11.0-alpha07")
+    implementation("org.jetbrains.compose.material:material-icons-extended:1.11.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
     implementation("androidx.room:room-runtime:2.7.2")
@@ -52,7 +54,7 @@ compose.desktop {
             packageVersion = "1.0.0"
             description = "World Weaver — tabletop campaign manager ($appHomepage)"
             vendor = appPublisher
-            copyright = "Copyright © ${java.time.Year.now()} $appPublisher"
+            copyright = appCopyright
             licenseFile.set(project.file("LICENSE"))
 
             windows {
@@ -64,7 +66,7 @@ compose.desktop {
                 infoPlist {
                     extraKeysRawXml = """
                         <key>NSHumanReadableCopyright</key>
-                        <string>Copyright © ${java.time.Year.now()} $appPublisher</string>
+                        <string>$appCopyright</string>
                     """.trimIndent()
                 }
             }
