@@ -5,24 +5,43 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
-      publish_release:
-        description: Publish a GitHub Release tagged with the Compose Desktop packageVersion
-        type: boolean
-        default: true
+      bump_level:
+        description: SemVer bump on main (always a final vX.Y.Z)
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  test:
-    name: Test
+  version:
+    name: Resolve version
+    if: >-
+      github.event_name != 'push' ||
+      github.actor != 'github-actions[bot]' ||
+      !startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
-      package_version: ${{ steps.package-version.outputs.version }}
+      semver: ${{ steps.ver.outputs.semver }}
+      package_version: ${{ steps.ver.outputs.package_version }}
+      tag: ${{ steps.ver.outputs.tag }}
+      is_final: ${{ steps.ver.outputs.is_final }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -33,16 +52,70 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Read Compose Desktop package version
-        id: package-version
+      - name: Configure git identity
         run: |
-          VERSION="$(./gradlew -q printPackageVersion --console=plain --no-daemon | tail -n 1 | tr -d '[:space:]')"
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid Compose Desktop packageVersion: '$VERSION'"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump final version
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SEMVER_GIT_USER: x-access-token
+        run: |
+          set -euo pipefail
+          BUMP_LEVEL="${{ github.event.inputs.bump_level || 'patch' }}"
+          if [[ "${{ github.event_name }}" == "push" ]] && \
+             git describe --exact-match --tags HEAD >/dev/null 2>&1 && \
+             git describe --exact-match --tags HEAD | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "HEAD is already a final tag; skipping bump"
+            exit 0
+          fi
+          ./gradlew bumpVersion --no-daemon \
+            -PbumpLevel="${BUMP_LEVEL}" \
+            -PisFinal=true
+
+      - name: Read SemVer
+        id: ver
+        run: |
+          SEMVER="$(./gradlew -q printVersion --console=plain --no-daemon | tail -n 1 | tr -d '[:space:]')"
+          PACKAGE="$(./gradlew -q printPackageVersion --console=plain --no-daemon | tail -n 1 | tr -d '[:space:]')"
+          if [[ ! "$PACKAGE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid Compose Desktop packageVersion: '$PACKAGE' (semver '$SEMVER')"
             exit 1
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Compose Desktop packageVersion: $VERSION"
+          if [[ "$SEMVER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            IS_FINAL=true
+          else
+            IS_FINAL=false
+          fi
+          echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "package_version=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "tag=v$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "is_final=$IS_FINAL" >> "$GITHUB_OUTPUT"
+          echo "SemVer: $SEMVER"
+          echo "packageVersion: $PACKAGE"
+          echo "tag: v$SEMVER"
+          echo "final: $IS_FINAL"
+
+  test:
+    name: Test
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Run tests
         run: ./gradlew test --no-daemon
@@ -54,6 +127,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -81,6 +156,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -108,6 +185,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -131,14 +210,15 @@ jobs:
   release:
     name: Publish GitHub Release
     needs:
-      - test
+      - version
       - package-windows
       - package-macos
       - package-linux
     if: >-
-      (github.event_name == 'workflow_dispatch' &&
-       github.event.inputs.publish_release == 'true') ||
-      startsWith(github.ref, 'refs/tags/v')
+      needs.version.outputs.is_final == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' &&
+        (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -164,11 +244,11 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.test.outputs.package_version }}
-          name: WorldWeaver ${{ needs.test.outputs.package_version }}
-          target_commitish: ${{ github.sha }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: WorldWeaver ${{ needs.version.outputs.semver }}
+          generate_release_notes: true
+          make_latest: true
           files: |
             dist/windows/*
             dist/macos/*
             dist/linux/*
-          generate_release_notes: true
