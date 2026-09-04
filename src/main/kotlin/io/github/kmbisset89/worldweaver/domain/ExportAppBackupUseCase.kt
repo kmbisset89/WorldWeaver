@@ -52,6 +52,7 @@ internal class ExportAppBackupUseCase(
                 databaseFile = snapshotDb,
                 avatarsDir = dataDirectory.avatarsDir,
                 mapsDir = dataDirectory.mapsDir,
+                worldMapsDir = dataDirectory.worldMapsDir,
                 voicesDir = dataDirectory.voicesDir,
                 srdDir = dataDirectory.srdDir,
             )

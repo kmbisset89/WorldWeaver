@@ -28,6 +28,8 @@ internal class ImportWorldBundleUseCase(
     private val personCompanionRepository: PersonCompanionRepository,
     private val avatarFileStore: PersonAvatarFileStore,
     private val battleMapFileStore: BattleMapFileStore,
+    private val worldMapRepository: WorldMapRepository,
+    private val worldMapFileStore: WorldMapFileStore,
     private val voiceClipFileStore: VoiceClipFileStore,
     private val setActiveWorld: SetActiveWorldUseCase,
 ) {
@@ -76,6 +78,7 @@ internal class ImportWorldBundleUseCase(
             bundle.quests.forEach { questRepository.insert(it) }
             bundle.battleMaps.forEach { battleMapRepository.insert(it) }
             bundle.battleMapSituations.forEach { battleMapSituationRepository.insert(it) }
+            bundle.worldMaps.forEach { worldMapRepository.insert(it) }
             bundle.encounters.forEach { encounterRepository.insert(it) }
             bundle.memberships.forEach { factionMembershipRepository.insert(it) }
             bundle.relationships.forEach { personRelationshipRepository.insert(it) }
@@ -89,6 +92,14 @@ internal class ImportWorldBundleUseCase(
             .forEach { (battleMapId, files) ->
                 battleMapFileStore.writeRelativeFiles(
                     battleMapId = battleMapId,
+                    files = files.map { it.relativePath to it.bytes },
+                )
+            }
+        bundle.worldMapFiles
+            .groupBy { it.worldMapId }
+            .forEach { (worldMapId, files) ->
+                worldMapFileStore.writeRelativeFiles(
+                    worldMapId = worldMapId,
                     files = files.map { it.relativePath to it.bytes },
                 )
             }

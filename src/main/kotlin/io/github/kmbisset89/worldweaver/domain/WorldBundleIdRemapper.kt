@@ -21,6 +21,7 @@ internal class WorldBundleIdRemapper(
         val referenceDocIds = remapIds(bundle.referenceDocs.map { it.id })
         val battleMapIds = remapIds(bundle.battleMaps.map { it.id })
         val situationIds = remapIds(bundle.battleMapSituations.map { it.id })
+        val worldMapIds = remapIds(bundle.worldMaps.map { it.id })
         val encounterIds = remapIds(bundle.encounters.map { it.id })
         val relationshipIds = remapIds(bundle.relationships.map { it.id })
         val companionIds = remapIds(bundle.companions.map { it.id })
@@ -161,6 +162,13 @@ internal class WorldBundleIdRemapper(
                     battleMapId = battleMapIds.getValue(situation.battleMapId),
                 )
             },
+            worldMaps = bundle.worldMaps.map { map ->
+                map.copy(
+                    id = worldMapIds.getValue(map.id),
+                    worldId = worldId,
+                    locationId = map.locationId?.let(locationIds::get),
+                )
+            },
             encounters = bundle.encounters.map { encounter ->
                 encounter.copy(
                     id = encounterIds.getValue(encounter.id),
@@ -203,6 +211,9 @@ internal class WorldBundleIdRemapper(
                     battleMapId = battleMapIds.getValue(file.battleMapId),
                     relativePath = remapMapRelativePath(file.relativePath, situationIds),
                 )
+            },
+            worldMapFiles = bundle.worldMapFiles.map { file ->
+                file.copy(worldMapId = worldMapIds.getValue(file.worldMapId))
             },
             voiceFiles = bundle.voiceFiles.map { file ->
                 file.copy(

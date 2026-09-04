@@ -133,7 +133,7 @@ internal class ImportBundledBattleMapUseCaseTest {
         private val ids = EntityIdFactory { "id-${++nextId}" }
         private val instant = InstantProvider { Instant.parse("2026-09-02T12:00:00Z") }
         private val fileStore = BattleMapFileStore(mapsRoot.toFile())
-        private val pyramidFactory = BattleMapTilePyramidFactory()
+        private val pyramidFactory = MapTilePyramidFactory()
         val importBundled = ImportBundledBattleMapUseCase(
             catalogLoader = BundledBattleMapCatalogLoader(roots = listOf(assetsRoot.toFile())),
             createBattleMap = CreateBattleMapUseCase(

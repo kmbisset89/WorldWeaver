@@ -94,7 +94,7 @@ internal class CreateBattleMapUseCaseTest {
         val createBattleMap = CreateBattleMapUseCase(
             battleMaps,
             fileStore,
-            BattleMapTilePyramidFactory(),
+            MapTilePyramidFactory(),
             context,
             ids,
             instant,

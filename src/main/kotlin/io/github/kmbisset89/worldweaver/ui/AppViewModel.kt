@@ -47,6 +47,9 @@ import io.github.kmbisset89.worldweaver.ui.lore.LoreViewModel
 import io.github.kmbisset89.worldweaver.ui.maps.MapsInteraction
 import io.github.kmbisset89.worldweaver.ui.maps.MapsViewEffect
 import io.github.kmbisset89.worldweaver.ui.maps.MapsViewModel
+import io.github.kmbisset89.worldweaver.ui.worldmap.WorldMapInteraction
+import io.github.kmbisset89.worldweaver.ui.worldmap.WorldMapViewEffect
+import io.github.kmbisset89.worldweaver.ui.worldmap.WorldMapViewModel
 import io.github.kmbisset89.worldweaver.ui.navigation.NavigationState
 import io.github.kmbisset89.worldweaver.ui.navigation.Screen
 import io.github.kmbisset89.worldweaver.ui.run.RunViewEffect
@@ -84,6 +87,7 @@ internal class AppViewModel(
     val sessionsViewModel: SessionsViewModel,
     val encountersViewModel: EncountersViewModel,
     val mapsViewModel: MapsViewModel,
+    val worldMapViewModel: WorldMapViewModel,
     val runViewModel: RunViewModel,
     val diceViewModel: DiceViewModel,
     val searchViewModel: SearchViewModel,
@@ -187,6 +191,10 @@ internal class AppViewModel(
                     is LocationsViewEffect.OpenQuest -> {
                         navigation.navigateToRoot(Screen.QUESTS)
                         questsViewModel.onInteraction(QuestsInteraction.QuestOpened(effect.questId))
+                    }
+                    is LocationsViewEffect.OpenWorldMap -> {
+                        navigation.navigateToRoot(Screen.WORLD_MAP)
+                        worldMapViewModel.onInteraction(WorldMapInteraction.MapOpened(effect.locationId))
                     }
                 }
             }
@@ -312,6 +320,19 @@ internal class AppViewModel(
                 when (effect) {
                     MapsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
                     MapsViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
+                }
+            }
+        }
+        appScope.scope.launch {
+            worldMapViewModel.effects.collect { effect ->
+                when (effect) {
+                    WorldMapViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    is WorldMapViewEffect.OpenLocations -> {
+                        navigation.navigateToRoot(Screen.LOCATIONS)
+                        effect.locationId?.let { locationId ->
+                            locationsViewModel.onInteraction(LocationsInteraction.LocationOpened(locationId))
+                        }
+                    }
                 }
             }
         }

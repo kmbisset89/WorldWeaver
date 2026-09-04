@@ -30,6 +30,7 @@ import io.github.kmbisset89.worldweaver.ui.components.Sidebar
 import io.github.kmbisset89.worldweaver.ui.home.HomeScreen
 import io.github.kmbisset89.worldweaver.ui.oneshot.OneShotWizardScreen
 import io.github.kmbisset89.worldweaver.ui.locations.LocationsScreen
+import io.github.kmbisset89.worldweaver.ui.worldmap.WorldMapScreen
 import io.github.kmbisset89.worldweaver.ui.lore.LoreScreen
 import io.github.kmbisset89.worldweaver.ui.maps.BattleMapItemOverlay
 import io.github.kmbisset89.worldweaver.ui.maps.BattleMapTokenOverlay
@@ -308,6 +309,15 @@ internal fun App(
                         LocationsScreen(
                             viewState = locationsState,
                             onInteraction = viewModel.locationsViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.WORLD_MAP -> {
+                        val worldMapState by viewModel.worldMapViewModel.state.collectAsState()
+                        WorldMapScreen(
+                            viewState = worldMapState,
+                            mapState = viewModel.worldMapViewModel.mapState,
+                            onInteraction = viewModel.worldMapViewModel::onInteraction
                         )
                     }
 

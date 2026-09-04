@@ -7,15 +7,15 @@ import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 import kotlin.math.ceil
 
-internal class BattleMapTilePyramidFactory {
-    fun create(imagePng: ByteArray): BattleMapTilePyramid? {
+internal class MapTilePyramidFactory {
+    fun create(imagePng: ByteArray): MapTilePyramid? {
         val original = decodePng(imagePng) ?: return null
         if (original.width <= 0 || original.height <= 0) {
             return null
         }
         val source = ensureArgb(original)
         val zoomLevels = computeZoomLevels(source.width, source.height, TILE_SIZE_PX)
-        val tiles = ArrayList<BattleMapTile>()
+        val tiles = ArrayList<MapTile>()
         for (zoom in zoomLevels) {
             val scaled = scaleDownByPow2(source, zoom)
             val tilesX = ceil(scaled.width.toDouble() / TILE_SIZE_PX).toInt().coerceAtLeast(1)
@@ -31,7 +31,7 @@ internal class BattleMapTilePyramidFactory {
                     }
                     val tileImage = scaled.getSubimage(px, py, width, height)
                     tiles.add(
-                        BattleMapTile(
+                        MapTile(
                             zoom = zoom,
                             x = x,
                             y = y,
@@ -43,7 +43,7 @@ internal class BattleMapTilePyramidFactory {
                 }
             }
         }
-        return BattleMapTilePyramid(
+        return MapTilePyramid(
             originalWidth = source.width,
             originalHeight = source.height,
             tileSizePx = TILE_SIZE_PX,

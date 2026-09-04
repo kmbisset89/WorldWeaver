@@ -6,7 +6,7 @@ import java.time.Instant
 internal class DemoWorldBundleFactory(
     private val assetsDir: File = File("fixtures/demo/assets"),
     private val now: Instant = Instant.parse("2026-08-30T15:00:00Z"),
-    private val pyramidFactory: BattleMapTilePyramidFactory = BattleMapTilePyramidFactory(),
+    private val pyramidFactory: MapTilePyramidFactory = MapTilePyramidFactory(),
     private val situationTransformer: BattleMapSituationImageTransformer = BattleMapSituationImageTransformer(),
 ) {
     fun create(): WorldBundle {
@@ -1467,7 +1467,7 @@ internal class DemoWorldBundleFactory(
 
     private fun filesForPyramid(
         battleMapId: String,
-        pyramid: BattleMapTilePyramid,
+        pyramid: MapTilePyramid,
         relativePrefix: String,
     ): List<WorldBundle.MapFile> {
         val original = WorldBundle.MapFile(
@@ -1530,12 +1530,12 @@ internal class DemoWorldBundleFactory(
 
     private data class PreparedMap(
         val map: BattleMap,
-        val pyramid: BattleMapTilePyramid,
+        val pyramid: MapTilePyramid,
     )
 
     private data class PreparedSituation(
         val situation: BattleMapSituation,
-        val pyramid: BattleMapTilePyramid,
+        val pyramid: MapTilePyramid,
     )
 
     private companion object {

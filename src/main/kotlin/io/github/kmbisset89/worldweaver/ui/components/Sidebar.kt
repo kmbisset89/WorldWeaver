@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -126,20 +128,25 @@ internal fun Sidebar(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        NavDestination.entries.forEach { destination ->
-            NavItem(
-                icon = destination.icon,
-                label = destination.label,
-                contentDescription = destination.contentDescription,
-                isSelected = currentScreen == destination.screen ||
-                    (destination.screen == Screen.HOME &&
-                        (currentScreen == Screen.RUN || currentScreen == Screen.ONE_SHOT_WIZARD)),
-                expanded = expanded,
-                onClick = { onNavigate(destination.screen) }
-            )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+        ) {
+            NavDestination.entries.forEach { destination ->
+                NavItem(
+                    icon = destination.icon,
+                    label = destination.label,
+                    contentDescription = destination.contentDescription,
+                    isSelected = currentScreen == destination.screen ||
+                        (destination.screen == Screen.HOME &&
+                            (currentScreen == Screen.RUN || currentScreen == Screen.ONE_SHOT_WIZARD)),
+                    expanded = expanded,
+                    onClick = { onNavigate(destination.screen) }
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.weight(1f))
 
         Row(
             modifier = Modifier.fillMaxWidth(),

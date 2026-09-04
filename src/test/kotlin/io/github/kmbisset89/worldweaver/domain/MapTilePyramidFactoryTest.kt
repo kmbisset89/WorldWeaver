@@ -6,8 +6,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-internal class BattleMapTilePyramidFactoryTest {
-    private val factory = BattleMapTilePyramidFactory()
+internal class MapTilePyramidFactoryTest {
+    private val factory = MapTilePyramidFactory()
 
     @Test
     fun smallImageProducesSingleZoomLevel() {

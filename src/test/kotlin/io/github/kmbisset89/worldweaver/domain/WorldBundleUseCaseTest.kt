@@ -327,6 +327,8 @@ internal class WorldBundleUseCaseTest {
         val context = FakeActiveContextRepository()
         val avatarFileStore = PersonAvatarFileStore(File(tempDir, "avatars"))
         val battleMapFileStore = BattleMapFileStore(File(tempDir, "maps"))
+        val worldMaps = FakeWorldMapRepository()
+        val worldMapFileStore = WorldMapFileStore(File(tempDir, "world_maps"))
         val voiceClipFileStore = VoiceClipFileStore(File(tempDir, "voices"))
         private val instant = InstantProvider { now }
         private var nextId = 0
@@ -354,6 +356,8 @@ internal class WorldBundleUseCaseTest {
             personCompanionRepository = companions,
             avatarFileStore = avatarFileStore,
             battleMapFileStore = battleMapFileStore,
+            worldMapRepository = worldMaps,
+            worldMapFileStore = worldMapFileStore,
             voiceClipFileStore = voiceClipFileStore,
             instantProvider = instant,
         )
@@ -385,6 +389,8 @@ internal class WorldBundleUseCaseTest {
             personCompanionRepository = companions,
             avatarFileStore = avatarFileStore,
             battleMapFileStore = battleMapFileStore,
+            worldMapRepository = worldMaps,
+            worldMapFileStore = worldMapFileStore,
             voiceClipFileStore = voiceClipFileStore,
             setActiveWorld = setActiveWorld,
         )

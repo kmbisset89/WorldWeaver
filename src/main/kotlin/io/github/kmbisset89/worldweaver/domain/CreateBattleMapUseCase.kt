@@ -3,7 +3,7 @@ package io.github.kmbisset89.worldweaver.domain
 internal class CreateBattleMapUseCase(
     private val battleMapRepository: BattleMapRepository,
     private val fileStore: BattleMapFileStore,
-    private val pyramidFactory: BattleMapTilePyramidFactory,
+    private val pyramidFactory: MapTilePyramidFactory,
     private val activeContextRepository: ActiveContextRepository,
     private val entityIdFactory: EntityIdFactory,
     private val instantProvider: InstantProvider,

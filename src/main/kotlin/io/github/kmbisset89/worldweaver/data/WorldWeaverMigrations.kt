@@ -972,6 +972,42 @@ internal object WorldWeaverMigrations {
         }
     }
 
+    val MIGRATION_20_21 = object : Migration(20, 21) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "ALTER TABLE `locations` ADD COLUMN `mapAnchorX` REAL"
+            )
+            connection.execSQL(
+                "ALTER TABLE `locations` ADD COLUMN `mapAnchorY` REAL"
+            )
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `world_maps` (
+                    `id` TEXT NOT NULL,
+                    `worldId` TEXT NOT NULL,
+                    `locationId` TEXT,
+                    `originalWidth` INTEGER NOT NULL,
+                    `originalHeight` INTEGER NOT NULL,
+                    `tileSizePx` INTEGER NOT NULL,
+                    `minZoom` INTEGER NOT NULL,
+                    `maxZoom` INTEGER NOT NULL,
+                    `createdAtEpochMillis` INTEGER NOT NULL,
+                    `updatedAtEpochMillis` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`worldId`) REFERENCES `worlds`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(`locationId`) REFERENCES `locations`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_world_maps_worldId` ON `world_maps` (`worldId`)"
+            )
+            connection.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_world_maps_locationId` ON `world_maps` (`locationId`)"
+            )
+        }
+    }
+
     private val DEFAULT_MONTHS = listOf(
         "January" to 31,
         "February" to 28,

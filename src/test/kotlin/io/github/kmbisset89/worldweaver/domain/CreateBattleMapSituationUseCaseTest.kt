@@ -88,7 +88,7 @@ internal class CreateBattleMapSituationUseCaseTest {
             situations,
             battleMaps,
             fileStore,
-            BattleMapTilePyramidFactory(),
+            MapTilePyramidFactory(),
             BattleMapSituationImageTransformer(),
             context,
             ids,

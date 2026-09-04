@@ -36,6 +36,7 @@ internal class AppBackupArchiveConverterTest {
                 databaseFile = db,
                 avatarsDir = avatars,
                 mapsDir = maps,
+                worldMapsDir = File(temp, "world_maps"),
                 voicesDir = voices,
                 srdDir = srd,
             )

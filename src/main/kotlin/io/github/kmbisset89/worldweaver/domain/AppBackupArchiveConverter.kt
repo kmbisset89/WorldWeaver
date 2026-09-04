@@ -25,6 +25,7 @@ internal class AppBackupArchiveConverter {
         databaseFile: File,
         avatarsDir: File,
         mapsDir: File,
+        worldMapsDir: File,
         voicesDir: File,
         srdDir: File,
     ) {
@@ -37,6 +38,7 @@ internal class AppBackupArchiveConverter {
             }
             zip.writeTree(AVATARS_PREFIX, avatarsDir)
             zip.writeTree(MAPS_PREFIX, mapsDir)
+            zip.writeTree(WORLD_MAPS_PREFIX, worldMapsDir)
             zip.writeTree(VOICES_PREFIX, voicesDir)
             zip.writeTree(SRD_PREFIX, srdDir)
         }
@@ -82,6 +84,7 @@ internal class AppBackupArchiveConverter {
                         }
                         entry.name.startsWith(AVATARS_PREFIX) ||
                             entry.name.startsWith(MAPS_PREFIX) ||
+                            entry.name.startsWith(WORLD_MAPS_PREFIX) ||
                             entry.name.startsWith(VOICES_PREFIX) ||
                             entry.name.startsWith(SRD_PREFIX) -> {
                             val relative = entry.name.removePrefix(DATA_PREFIX)
@@ -157,6 +160,7 @@ internal class AppBackupArchiveConverter {
         const val DATABASE_ENTRY = "${DATA_PREFIX}ww.db"
         const val AVATARS_PREFIX = "${DATA_PREFIX}avatars/"
         const val MAPS_PREFIX = "${DATA_PREFIX}maps/"
+        const val WORLD_MAPS_PREFIX = "${DATA_PREFIX}world_maps/"
         const val VOICES_PREFIX = "${DATA_PREFIX}voices/"
         const val SRD_PREFIX = "${DATA_PREFIX}srd/"
 

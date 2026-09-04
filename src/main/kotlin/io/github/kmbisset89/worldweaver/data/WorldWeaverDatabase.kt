@@ -33,8 +33,9 @@ import androidx.room.RoomDatabase
         EncounterParticipantEntity::class,
         BattleMapEntity::class,
         BattleMapSituationEntity::class,
+        WorldMapEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = true,
 )
 internal abstract class WorldWeaverDatabase : RoomDatabase() {
@@ -66,4 +67,5 @@ internal abstract class WorldWeaverDatabase : RoomDatabase() {
     abstract fun encounterParticipantDao(): EncounterParticipantDao
     abstract fun battleMapDao(): BattleMapDao
     abstract fun battleMapSituationDao(): BattleMapSituationDao
+    abstract fun worldMapDao(): WorldMapDao
 }

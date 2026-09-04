@@ -18,6 +18,15 @@ internal enum class LocationType(
         }
     }
 
+    fun childType(): LocationType? {
+        return when (this) {
+            Continent -> Area
+            Area -> City
+            City -> Place
+            Place -> null
+        }
+    }
+
     fun acceptsParent(parent: Location?): Boolean {
         val required = requiredParentType()
         return if (required == null) {

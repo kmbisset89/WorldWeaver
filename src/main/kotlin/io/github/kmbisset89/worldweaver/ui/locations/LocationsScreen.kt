@@ -81,7 +81,12 @@ internal fun LocationsScreen(
                 )
             }
             is LocationsViewState.Empty -> {
-                LocationsHeader(subtitle = viewState.worldName, showCreate = true, onInteraction = onInteraction)
+                LocationsHeader(
+                    subtitle = viewState.worldName,
+                    showCreate = true,
+                    hasWorldRootMap = viewState.hasWorldRootMap,
+                    onInteraction = onInteraction,
+                )
                 FeatureEmptyState(
                     icon = Icons.Default.Place,
                     title = "No locations yet",
@@ -94,7 +99,12 @@ internal fun LocationsScreen(
                 }
             }
             is LocationsViewState.Content -> {
-                LocationsHeader(subtitle = viewState.worldName, showCreate = true, onInteraction = onInteraction)
+                LocationsHeader(
+                    subtitle = viewState.worldName,
+                    showCreate = true,
+                    hasWorldRootMap = viewState.hasWorldRootMap,
+                    onInteraction = onInteraction,
+                )
                 LocationsContent(state = viewState, onInteraction = onInteraction)
             }
         }
@@ -106,6 +116,7 @@ private fun LocationsHeader(
     subtitle: String,
     showCreate: Boolean,
     onInteraction: (LocationsInteraction) -> Unit,
+    hasWorldRootMap: Boolean = false,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -126,13 +137,21 @@ private fun LocationsHeader(
             )
         }
         if (showCreate) {
-            Button(
-                onClick = { onInteraction(LocationsInteraction.NewLocationSelected) },
-                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                Text("New location")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { onInteraction(LocationsInteraction.OpenWorldMapSelected) },
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                ) {
+                    Text(if (hasWorldRootMap) "Open world map" else "Add world map")
+                }
+                Button(
+                    onClick = { onInteraction(LocationsInteraction.NewLocationSelected) },
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                    Text("New location")
+                }
             }
         }
     }
@@ -222,6 +241,7 @@ private fun LocationsContent(
                     voiceClipPath = state.voiceClipPath,
                     isRecordingVoice = state.isRecordingVoice,
                     isPlayingVoice = state.isPlayingVoice,
+                    selectedLocationHasMap = state.selectedLocationHasMap,
                     onInteraction = onInteraction,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                 )

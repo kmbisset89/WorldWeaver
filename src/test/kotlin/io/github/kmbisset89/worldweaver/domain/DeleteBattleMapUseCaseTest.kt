@@ -14,7 +14,7 @@ internal class DeleteBattleMapUseCaseTest {
         val harness = Harness()
         harness.fileStore.write(
             "map-1",
-            BattleMapTilePyramidFactory().create(BattleMapPngFixture.pngBytes(64, 64))!!,
+            MapTilePyramidFactory().create(BattleMapPngFixture.pngBytes(64, 64))!!,
         )
         harness.battleMaps.insert(harness.sampleMap())
         harness.encounters.insert(harness.sampleEncounter(battleMapId = "map-1"))
