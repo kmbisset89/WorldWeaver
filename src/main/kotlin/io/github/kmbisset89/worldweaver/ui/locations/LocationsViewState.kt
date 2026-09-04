@@ -16,6 +16,7 @@ internal sealed class LocationsViewState {
     data class Empty(
         val worldName: String,
         val editor: LocationEditorState?,
+        val hasWorldRootMap: Boolean,
     ) : LocationsViewState()
 
     data class Content(
@@ -36,6 +37,8 @@ internal sealed class LocationsViewState {
         val editor: LocationEditorState?,
         val pendingDelete: PendingDelete?,
         val blockDeleteReason: String?,
+        val hasWorldRootMap: Boolean,
+        val selectedLocationHasMap: Boolean,
     ) : LocationsViewState()
 
     data class LocationTreeNode(

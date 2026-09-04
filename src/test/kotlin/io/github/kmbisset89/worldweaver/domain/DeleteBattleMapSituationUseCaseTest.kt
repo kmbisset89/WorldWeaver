@@ -11,7 +11,7 @@ internal class DeleteBattleMapSituationUseCaseTest {
     @Test
     fun deleteRemovesRowAndFiles() = runTest {
         val harness = Harness()
-        val pyramid = BattleMapTilePyramidFactory().create(BattleMapPngFixture.pngBytes(64, 64))!!
+        val pyramid = MapTilePyramidFactory().create(BattleMapPngFixture.pngBytes(64, 64))!!
         harness.fileStore.writeSituation("map-1", "sit-1", pyramid)
         harness.situations.insert(harness.sample())
 

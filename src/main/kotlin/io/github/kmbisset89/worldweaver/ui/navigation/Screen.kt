@@ -6,6 +6,7 @@ internal enum class Screen {
     ONE_SHOT_WIZARD,
     CAMPAIGNS,
     LOCATIONS,
+    WORLD_MAP,
     LORE,
     CALENDAR,
     FACTIONS,

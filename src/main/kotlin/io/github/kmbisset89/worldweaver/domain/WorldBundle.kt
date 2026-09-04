@@ -22,11 +22,13 @@ internal data class WorldBundle(
     val referenceDocs: List<ReferenceDoc>,
     val battleMaps: List<BattleMap>,
     val battleMapSituations: List<BattleMapSituation>,
+    val worldMaps: List<WorldMap> = emptyList(),
     val encounters: List<Encounter>,
     val relationships: List<PersonRelationship>,
     val companions: List<PersonCompanion>,
     val avatarFiles: List<AvatarFile>,
     val mapFiles: List<MapFile>,
+    val worldMapFiles: List<WorldMapFile> = emptyList(),
     val voiceFiles: List<VoiceFile> = emptyList(),
 ) {
     data class AvatarFile(
@@ -36,6 +38,12 @@ internal data class WorldBundle(
 
     data class MapFile(
         val battleMapId: String,
+        val relativePath: String,
+        val bytes: ByteArray,
+    )
+
+    data class WorldMapFile(
+        val worldMapId: String,
         val relativePath: String,
         val bytes: ByteArray,
     )
@@ -71,6 +79,7 @@ internal data class WorldBundle(
             referenceDocs = referenceDocs.map(ReferenceDocRecord::from),
             battleMaps = battleMaps.map(BattleMapRecord::from),
             battleMapSituations = battleMapSituations.map(BattleMapSituationRecord::from),
+            worldMaps = worldMaps.map(WorldMapRecord::from),
             encounters = encounters.map(EncounterRecord::from),
             relationships = relationships.map(PersonRelationshipRecord::from),
             companions = companions.map(PersonCompanionRecord::from),
@@ -85,6 +94,7 @@ internal data class WorldBundle(
             payload: Payload,
             avatarFiles: List<AvatarFile>,
             mapFiles: List<MapFile>,
+            worldMapFiles: List<WorldMapFile> = emptyList(),
             voiceFiles: List<VoiceFile> = emptyList(),
         ): WorldBundle {
             val (factions, relationships) = resolveLegacyFactions(
@@ -110,11 +120,13 @@ internal data class WorldBundle(
                 referenceDocs = payload.referenceDocs.map { it.toDomain() },
                 battleMaps = payload.battleMaps.map { it.toDomain() },
                 battleMapSituations = payload.battleMapSituations.map { it.toDomain() },
+                worldMaps = payload.worldMaps.map { it.toDomain() },
                 encounters = payload.encounters.map { it.toDomain() },
                 relationships = relationships,
                 companions = payload.companions.map { it.toDomain() },
                 avatarFiles = avatarFiles,
                 mapFiles = mapFiles,
+                worldMapFiles = worldMapFiles,
                 voiceFiles = voiceFiles,
             )
         }
@@ -186,6 +198,7 @@ internal data class WorldBundle(
         val referenceDocs: List<ReferenceDocRecord>,
         val battleMaps: List<BattleMapRecord>,
         val battleMapSituations: List<BattleMapSituationRecord>,
+        val worldMaps: List<WorldMapRecord> = emptyList(),
         val encounters: List<EncounterRecord>,
         val relationships: List<PersonRelationshipRecord>,
         val companions: List<PersonCompanionRecord>,
@@ -366,6 +379,8 @@ internal data class WorldBundle(
         val landmarks: List<String>,
         val history: String,
         val notes: String,
+        val mapAnchorX: Double? = null,
+        val mapAnchorY: Double? = null,
         val createdAtEpochMillis: Long,
         val updatedAtEpochMillis: Long,
     ) {
@@ -383,6 +398,8 @@ internal data class WorldBundle(
                 landmarks = landmarks,
                 history = history,
                 notes = notes,
+                mapAnchorX = mapAnchorX,
+                mapAnchorY = mapAnchorY,
                 createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
                 updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
             )
@@ -403,6 +420,8 @@ internal data class WorldBundle(
                     landmarks = location.landmarks,
                     history = location.history,
                     notes = location.notes,
+                    mapAnchorX = location.mapAnchorX,
+                    mapAnchorY = location.mapAnchorY,
                     createdAtEpochMillis = location.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = location.updatedAt.toEpochMilli(),
                 )
@@ -1453,6 +1472,52 @@ internal data class WorldBundle(
                     sortIndex = situation.sortIndex,
                     createdAtEpochMillis = situation.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = situation.updatedAt.toEpochMilli(),
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class WorldMapRecord(
+        val id: String,
+        val worldId: String,
+        val locationId: String?,
+        val originalWidth: Int,
+        val originalHeight: Int,
+        val tileSizePx: Int,
+        val minZoom: Int,
+        val maxZoom: Int,
+        val createdAtEpochMillis: Long,
+        val updatedAtEpochMillis: Long,
+    ) {
+        fun toDomain(): WorldMap {
+            return WorldMap(
+                id = id,
+                worldId = worldId,
+                locationId = locationId,
+                originalWidth = originalWidth,
+                originalHeight = originalHeight,
+                tileSizePx = tileSizePx,
+                minZoom = minZoom,
+                maxZoom = maxZoom,
+                createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+                updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+            )
+        }
+
+        companion object {
+            fun from(worldMap: WorldMap): WorldMapRecord {
+                return WorldMapRecord(
+                    id = worldMap.id,
+                    worldId = worldMap.worldId,
+                    locationId = worldMap.locationId,
+                    originalWidth = worldMap.originalWidth,
+                    originalHeight = worldMap.originalHeight,
+                    tileSizePx = worldMap.tileSizePx,
+                    minZoom = worldMap.minZoom,
+                    maxZoom = worldMap.maxZoom,
+                    createdAtEpochMillis = worldMap.createdAt.toEpochMilli(),
+                    updatedAtEpochMillis = worldMap.updatedAt.toEpochMilli(),
                 )
             }
         }

@@ -38,4 +38,6 @@ internal sealed interface LocationsInteraction {
     data object VoiceClipRecordToggled : LocationsInteraction
     data object VoiceClipPlayToggled : LocationsInteraction
     data object VoiceClipRemoved : LocationsInteraction
+    data object OpenWorldMapSelected : LocationsInteraction
+    data class OpenLocationMapSelected(val locationId: String) : LocationsInteraction
 }

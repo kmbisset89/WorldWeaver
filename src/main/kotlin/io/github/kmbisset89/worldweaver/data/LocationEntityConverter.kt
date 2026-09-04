@@ -19,6 +19,8 @@ internal class LocationEntityConverter {
             landmarks = decodeLandmarks(entity.landmarks),
             history = entity.history,
             notes = entity.notes,
+            mapAnchorX = entity.mapAnchorX,
+            mapAnchorY = entity.mapAnchorY,
             createdAt = Instant.ofEpochMilli(entity.createdAtEpochMillis),
             updatedAt = Instant.ofEpochMilli(entity.updatedAtEpochMillis),
         )
@@ -38,6 +40,8 @@ internal class LocationEntityConverter {
             landmarks = encodeLandmarks(location.landmarks),
             history = location.history,
             notes = location.notes,
+            mapAnchorX = location.mapAnchorX,
+            mapAnchorY = location.mapAnchorY,
             createdAtEpochMillis = location.createdAt.toEpochMilli(),
             updatedAtEpochMillis = location.updatedAt.toEpochMilli(),
         )

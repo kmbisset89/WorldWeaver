@@ -177,11 +177,15 @@ internal class DeleteWorldUseCaseTest {
             avatarFileStore,
             voiceClipFileStore,
         )
+        val worldMaps = FakeWorldMapRepository()
+        val worldMapFileStore = WorldMapFileStore(Files.createTempDirectory("ww-world-maps").toFile())
         val deleteWorld = DeleteWorldUseCase(
             worlds,
             campaigns,
             worldPeople,
             locations,
+            worldMaps,
+            worldMapFileStore,
             factions,
             memberships,
             relationships,

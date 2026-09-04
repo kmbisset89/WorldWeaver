@@ -4,7 +4,7 @@ internal class CreateBattleMapSituationUseCase(
     private val situationRepository: BattleMapSituationRepository,
     private val battleMapRepository: BattleMapRepository,
     private val fileStore: BattleMapFileStore,
-    private val pyramidFactory: BattleMapTilePyramidFactory,
+    private val pyramidFactory: MapTilePyramidFactory,
     private val imageTransformer: BattleMapSituationImageTransformer,
     private val activeContextRepository: ActiveContextRepository,
     private val entityIdFactory: EntityIdFactory,

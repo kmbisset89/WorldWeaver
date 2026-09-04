@@ -40,6 +40,7 @@ internal class DatabaseProvider(
                 WorldWeaverMigrations.MIGRATION_17_18,
                 WorldWeaverMigrations.MIGRATION_18_19,
                 WorldWeaverMigrations.MIGRATION_19_20,
+                WorldWeaverMigrations.MIGRATION_20_21,
             )
             .build()
     }

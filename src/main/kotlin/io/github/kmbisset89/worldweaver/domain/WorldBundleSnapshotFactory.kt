@@ -22,6 +22,8 @@ internal class WorldBundleSnapshotFactory(
     private val personCompanionRepository: PersonCompanionRepository,
     private val avatarFileStore: PersonAvatarFileStore,
     private val battleMapFileStore: BattleMapFileStore,
+    private val worldMapRepository: WorldMapRepository,
+    private val worldMapFileStore: WorldMapFileStore,
     private val voiceClipFileStore: VoiceClipFileStore,
     private val instantProvider: InstantProvider,
 ) {
@@ -33,6 +35,7 @@ internal class WorldBundleSnapshotFactory(
         val campaignPeople = campaignIds.flatMap { campaignPersonRepository.getByCampaign(it) }
         val personIds = worldPeople.map { it.id }.toSet() + campaignPeople.map { it.id }.toSet()
         val battleMaps = campaignIds.flatMap { battleMapRepository.getByCampaign(it) }
+        val worldMaps = worldMapRepository.getByWorld(worldId)
         val locations = locationRepository.getByWorld(worldId)
         return WorldBundle(
             formatVersion = WorldBundle.FORMAT_VERSION,
@@ -55,6 +58,7 @@ internal class WorldBundleSnapshotFactory(
             referenceDocs = campaignIds.flatMap { referenceDocRepository.getByCampaign(it) },
             battleMaps = battleMaps,
             battleMapSituations = battleMaps.flatMap { battleMapSituationRepository.getByBattleMap(it.id) },
+            worldMaps = worldMaps,
             encounters = campaignIds.flatMap { encounterRepository.getByCampaign(it) },
             relationships = personRelationshipRepository.getAll().filter { relationship ->
                 containsPerson(relationship.from, personIds) && containsPerson(relationship.to, personIds)
@@ -64,6 +68,7 @@ internal class WorldBundleSnapshotFactory(
             },
             avatarFiles = collectAvatars(worldPeople, campaignPeople),
             mapFiles = collectMapFiles(battleMaps),
+            worldMapFiles = collectWorldMapFiles(worldMaps),
             voiceFiles = collectVoiceFiles(locations, worldPeople, campaignPeople),
         )
     }
@@ -91,6 +96,18 @@ internal class WorldBundleSnapshotFactory(
             battleMapFileStore.listRelativeFiles(map.id).map { (relativePath, bytes) ->
                 WorldBundle.MapFile(
                     battleMapId = map.id,
+                    relativePath = relativePath,
+                    bytes = bytes,
+                )
+            }
+        }
+    }
+
+    private fun collectWorldMapFiles(worldMaps: List<WorldMap>): List<WorldBundle.WorldMapFile> {
+        return worldMaps.flatMap { map ->
+            worldMapFileStore.listRelativeFiles(map.id).map { (relativePath, bytes) ->
+                WorldBundle.WorldMapFile(
+                    worldMapId = map.id,
                     relativePath = relativePath,
                     bytes = bytes,
                 )

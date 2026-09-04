@@ -105,6 +105,8 @@ internal class LargeWorldBundleFactoryTest {
         val context = FakeActiveContextRepository()
         val avatarFileStore = PersonAvatarFileStore(File(tempDir, "avatars"))
         val battleMapFileStore = BattleMapFileStore(File(tempDir, "maps"))
+        val worldMaps = FakeWorldMapRepository()
+        val worldMapFileStore = WorldMapFileStore(File(tempDir, "world_maps"))
         val voiceClipFileStore = VoiceClipFileStore(File(tempDir, "voices"))
         private val instant = InstantProvider { java.time.Instant.parse("2026-08-30T15:00:00Z") }
         private var nextId = 0
@@ -136,6 +138,8 @@ internal class LargeWorldBundleFactoryTest {
             personCompanionRepository = companions,
             avatarFileStore = avatarFileStore,
             battleMapFileStore = battleMapFileStore,
+            worldMapRepository = worldMaps,
+            worldMapFileStore = worldMapFileStore,
             voiceClipFileStore = voiceClipFileStore,
             setActiveWorld = SetActiveWorldUseCase(worlds, campaigns, context, instant),
         )

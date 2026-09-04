@@ -5,7 +5,7 @@ import java.io.File
 internal class BattleMapFileStore(
     private val mapsRoot: File,
 ) {
-    fun write(battleMapId: String, pyramid: BattleMapTilePyramid) {
+    fun write(battleMapId: String, pyramid: MapTilePyramid) {
         val mapDir = mapDirectory(battleMapId)
         if (mapDir.exists()) {
             mapDir.deleteRecursively()
@@ -23,7 +23,7 @@ internal class BattleMapFileStore(
         return readBytesIfPresent(tileFile(battleMapId, zoom, x, y))
     }
 
-    fun writeSituation(battleMapId: String, situationId: String, pyramid: BattleMapTilePyramid) {
+    fun writeSituation(battleMapId: String, situationId: String, pyramid: MapTilePyramid) {
         val situationDir = situationDirectory(battleMapId, situationId)
         if (situationDir.exists()) {
             situationDir.deleteRecursively()

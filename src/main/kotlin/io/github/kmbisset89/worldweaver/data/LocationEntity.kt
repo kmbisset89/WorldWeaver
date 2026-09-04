@@ -33,6 +33,8 @@ internal data class LocationEntity(
     val landmarks: String,
     val history: String,
     val notes: String,
+    val mapAnchorX: Double? = null,
+    val mapAnchorY: Double? = null,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )

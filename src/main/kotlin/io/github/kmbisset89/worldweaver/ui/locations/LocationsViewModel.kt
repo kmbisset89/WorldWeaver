@@ -25,6 +25,7 @@ import io.github.kmbisset89.worldweaver.domain.ObserveLocationOverlaysForActiveC
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveLoreForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveWorldMapsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.Quest
 import io.github.kmbisset89.worldweaver.domain.SetVoiceClipUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateLocationOverlayUseCase
@@ -33,6 +34,7 @@ import io.github.kmbisset89.worldweaver.domain.VoiceClipFileStore
 import io.github.kmbisset89.worldweaver.domain.VoiceClipPlayer
 import io.github.kmbisset89.worldweaver.domain.VoiceClipRecorder
 import io.github.kmbisset89.worldweaver.domain.VoiceClipRef
+import io.github.kmbisset89.worldweaver.domain.WorldMap
 
 internal class LocationsViewModel(
     private val appScope: AppCoroutineScope,
@@ -41,6 +43,7 @@ internal class LocationsViewModel(
     private val observeOverlays: ObserveLocationOverlaysForActiveCampaignUseCase,
     private val observeLore: ObserveLoreForActiveWorldUseCase,
     private val observeQuests: ObserveQuestsForActiveCampaignUseCase,
+    private val observeWorldMaps: ObserveWorldMapsForActiveWorldUseCase,
     private val createLocation: CreateLocationUseCase,
     private val updateLocation: UpdateLocationUseCase,
     private val deleteLocation: DeleteLocationUseCase,
@@ -67,6 +70,7 @@ internal class LocationsViewModel(
     private var latestOverlays: List<LocationOverlay> = emptyList()
     private var latestLore: List<Lore> = emptyList()
     private var latestQuests: List<Quest> = emptyList()
+    private var latestWorldMaps: List<WorldMap> = emptyList()
     private var latestCampaignName: String? = null
     private var latestWorldName: String = ""
     private var isRecordingVoice = false
@@ -151,6 +155,12 @@ internal class LocationsViewModel(
             LocationsInteraction.VoiceClipRecordToggled -> toggleVoiceRecord()
             LocationsInteraction.VoiceClipPlayToggled -> toggleVoicePlay()
             LocationsInteraction.VoiceClipRemoved -> removeVoiceClip()
+            LocationsInteraction.OpenWorldMapSelected -> {
+                _effects.tryEmit(LocationsViewEffect.OpenWorldMap(null))
+            }
+            is LocationsInteraction.OpenLocationMapSelected -> {
+                _effects.tryEmit(LocationsViewEffect.OpenWorldMap(interaction.locationId))
+            }
         }
     }
 
@@ -159,13 +169,18 @@ internal class LocationsViewModel(
         _state.value = LocationsViewState.Loading
         observeJob = appScope.scope.launch {
             combine(
-                observeActiveContextDetails(),
-                observeLocations(),
-                observeOverlays(),
-                observeLore(),
-                observeQuests(),
-            ) { details, locations, overlays, lore, quests ->
-                LoadedSnapshot(details, locations, overlays, lore, quests)
+                combine(
+                    observeActiveContextDetails(),
+                    observeLocations(),
+                    observeOverlays(),
+                    observeLore(),
+                    observeQuests(),
+                ) { details, locations, overlays, lore, quests ->
+                    LoadedSnapshot(details, locations, overlays, lore, quests)
+                },
+                observeWorldMaps(),
+            ) { snapshot, worldMaps ->
+                snapshot.copy(worldMaps = worldMaps)
             }
                 .catch { error ->
                     _state.value = LocationsViewState.Error(
@@ -180,6 +195,7 @@ internal class LocationsViewModel(
                         snapshot.overlays,
                         snapshot.lore,
                         snapshot.quests,
+                        snapshot.worldMaps,
                     )
                 }
         }
@@ -191,11 +207,13 @@ internal class LocationsViewModel(
         overlays: List<LocationOverlay>,
         lore: List<Lore>,
         quests: List<Quest>,
+        worldMaps: List<WorldMap>,
     ) {
         val world = details.world
         if (world == null) {
             latestLocations = emptyList()
             latestLore = emptyList()
+            latestWorldMaps = emptyList()
             selectedLocationId = null
             overlayNotesDraft = null
             _state.value = LocationsViewState.NoActiveWorld
@@ -205,6 +223,7 @@ internal class LocationsViewModel(
         latestOverlays = overlays
         latestLore = lore
         latestQuests = quests
+        latestWorldMaps = worldMaps
         latestCampaignName = details.campaign?.name
         latestWorldName = world.name
         val current = _state.value
@@ -220,6 +239,7 @@ internal class LocationsViewModel(
             _state.value = LocationsViewState.Empty(
                 worldName = world.name,
                 editor = editor,
+                hasWorldRootMap = hasWorldRootMap(),
             )
             return
         }
@@ -322,7 +342,14 @@ internal class LocationsViewModel(
             editor = editor,
             pendingDelete = pendingDelete,
             blockDeleteReason = blockDeleteReason,
+            hasWorldRootMap = hasWorldRootMap(),
+            selectedLocationHasMap = selected != null &&
+                latestWorldMaps.any { it.locationId == selected.id },
         )
+    }
+
+    private fun hasWorldRootMap(): Boolean {
+        return latestWorldMaps.any { it.locationId == null }
     }
 
     private fun locationIdFrom(interaction: LocationsInteraction): String {
@@ -778,5 +805,6 @@ internal class LocationsViewModel(
         val overlays: List<LocationOverlay>,
         val lore: List<Lore>,
         val quests: List<Quest>,
+        val worldMaps: List<WorldMap> = emptyList(),
     )
 }

@@ -13,6 +13,6 @@ internal data class AppBackupManifest(
     companion object {
         const val FORMAT_VERSION = 1
         const val APP_VERSION = AppVersion.VALUE
-        const val DB_SCHEMA_VERSION = 20
+        const val DB_SCHEMA_VERSION = 21
     }
 }

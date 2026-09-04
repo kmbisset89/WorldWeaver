@@ -1113,6 +1113,77 @@ As a DM, notifications are real (session reminders, unfinished encounter) or the
 
 ---
 
+## Phase 11 — World maps (world-owned)
+
+Nested cartography. Semantic zoom is Continent → Area → City → Place. Pixel pan/zoom inside one image reuses the 256px MapCompose pyramid. Battle maps stay campaign-owned on the Maps screen.
+
+Place-scale maps are cartography only. Linking a Place to a campaign battle map, party-presence pins, fog, tokens, a starter catalog, and a sidebar World Map item are out of scope.
+
+### WW-WMAP-01 Import and view a location map
+
+As a DM, I attach a PNG to a location or as the world-root map, tile it, and open a viewer.
+
+**Acceptance**
+
+- Active world is required. Campaign is not.
+- Each location has at most one map. The world has at most one root map (`locationId` null).
+- PNG import slices a 256px pyramid onto disk under `~/.worldweaver/world_maps/{id}/`.
+- Viewer pans and zooms with MapCompose. No gameplay grid.
+- Invalid image is rejected. Replacing a map for the same location (or the world root) overwrites tiles.
+
+**Status:** Done — `WorldMap` plus `WorldMapFileStore`; Locations Add/Open map opens `Screen.WORLD_MAP`.
+
+### WW-WMAP-02 Child pins
+
+As a DM, I drop child locations as pins on the parent map (continents on the world-root map).
+
+**Acceptance**
+
+- Place, move, and clear pins. Coordinates persist as normalized 0–1 `mapAnchorX` / `mapAnchorY` on the location.
+- Only the correct child type is offered. Unplaced children have no pin.
+- Pins render at those coordinates on the MapCompose viewer.
+
+**Status:** Done — `UpdateLocationMapAnchorUseCase`; pin overlay and unplaced-child placement on the world map viewer.
+
+### WW-WMAP-03 Semantic zoom
+
+As a DM, I zoom the world by walking the location tree, not by pixel scale.
+
+**Acceptance**
+
+- Opening a pin that has a map opens that location's map.
+- Opening a pin without a map selects the location and stays on the current map.
+- Breadcrumbs zoom out along World → Continent → Area → City → Place.
+- Pixel pan/zoom never skips a location level.
+
+**Status:** Done — pin click and breadcrumb navigation on `WorldMapViewModel`.
+
+### WW-WMAP-04 Locations entry points
+
+As a DM, I add or open a world map from Locations without using the battle-map Maps screen.
+
+**Acceptance**
+
+- Location detail shows whether a map exists. Add map / Open map navigates to the viewer.
+- Header offers Open world map (or Add world map when none exists).
+- Location tree and detail stay the system of record for location CRUD.
+
+**Status:** Done — Locations header and detail pane; `LocationsViewEffect.OpenWorldMap`.
+
+### WW-WMAP-05 Cascade, backup, and bundle
+
+As a DM, deleting a location or world removes its cartography, and backups and world bundles keep the maps.
+
+**Acceptance**
+
+- Delete location or world removes matching `world_maps` files.
+- App backup includes `world_maps/`.
+- World export/import remaps world-map ids, location ids, and anchors.
+
+**Status:** Done — delete use cases, `AppBackupArchiveConverter`, and `WorldBundle` `world_maps/` files.
+
+---
+
 ## Phase 10 — Later epics
 
 Do not start these before Phases 0–8 are usable.
@@ -1489,3 +1560,8 @@ As a DM, I import an old `~/.worldweaver/worldweaver.db` into the new World/Camp
 | WW-QA-02 | 10 | Ownership tests | App | Not started |
 | WW-QA-03 | 10 | No orphan caches | App | Done |
 | WW-MIG-01 | 10 | Import TactWare database | App | Not started |
+| WW-WMAP-01 | 11 | Import and view a location map | World | Done |
+| WW-WMAP-02 | 11 | Child pins | World | Done |
+| WW-WMAP-03 | 11 | Semantic zoom | World | Done |
+| WW-WMAP-04 | 11 | Locations entry points | World | Done |
+| WW-WMAP-05 | 11 | Cascade, backup, and bundle | World | Done |

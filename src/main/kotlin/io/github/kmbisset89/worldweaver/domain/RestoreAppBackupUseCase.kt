@@ -56,6 +56,10 @@ internal class RestoreAppBackupUseCase(
                 source = File(archive.extractedDataDir, WorldWeaverDataDirectory.MAPS_DIR_NAME),
             )
             replaceDirectory(
+                dest = dataDirectory.worldMapsDir,
+                source = File(archive.extractedDataDir, WorldWeaverDataDirectory.WORLD_MAPS_DIR_NAME),
+            )
+            replaceDirectory(
                 dest = dataDirectory.voicesDir,
                 source = File(archive.extractedDataDir, WorldWeaverDataDirectory.VOICES_DIR_NAME),
             )

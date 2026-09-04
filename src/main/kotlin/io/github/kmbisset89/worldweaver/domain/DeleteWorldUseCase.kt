@@ -5,6 +5,8 @@ internal class DeleteWorldUseCase(
     private val campaignRepository: CampaignRepository,
     private val worldPersonRepository: WorldPersonRepository,
     private val locationRepository: LocationRepository,
+    private val worldMapRepository: WorldMapRepository,
+    private val worldMapFileStore: WorldMapFileStore,
     private val factionRepository: FactionRepository,
     private val factionMembershipRepository: FactionMembershipRepository,
     private val personRelationshipRepository: PersonRelationshipRepository,
@@ -27,6 +29,10 @@ internal class DeleteWorldUseCase(
         }
         locationRepository.getByWorld(worldId).forEach { location ->
             voiceClipFileStore.delete(VoiceClipRef.Location(location.id))
+        }
+        worldMapRepository.getByWorld(worldId).forEach { worldMap ->
+            worldMapFileStore.delete(worldMap.id)
+            worldMapRepository.delete(worldMap.id)
         }
         factionRepository.getByWorld(worldId).forEach { faction ->
             factionMembershipRepository.deleteByFaction(faction.id)

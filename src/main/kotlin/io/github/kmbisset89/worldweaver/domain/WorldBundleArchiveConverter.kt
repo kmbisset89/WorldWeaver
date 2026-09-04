@@ -32,6 +32,11 @@ internal class WorldBundleArchiveConverter {
                 zip.write(file.bytes)
                 zip.closeEntry()
             }
+            bundle.worldMapFiles.forEach { file ->
+                zip.putNextEntry(ZipEntry(worldMapEntryPath(file.worldMapId, file.relativePath)))
+                zip.write(file.bytes)
+                zip.closeEntry()
+            }
             bundle.voiceFiles.forEach { file ->
                 zip.putNextEntry(ZipEntry(voiceEntryPath(file.ref)))
                 zip.write(file.wav)
@@ -55,6 +60,7 @@ internal class WorldBundleArchiveConverter {
                 val payload = json.decodeFromString(WorldBundle.Payload.serializer(), payloadBytes.decodeToString())
                 val avatarFiles = mutableListOf<WorldBundle.AvatarFile>()
                 val mapFiles = mutableListOf<WorldBundle.MapFile>()
+                val worldMapFiles = mutableListOf<WorldBundle.WorldMapFile>()
                 val voiceFiles = mutableListOf<WorldBundle.VoiceFile>()
                 zip.entries().asSequence().forEach { entry ->
                     if (entry.isDirectory) {
@@ -77,6 +83,18 @@ internal class WorldBundleArchiveConverter {
                                 bytes = zip.readBytes(entry),
                             )
                         }
+                        entry.name.startsWith(WORLD_MAPS_PREFIX) -> {
+                            val remainder = entry.name.removePrefix(WORLD_MAPS_PREFIX)
+                            val slash = remainder.indexOf('/')
+                            if (slash <= 0) {
+                                return@forEach
+                            }
+                            worldMapFiles += WorldBundle.WorldMapFile(
+                                worldMapId = remainder.substring(0, slash),
+                                relativePath = remainder.substring(slash + 1),
+                                bytes = zip.readBytes(entry),
+                            )
+                        }
                         entry.name.startsWith(VOICES_PREFIX) -> {
                             val ref = voiceRefFromPath(entry.name) ?: return@forEach
                             voiceFiles += WorldBundle.VoiceFile(ref = ref, wav = zip.readBytes(entry))
@@ -89,6 +107,7 @@ internal class WorldBundleArchiveConverter {
                         payload = payload,
                         avatarFiles = avatarFiles,
                         mapFiles = mapFiles,
+                        worldMapFiles = worldMapFiles,
                         voiceFiles = voiceFiles,
                     )
                 )
@@ -117,6 +136,10 @@ internal class WorldBundleArchiveConverter {
 
     private fun mapEntryPath(battleMapId: String, relativePath: String): String {
         return "$MAPS_PREFIX$battleMapId/$relativePath"
+    }
+
+    private fun worldMapEntryPath(worldMapId: String, relativePath: String): String {
+        return "$WORLD_MAPS_PREFIX$worldMapId/$relativePath"
     }
 
     private fun voiceEntryPath(ref: VoiceClipRef): String {
@@ -162,6 +185,7 @@ internal class WorldBundleArchiveConverter {
         const val PAYLOAD_ENTRY = "bundle.json"
         const val AVATARS_PREFIX = "avatars/"
         const val MAPS_PREFIX = "maps/"
+        const val WORLD_MAPS_PREFIX = "world_maps/"
         const val VOICES_PREFIX = "voices/"
 
         val json = Json {

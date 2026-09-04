@@ -42,6 +42,8 @@ import io.github.kmbisset89.worldweaver.data.SessionRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldCalendarEntityConverter
 import io.github.kmbisset89.worldweaver.data.WorldCalendarRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldEntityConverter
+import io.github.kmbisset89.worldweaver.data.WorldMapEntityConverter
+import io.github.kmbisset89.worldweaver.data.WorldMapRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldPersonEntityConverter
 import io.github.kmbisset89.worldweaver.data.WorldPersonRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldRepositoryImpl
@@ -59,7 +61,7 @@ import io.github.kmbisset89.worldweaver.domain.BattleMapImageScaler
 import io.github.kmbisset89.worldweaver.domain.BattleMapRepository
 import io.github.kmbisset89.worldweaver.domain.BattleMapSituationImageTransformer
 import io.github.kmbisset89.worldweaver.domain.BattleMapSituationRepository
-import io.github.kmbisset89.worldweaver.domain.BattleMapTilePyramidFactory
+import io.github.kmbisset89.worldweaver.domain.MapTilePyramidFactory
 import io.github.kmbisset89.worldweaver.domain.CalculateGridDistanceUseCase
 import io.github.kmbisset89.worldweaver.domain.CalculateReachableCellsUseCase
 import io.github.kmbisset89.worldweaver.domain.DiceRoller
@@ -76,6 +78,7 @@ import io.github.kmbisset89.worldweaver.domain.CreateCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateEncounterUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateFactionMembershipUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateFactionUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateWorldMapUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateLocationUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateLoreUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateOneShotUseCase
@@ -106,6 +109,7 @@ import io.github.kmbisset89.worldweaver.domain.DeleteQuestUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteReferenceDocUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteWorldPersonUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteWorldMapUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.EncounterRepository
 import io.github.kmbisset89.worldweaver.domain.EndEncounterUseCase
@@ -125,6 +129,8 @@ import io.github.kmbisset89.worldweaver.domain.RestoreAppBackupUseCase
 import io.github.kmbisset89.worldweaver.domain.TransactionRunner
 import io.github.kmbisset89.worldweaver.domain.WorldBundleArchiveConverter
 import io.github.kmbisset89.worldweaver.domain.WorldBundleIdRemapper
+import io.github.kmbisset89.worldweaver.domain.WorldMapFileStore
+import io.github.kmbisset89.worldweaver.domain.WorldMapRepository
 import io.github.kmbisset89.worldweaver.domain.WorldBundleSnapshotFactory
 import io.github.kmbisset89.worldweaver.domain.GenerateRandomNpcUseCase
 import io.github.kmbisset89.worldweaver.domain.InstantProvider
@@ -155,6 +161,7 @@ import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignU
 import io.github.kmbisset89.worldweaver.domain.ObserveDashboardCountsUseCase
 import io.github.kmbisset89.worldweaver.domain.SearchRecordsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveWorldMapsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldsUseCase
 import io.github.kmbisset89.worldweaver.domain.OneShotDraftFactory
 import io.github.kmbisset89.worldweaver.domain.OneShotTemplateCatalog
@@ -194,6 +201,7 @@ import io.github.kmbisset89.worldweaver.domain.UpdateBattleMapTerrainUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateBattleMapUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateEncounterUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateCampaignUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateLocationMapAnchorUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateLocationOverlayUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateLocationUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateFactionUseCase
@@ -231,6 +239,9 @@ import io.github.kmbisset89.worldweaver.ui.maps.BattleMapMovementOverlay
 import io.github.kmbisset89.worldweaver.ui.maps.BattleMapItemOverlay
 import io.github.kmbisset89.worldweaver.ui.maps.BattleMapTokenOverlay
 import io.github.kmbisset89.worldweaver.ui.maps.MapsViewModel
+import io.github.kmbisset89.worldweaver.ui.worldmap.WorldMapMapStateFactory
+import io.github.kmbisset89.worldweaver.ui.worldmap.WorldMapPinOverlay
+import io.github.kmbisset89.worldweaver.ui.worldmap.WorldMapViewModel
 import io.github.kmbisset89.worldweaver.ui.quests.QuestsViewModel
 import io.github.kmbisset89.worldweaver.ui.run.RunViewModel
 import io.github.kmbisset89.worldweaver.ui.sessions.SessionsViewModel
@@ -269,12 +280,14 @@ internal fun appModule() = module {
     single { EncounterEntityConverter() }
     single { BattleMapEntityConverter() }
     single { BattleMapSituationEntityConverter() }
-    single { BattleMapTilePyramidFactory() }
+    single { WorldMapEntityConverter() }
+    single { MapTilePyramidFactory() }
     single { BattleMapImageScaler() }
     single { BattleMapSituationImageTransformer() }
     single { BundledBattleMapCatalogLoader() }
     single { WorldWeaverDataDirectory() }
     single { BattleMapFileStore(get<WorldWeaverDataDirectory>().mapsDir) }
+    single { WorldMapFileStore(get<WorldWeaverDataDirectory>().worldMapsDir) }
     single { PersonAvatarFileStore(get<WorldWeaverDataDirectory>().avatarsDir) }
     single { VoiceClipFileStore(get<WorldWeaverDataDirectory>().voicesDir) }
     single { SrdCatalogJsonConverter() }
@@ -318,6 +331,7 @@ internal fun appModule() = module {
     single { get<WorldWeaverDatabase>().encounterParticipantDao() }
     single { get<WorldWeaverDatabase>().battleMapDao() }
     single { get<WorldWeaverDatabase>().battleMapSituationDao() }
+    single { get<WorldWeaverDatabase>().worldMapDao() }
     single<WorldRepository> { WorldRepositoryImpl(get(), get()) }
     single<WorldCalendarRepository> { WorldCalendarRepositoryImpl(get(), get(), get(), get()) }
     single<CampaignRepository> { CampaignRepositoryImpl(get(), get()) }
@@ -337,6 +351,7 @@ internal fun appModule() = module {
     single<EncounterRepository> { EncounterRepositoryImpl(get(), get(), get()) }
     single<BattleMapRepository> { BattleMapRepositoryImpl(get(), get()) }
     single<BattleMapSituationRepository> { BattleMapSituationRepositoryImpl(get(), get()) }
+    single<WorldMapRepository> { WorldMapRepositoryImpl(get(), get()) }
     single<ActiveContextRepository> { PreferenceActiveContextRepository() }
     single<TransactionRunner> { RoomTransactionRunner(get()) }
     single { WorldBundleArchiveConverter() }
@@ -365,6 +380,8 @@ internal fun appModule() = module {
             personCompanionRepository = get(),
             avatarFileStore = get(),
             battleMapFileStore = get(),
+            worldMapRepository = get(),
+            worldMapFileStore = get(),
             voiceClipFileStore = get(),
             instantProvider = get(),
         )
@@ -379,7 +396,7 @@ internal fun appModule() = module {
     factory { OneShotDraftFactory(get()) }
     factory { CreateOneShotUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { UpdateWorldUseCase(get(), get()) }
-    factory { DeleteWorldUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { DeleteWorldUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { ExportWorldBundleUseCase(get(), get()) }
     factory {
         ExportAppBackupUseCase(
@@ -427,6 +444,8 @@ internal fun appModule() = module {
             personCompanionRepository = get(),
             avatarFileStore = get(),
             battleMapFileStore = get(),
+            worldMapRepository = get(),
+            worldMapFileStore = get(),
             voiceClipFileStore = get(),
             setActiveWorld = get(),
         )
@@ -441,7 +460,8 @@ internal fun appModule() = module {
     factory { ObserveCampaignsForActiveWorldUseCase(get(), get()) }
     factory { CreateLocationUseCase(get(), get(), get(), get()) }
     factory { UpdateLocationUseCase(get(), get()) }
-    factory { DeleteLocationUseCase(get(), get(), get()) }
+    factory { UpdateLocationMapAnchorUseCase(get(), get()) }
+    factory { DeleteLocationUseCase(get(), get(), get(), get(), get()) }
     factory { ObserveLocationsForActiveWorldUseCase(get(), get()) }
     factory { ObserveLocationOverlaysForActiveCampaignUseCase(get(), get()) }
     factory { UpdateLocationOverlayUseCase(get(), get(), get(), get()) }
@@ -515,6 +535,9 @@ internal fun appModule() = module {
     factory { CloseSessionUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { DeleteBattleMapUseCase(get(), get(), get(), get()) }
     factory { ObserveBattleMapsForActiveCampaignUseCase(get(), get()) }
+    factory { CreateWorldMapUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    factory { DeleteWorldMapUseCase(get(), get()) }
+    factory { ObserveWorldMapsForActiveWorldUseCase(get(), get()) }
     factory { CreateBattleMapSituationUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { ToggleBattleMapSituationUseCase(get(), get()) }
     factory { DeleteBattleMapSituationUseCase(get(), get()) }
@@ -620,6 +643,7 @@ internal fun appModule() = module {
             observeOverlays = get(),
             observeLore = get(),
             observeQuests = get(),
+            observeWorldMaps = get(),
             createLocation = get(),
             updateLocation = get(),
             deleteLocation = get(),
@@ -816,6 +840,21 @@ internal fun appModule() = module {
             bundledCatalogLoader = get(),
         )
     }
+    single { WorldMapMapStateFactory(get()) }
+    factory { WorldMapPinOverlay() }
+    single {
+        WorldMapViewModel(
+            appScope = get(),
+            observeActiveContextDetails = get(),
+            observeLocations = get(),
+            observeWorldMaps = get(),
+            createWorldMap = get(),
+            deleteWorldMap = get(),
+            updateLocationMapAnchor = get(),
+            mapStateFactory = get(),
+            pinOverlay = get(),
+        )
+    }
     single {
         RunViewModel(
             appScope = get(),
@@ -872,6 +911,7 @@ internal fun appModule() = module {
             sessionsViewModel = get(),
             encountersViewModel = get(),
             mapsViewModel = get(),
+            worldMapViewModel = get(),
             runViewModel = get(),
             diceViewModel = get(),
             searchViewModel = get(),

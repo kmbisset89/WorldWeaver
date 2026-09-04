@@ -40,6 +40,7 @@ internal fun LocationDetailPane(
     voiceClipPath: String?,
     isRecordingVoice: Boolean,
     isPlayingVoice: Boolean,
+    selectedLocationHasMap: Boolean,
     onInteraction: (LocationsInteraction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -116,6 +117,11 @@ internal fun LocationDetailPane(
         AttachedQuestSection(attachedQuests = attachedQuests, onInteraction = onInteraction)
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(
+                onClick = { onInteraction(LocationsInteraction.OpenLocationMapSelected(location.id)) }
+            ) {
+                Text(if (selectedLocationHasMap) "Open map" else "Add map")
+            }
             TextButton(
                 onClick = { onInteraction(LocationsInteraction.EditLocationSelected(location.id)) }
             ) {

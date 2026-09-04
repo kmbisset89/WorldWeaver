@@ -15,6 +15,11 @@ internal data class Location(
     val landmarks: List<String>,
     val history: String,
     val notes: String,
+    val mapAnchorX: Double? = null,
+    val mapAnchorY: Double? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
-)
+) {
+    val isPlacedOnParentMap: Boolean
+        get() = mapAnchorX != null && mapAnchorY != null
+}

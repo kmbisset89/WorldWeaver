@@ -42,12 +42,45 @@ internal class DeleteLocationUseCaseTest {
         assertTrue(harness.overlays.all().isEmpty())
     }
 
+    @Test
+    fun deleteRemovesWorldMapFiles() = runTest {
+        val harness = Harness()
+        val continent = harness.insert("loc-1", LocationType.Continent, "Faerun", null)
+        val now = Instant.parse("2026-08-29T12:00:00Z")
+        val worldMap = WorldMap(
+            id = "wmap-1",
+            worldId = continent.worldId,
+            locationId = continent.id,
+            originalWidth = 64,
+            originalHeight = 64,
+            tileSizePx = 256,
+            minZoom = 0,
+            maxZoom = 0,
+            createdAt = now,
+            updatedAt = now,
+        )
+        harness.worldMaps.insert(worldMap)
+        val mapDir = java.io.File(harness.worldMapsRoot.toFile(), worldMap.id)
+        mapDir.mkdirs()
+        java.io.File(mapDir, "original.png").writeBytes(byteArrayOf(1, 2, 3))
+
+        val result = harness.deleteLocation(continent.id)
+
+        assertIs<DeleteLocationUseCase.Result.Deleted>(result)
+        assertTrue(harness.worldMaps.all().isEmpty())
+        assertTrue(!mapDir.exists())
+    }
+
     private class Harness {
         val locations = FakeLocationRepository()
         val overlays = FakeLocationOverlayRepository()
+        val worldMaps = FakeWorldMapRepository()
+        val worldMapsRoot = java.nio.file.Files.createTempDirectory("ww-world-maps")
         val deleteLocation = DeleteLocationUseCase(
             locations,
             overlays,
+            worldMaps,
+            WorldMapFileStore(worldMapsRoot.toFile()),
             VoiceClipFileStore(java.nio.file.Files.createTempDirectory("ww-voices").toFile()),
         )
 
