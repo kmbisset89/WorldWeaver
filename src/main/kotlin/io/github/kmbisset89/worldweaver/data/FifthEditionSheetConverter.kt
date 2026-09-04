@@ -50,6 +50,7 @@ internal class FifthEditionSheetConverter {
             },
             concentratingSpell = sheet.concentratingSpell,
             creatureSize = sheet.creatureSize.name,
+            currentXp = sheet.currentXp,
         )
     }
 
@@ -119,6 +120,7 @@ internal class FifthEditionSheetConverter {
             },
             concentratingSpell = encoded.concentratingSpell,
             creatureSize = CreatureSize.fromStorage(encoded.creatureSize),
+            currentXp = encoded.currentXp.coerceAtLeast(0),
         )
     }
 
@@ -149,6 +151,7 @@ internal class FifthEditionSheetConverter {
         val spellSlots: String = "",
         val concentratingSpell: String = "",
         val creatureSize: String = "Medium",
+        val currentXp: Int = 0,
     )
 
     private companion object {

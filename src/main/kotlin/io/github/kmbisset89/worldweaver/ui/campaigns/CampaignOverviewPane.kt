@@ -49,7 +49,8 @@ internal fun CampaignOverviewPane(
         )
         Text(
             text = "${CampaignsViewState.statusLabel(campaign.status)} · " +
-                campaign.resolvedGameSystem(worldDefaultGameSystem).displayName,
+                campaign.resolvedGameSystem(worldDefaultGameSystem).displayName +
+                " · ${campaign.levelingMode.displayName}",
             fontSize = 13.sp,
             color = TextSecondary
         )

@@ -143,6 +143,11 @@ private fun PathfinderSheetEditor(
         levelText = editor.levelText,
         onInteraction = onInteraction,
     )
+    if (editor.showExperience) {
+        PathfinderScoreField("XP", editor.currentXpText) {
+            onInteraction(CharactersInteraction.EditorExperienceChanged(it))
+        }
+    }
     Text("Attributes")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PathfinderScoreField("STR", editor.strength) {

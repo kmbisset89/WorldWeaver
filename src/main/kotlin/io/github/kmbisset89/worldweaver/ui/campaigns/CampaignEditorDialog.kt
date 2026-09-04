@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.GameSystem
+import io.github.kmbisset89.worldweaver.domain.LevelingMode
 
 @Composable
 internal fun CampaignEditorDialog(
@@ -72,6 +73,20 @@ internal fun CampaignEditorDialog(
                                 onInteraction(CampaignsInteraction.EditorGameSystemSelected(system))
                             },
                             label = { Text(system.displayName) },
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Leveling")
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LevelingMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = editor.levelingMode == mode,
+                            onClick = {
+                                onInteraction(CampaignsInteraction.EditorLevelingModeSelected(mode))
+                            },
+                            label = { Text(mode.displayName) },
                         )
                     }
                 }

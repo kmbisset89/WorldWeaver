@@ -163,6 +163,15 @@ private fun SheetEditor(
     TextButton(onClick = { onInteraction(CharactersInteraction.EditorClassLevelAdded) }) {
         Text("Add class")
     }
+    if (editor.showExperience) {
+        OutlinedTextField(
+            value = editor.currentXpText,
+            onValueChange = { onInteraction(CharactersInteraction.EditorExperienceChanged(it)) },
+            label = { Text("Current XP") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
     Text("Ability scores")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ScoreField("STR", editor.strength) {

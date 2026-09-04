@@ -2,6 +2,7 @@ package io.github.kmbisset89.worldweaver.ui.campaigns
 
 import io.github.kmbisset89.worldweaver.domain.CampaignStatus
 import io.github.kmbisset89.worldweaver.domain.GameSystem
+import io.github.kmbisset89.worldweaver.domain.LevelingMode
 
 internal sealed interface CampaignsInteraction {
     data object ScreenStarted : CampaignsInteraction
@@ -20,6 +21,7 @@ internal sealed interface CampaignsInteraction {
     data class EditorDescriptionChanged(val description: String) : CampaignsInteraction
     data class EditorNotesChanged(val notes: String) : CampaignsInteraction
     data class EditorGameSystemSelected(val gameSystem: GameSystem) : CampaignsInteraction
+    data class EditorLevelingModeSelected(val levelingMode: LevelingMode) : CampaignsInteraction
     data object EditorSaved : CampaignsInteraction
     data object EditorDismissed : CampaignsInteraction
     data object OpenCharactersSelected : CampaignsInteraction

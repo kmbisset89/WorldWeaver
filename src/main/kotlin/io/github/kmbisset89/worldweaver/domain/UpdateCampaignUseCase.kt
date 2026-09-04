@@ -16,6 +16,7 @@ internal class UpdateCampaignUseCase(
         description: String,
         notes: String,
         gameSystem: GameSystem,
+        levelingMode: LevelingMode,
     ): Result {
         val existing = campaignRepository.getById(campaignId) ?: return Result.NotFound
         val trimmedName = name.trim()
@@ -28,6 +29,7 @@ internal class UpdateCampaignUseCase(
                 description = description.trim(),
                 notes = notes.trim(),
                 gameSystem = gameSystem,
+                levelingMode = levelingMode,
                 updatedAt = instantProvider.now(),
             )
         )

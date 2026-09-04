@@ -16,4 +16,6 @@ internal sealed interface PersonSheet {
     fun lineageLabel(): String
 
     fun creatureSize(): CreatureSize
+
+    val currentXp: Int
 }

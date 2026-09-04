@@ -1,5 +1,6 @@
 package io.github.kmbisset89.worldweaver.ui.run
 
+import io.github.kmbisset89.worldweaver.ui.advancement.AdvancementPrompt
 import io.github.kmbisset89.worldweaver.ui.characters.PersonMembership
 
 internal sealed class RunViewState {
@@ -36,6 +37,7 @@ internal sealed class RunViewState {
         val whyItMatters: String,
         val isClosing: Boolean,
         val closeError: String?,
+        val advancementPrompt: AdvancementPrompt?,
     ) : RunViewState()
 
     data class PartyMember(

@@ -35,7 +35,7 @@ import androidx.room.RoomDatabase
         BattleMapSituationEntity::class,
         WorldMapEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 internal abstract class WorldWeaverDatabase : RoomDatabase() {

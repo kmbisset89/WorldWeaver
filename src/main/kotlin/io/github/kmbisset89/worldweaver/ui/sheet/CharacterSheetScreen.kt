@@ -186,6 +186,13 @@ private fun SheetHeader(state: CharacterSheetViewState.Content) {
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            state.experiencePoints?.let { xp ->
+                Text(
+                    text = "$xp XP",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         SystemBadge(label = state.systemBadge)
     }

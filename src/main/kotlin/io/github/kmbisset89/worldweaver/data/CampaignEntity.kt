@@ -24,6 +24,7 @@ internal data class CampaignEntity(
     val description: String,
     val notes: String,
     val gameSystem: String?,
+    val levelingMode: String,
     val status: String,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,

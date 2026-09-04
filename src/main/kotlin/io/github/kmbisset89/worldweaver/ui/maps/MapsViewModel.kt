@@ -45,6 +45,7 @@ import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
 import io.github.kmbisset89.worldweaver.domain.PersonAvatarFileStore
 import io.github.kmbisset89.worldweaver.domain.PersonRef
 import io.github.kmbisset89.worldweaver.domain.DeleteBattleMapItemUseCase
+import io.github.kmbisset89.worldweaver.domain.ExportUniversalVttUseCase
 import io.github.kmbisset89.worldweaver.domain.PlaceBattleMapItemUseCase
 import io.github.kmbisset89.worldweaver.domain.PlaceEncounterTokenUseCase
 import io.github.kmbisset89.worldweaver.domain.ToggleBattleMapSituationUseCase
@@ -84,6 +85,7 @@ internal class MapsViewModel(
     private val placeBattleMapItem: PlaceBattleMapItemUseCase,
     private val deleteBattleMapItem: DeleteBattleMapItemUseCase,
     private val importBundledBattleMap: ImportBundledBattleMapUseCase,
+    private val exportUniversalVtt: ExportUniversalVttUseCase,
     private val bundledCatalogLoader: BundledBattleMapCatalogLoader,
     private val imagePromptFactory: BattleMapImagePromptFactory = BattleMapImagePromptFactory(),
     private val visibilityResolver: EncounterParticipantVisibilityResolver =
@@ -212,6 +214,10 @@ internal class MapsViewModel(
             is MapsInteraction.DeleteMapSelected -> requestDelete(interaction.battleMapId)
             MapsInteraction.DeleteConfirmed -> confirmDelete()
             MapsInteraction.DeleteCancelled -> updatePendingDelete(null)
+            is MapsInteraction.UniversalVttExportPathChosen -> exportMapAsUniversalVtt(
+                interaction.battleMapId,
+                interaction.path,
+            )
         }
     }
 
@@ -1373,6 +1379,26 @@ internal class MapsViewModel(
                         ?.movementSpeed()
             }
             EncounterParticipantSource.Nameless -> null
+        }
+    }
+
+    private fun exportMapAsUniversalVtt(battleMapId: String, path: String) {
+        val mapName = latestMaps.firstOrNull { it.id == battleMapId }?.name ?: "Battle map"
+        appScope.scope.launch {
+            when (val result = exportUniversalVtt(battleMapId, File(path))) {
+                ExportUniversalVttUseCase.Result.Written -> {
+                    _effects.tryEmit(MapsViewEffect.UniversalVttExported(mapName))
+                }
+                ExportUniversalVttUseCase.Result.MapNotFound -> {
+                    _effects.tryEmit(MapsViewEffect.Failed("That map no longer exists"))
+                }
+                ExportUniversalVttUseCase.Result.ImageMissing -> {
+                    _effects.tryEmit(MapsViewEffect.Failed("That map has no image to export"))
+                }
+                is ExportUniversalVttUseCase.Result.Failed -> {
+                    _effects.tryEmit(MapsViewEffect.Failed(result.message))
+                }
+            }
         }
     }
 

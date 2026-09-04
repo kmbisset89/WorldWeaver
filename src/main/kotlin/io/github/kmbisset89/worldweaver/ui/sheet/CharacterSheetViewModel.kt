@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.AbilityScores
@@ -16,6 +17,8 @@ import io.github.kmbisset89.worldweaver.domain.CampaignPersonDraft
 import io.github.kmbisset89.worldweaver.domain.DeathSaves
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSheet
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSkillCatalog
+import io.github.kmbisset89.worldweaver.domain.LevelingMode
+import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObservePeopleForActiveContextUseCase
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESheet
 import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
@@ -37,6 +40,7 @@ internal class CharacterSheetViewModel(
     private val updateCampaignPerson: UpdateCampaignPersonUseCase,
     private val updateDeathSaves: UpdateCampaignPersonDeathSavesUseCase,
     private val avatarFileStore: PersonAvatarFileStore,
+    private val observeActiveContextDetails: ObserveActiveContextDetailsUseCase,
 ) {
     private val _state = MutableStateFlow<CharacterSheetViewState>(CharacterSheetViewState.Hidden)
     val state: StateFlow<CharacterSheetViewState> = _state.asStateFlow()
@@ -48,6 +52,7 @@ internal class CharacterSheetViewModel(
     private var openedKey: CharacterSheetViewState.PersonKey? = null
     private var showingUnavailable = false
     private var latestPeople = PeopleSnapshot(emptyList(), emptyList())
+    private var latestLevelingMode = LevelingMode.Milestone
 
     init {
         observe()
@@ -108,7 +113,12 @@ internal class CharacterSheetViewModel(
     private fun observe() {
         observeJob?.cancel()
         observeJob = appScope.scope.launch {
-            observePeople()
+            combine(
+                observePeople(),
+                observeActiveContextDetails(),
+            ) { snapshot, details ->
+                snapshot to (details.campaign?.levelingMode ?: LevelingMode.Milestone)
+            }
                 .catch { error ->
                     if (openedKey != null || showingUnavailable) {
                         _state.value = CharacterSheetViewState.Error(
@@ -117,8 +127,9 @@ internal class CharacterSheetViewModel(
                         )
                     }
                 }
-                .collect { snapshot ->
+                .collect { (snapshot, levelingMode) ->
                     latestPeople = snapshot
+                    latestLevelingMode = levelingMode
                     publish()
                 }
         }
@@ -224,6 +235,11 @@ internal class CharacterSheetViewModel(
             name = name,
             kind = kind,
             identityLine = identityLine(kind, sheet),
+            experiencePoints = if (latestLevelingMode == LevelingMode.Experience) {
+                sheet.currentXp
+            } else {
+                null
+            },
             systemBadge = sheet.gameSystem().displayName,
             avatarPath = avatarPath,
             abilityScores = abilityTiles(scores),

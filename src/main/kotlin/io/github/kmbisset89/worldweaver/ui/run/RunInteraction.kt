@@ -18,4 +18,8 @@ internal sealed interface RunInteraction {
     ) : RunInteraction
     data class WhyItMattersChanged(val value: String) : RunInteraction
     data object CloseSessionSelected : RunInteraction
+    data object AdvancementDismissed : RunInteraction
+    data object AwardLevelConfirmed : RunInteraction
+    data class AwardExperienceAmountChanged(val value: String) : RunInteraction
+    data object AwardExperienceConfirmed : RunInteraction
 }

@@ -1,0 +1,23 @@
+{
+  "id": "world-weaver",
+  "title": "World Weaver",
+  "description": "Import a World Weaver .wwbundle as journals and scenes. One-way, local file, no account or live sync.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "13"
+  },
+  "esmodules": [
+    "scripts/world-weaver.js"
+  ],
+  "authors": [
+    {
+      "name": "Kerry Bisset",
+      "url": "https://github.com/kmbisset89/WorldWeaver"
+    }
+  ],
+  "url": "https://github.com/kmbisset89/WorldWeaver",
+  "bugs": "https://github.com/kmbisset89/WorldWeaver/issues",
+  "license": "Apache-2.0",
+  "readme": "README.md"
+}

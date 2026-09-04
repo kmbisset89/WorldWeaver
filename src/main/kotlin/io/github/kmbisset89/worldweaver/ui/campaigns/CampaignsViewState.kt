@@ -3,6 +3,7 @@ package io.github.kmbisset89.worldweaver.ui.campaigns
 import io.github.kmbisset89.worldweaver.domain.Campaign
 import io.github.kmbisset89.worldweaver.domain.CampaignStatus
 import io.github.kmbisset89.worldweaver.domain.GameSystem
+import io.github.kmbisset89.worldweaver.domain.LevelingMode
 
 internal sealed class CampaignsViewState {
     data object Loading : CampaignsViewState()
@@ -58,6 +59,7 @@ internal sealed class CampaignsViewState {
         val description: String,
         val notes: String,
         val gameSystem: GameSystem,
+        val levelingMode: LevelingMode,
         val nameError: String?,
     )
 

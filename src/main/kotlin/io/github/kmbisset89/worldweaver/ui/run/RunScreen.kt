@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kmbisset89.worldweaver.ui.advancement.AdvancementPromptComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
@@ -93,6 +94,16 @@ internal fun RunScreen(
                 onAction = { onInteraction(RunInteraction.OpenSessionsSelected) },
             )
             is RunViewState.Content -> RunContent(state = state, onInteraction = onInteraction)
+        }
+        val prompt = (viewState as? RunViewState.Content)?.advancementPrompt
+        if (prompt != null) {
+            AdvancementPromptComposeWidget(
+                prompt = prompt,
+                onDismiss = { onInteraction(RunInteraction.AdvancementDismissed) },
+                onAwardLevel = { onInteraction(RunInteraction.AwardLevelConfirmed) },
+                onAmountChanged = { onInteraction(RunInteraction.AwardExperienceAmountChanged(it)) },
+                onAwardExperience = { onInteraction(RunInteraction.AwardExperienceConfirmed) },
+            )
         }
     }
 }

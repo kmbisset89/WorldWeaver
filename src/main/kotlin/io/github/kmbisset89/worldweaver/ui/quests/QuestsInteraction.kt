@@ -43,4 +43,8 @@ internal sealed interface QuestsInteraction {
     data class EditorSessionToggled(val sessionId: String) : QuestsInteraction
     data object EditorSaved : QuestsInteraction
     data object EditorDismissed : QuestsInteraction
+    data object AdvancementDismissed : QuestsInteraction
+    data object AwardLevelConfirmed : QuestsInteraction
+    data class AwardExperienceAmountChanged(val value: String) : QuestsInteraction
+    data object AwardExperienceConfirmed : QuestsInteraction
 }

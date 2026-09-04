@@ -21,6 +21,7 @@ internal data class Pathfinder2ESheet(
     val dying: Int,
     val wounded: Int,
     val creatureSize: CreatureSize = CreatureSize.Medium,
+    override val currentXp: Int = 0,
 ) : PersonSheet {
     override fun gameSystem(): GameSystem = GameSystem.Pathfinder2E
 

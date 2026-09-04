@@ -5,23 +5,31 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.AbilityScores
+import io.github.kmbisset89.worldweaver.domain.Campaign
 import io.github.kmbisset89.worldweaver.domain.CampaignPerson
+import io.github.kmbisset89.worldweaver.domain.CampaignStatus
 import io.github.kmbisset89.worldweaver.domain.ClassLevel
 import io.github.kmbisset89.worldweaver.domain.DeathSaves
 import io.github.kmbisset89.worldweaver.domain.FakeActiveContextRepository
 import io.github.kmbisset89.worldweaver.domain.FakeCampaignPersonRepository
+import io.github.kmbisset89.worldweaver.domain.FakeCampaignRepository
 import io.github.kmbisset89.worldweaver.domain.FakeWorldPersonRepository
+import io.github.kmbisset89.worldweaver.domain.FakeWorldRepository
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSheet
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSkill
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSpellSlot
+import io.github.kmbisset89.worldweaver.domain.GameSystem
 import io.github.kmbisset89.worldweaver.domain.InstantProvider
+import io.github.kmbisset89.worldweaver.domain.LevelingMode
 import io.github.kmbisset89.worldweaver.domain.ObservePeopleForActiveContextUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESheet
 import io.github.kmbisset89.worldweaver.domain.PersonAvatarFileStore
 import io.github.kmbisset89.worldweaver.domain.PersonKind
 import io.github.kmbisset89.worldweaver.domain.UpdateCampaignPersonDeathSavesUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateCampaignPersonUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldPersonUseCase
+import io.github.kmbisset89.worldweaver.domain.World
 import io.github.kmbisset89.worldweaver.ui.characters.PersonMembership
 import java.nio.file.Files
 import java.time.Instant
@@ -37,6 +45,8 @@ internal class CharacterSheetViewModelTest {
     private val context = FakeActiveContextRepository()
     private val worldPeople = FakeWorldPersonRepository()
     private val campaignPeople = FakeCampaignPersonRepository()
+    private val worlds = FakeWorldRepository()
+    private val campaigns = FakeCampaignRepository()
     private val instant = InstantProvider { Instant.parse("2026-08-31T18:00:00Z") }
     private val tempDir = Files.createTempDirectory("ww-sheet-avatars").toFile()
 
@@ -84,6 +94,7 @@ internal class CharacterSheetViewModelTest {
         assertEquals("Detect Magic", body.concentratingSpell)
         assertEquals(1, body.spellSlots.size)
         assertEquals(2, body.spellSlots.single().remaining)
+        assertNull(state.experiencePoints)
         }
     }
 
@@ -155,6 +166,24 @@ internal class CharacterSheetViewModelTest {
     }
 
     @Test
+    fun experienceModeShowsCurrentXp() {
+        runBlocking {
+        seedCampaign(levelingMode = LevelingMode.Experience, currentXp = 2700)
+        val viewModel = viewModel()
+        viewModel.onInteraction(
+            CharacterSheetInteraction.SheetOpened(
+                CharacterSheetViewState.PersonKey(
+                    membership = PersonMembership.ThisCampaign,
+                    id = "pc-1",
+                )
+            )
+        )
+        val state = awaitContent(viewModel)
+        assertEquals(2700, state.experiencePoints)
+        }
+    }
+
+    @Test
     fun namelessCombatantShowsUnavailable() {
         runBlocking {
         val viewModel = viewModel()
@@ -196,12 +225,45 @@ internal class CharacterSheetViewModelTest {
             updateCampaignPerson = UpdateCampaignPersonUseCase(campaignPeople, instant),
             updateDeathSaves = UpdateCampaignPersonDeathSavesUseCase(campaignPeople, instant),
             avatarFileStore = PersonAvatarFileStore(tempDir),
+            observeActiveContextDetails = ObserveActiveContextDetailsUseCase(
+                activeContextRepository = context,
+                worldRepository = worlds,
+                campaignRepository = campaigns,
+            ),
         )
     }
 
-    private suspend fun seedCampaign() {
+    private suspend fun seedCampaign(
+        levelingMode: LevelingMode = LevelingMode.Milestone,
+        currentXp: Int = 0,
+    ) {
+        val now = instant.now()
         context.setActiveWorldId("world-1")
         context.setActiveCampaignId("campaign-1")
+        worlds.insert(
+            World(
+                id = "world-1",
+                name = "Faerun",
+                description = "",
+                defaultGameSystem = GameSystem.FifthEdition,
+                createdAt = now,
+                updatedAt = now,
+            )
+        )
+        campaigns.insert(
+            Campaign(
+                id = "campaign-1",
+                worldId = "world-1",
+                name = "Icewind Dale",
+                description = "",
+                notes = "",
+                gameSystem = GameSystem.FifthEdition,
+                levelingMode = levelingMode,
+                status = CampaignStatus.Active,
+                createdAt = now,
+                updatedAt = now,
+            )
+        )
         campaignPeople.insert(
             CampaignPerson(
                 id = "pc-1",
@@ -229,6 +291,7 @@ internal class CharacterSheetViewModelTest {
                     skills = listOf(FifthEditionSkill("Perception", "WIS", true)),
                     spellSlots = listOf(FifthEditionSpellSlot(level = 1, maximum = 4, used = 2)),
                     concentratingSpell = "Detect Magic",
+                    currentXp = currentXp,
                 ),
                 overlayHitPoints = null,
                 overlayNotes = "",
