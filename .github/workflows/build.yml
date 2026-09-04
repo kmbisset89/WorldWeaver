@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish a GitHub Release tagged with the Compose Desktop packageVersion
+        type: boolean
+        default: true
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -13,6 +18,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.package-version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +32,17 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Read Compose Desktop package version
+        id: package-version
+        run: |
+          VERSION="$(./gradlew -q printPackageVersion --console=plain --no-daemon | tail -n 1 | tr -d '[:space:]')"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid Compose Desktop packageVersion: '$VERSION'"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Compose Desktop packageVersion: $VERSION"
 
       - name: Run tests
         run: ./gradlew test --no-daemon
@@ -113,10 +131,14 @@ jobs:
   release:
     name: Publish GitHub Release
     needs:
+      - test
       - package-windows
       - package-macos
       - package-linux
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+       github.event.inputs.publish_release == 'true') ||
+      startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -142,6 +164,9 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ needs.test.outputs.package_version }}
+          name: WorldWeaver ${{ needs.test.outputs.package_version }}
+          target_commitish: ${{ github.sha }}
           files: |
             dist/windows/*
             dist/macos/*

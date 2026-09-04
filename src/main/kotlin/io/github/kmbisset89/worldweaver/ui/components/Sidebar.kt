@@ -1,5 +1,6 @@
 package io.github.kmbisset89.worldweaver.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -45,11 +45,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kmbisset89.worldweaver.ui.appWindowIcon
 import io.github.kmbisset89.worldweaver.ui.navigation.Screen
 import io.github.kmbisset89.worldweaver.ui.session.LocalUser
 import io.github.kmbisset89.worldweaver.ui.theme.DarkNavy
@@ -80,11 +83,13 @@ internal fun Sidebar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(vertical = 12.dp)
         ) {
-            Icon(
-                Icons.Default.AutoStories,
+            Image(
+                painter = appWindowIcon(),
                 contentDescription = activeContextLabel(activeWorldName, activeCampaignName),
-                tint = Color.White,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+                contentScale = ContentScale.Crop,
             )
             if (expanded) {
                 Spacer(modifier = Modifier.width(10.dp))

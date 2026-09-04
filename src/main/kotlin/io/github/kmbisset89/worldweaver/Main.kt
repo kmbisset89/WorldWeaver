@@ -12,6 +12,7 @@ import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.di.appModule
 import io.github.kmbisset89.worldweaver.ui.App
 import io.github.kmbisset89.worldweaver.ui.AppViewModel
+import io.github.kmbisset89.worldweaver.ui.appWindowIcon
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 
@@ -37,6 +38,7 @@ fun main() {
                 exitApplication()
             },
             title = "World Weaver",
+            icon = appWindowIcon(),
             state = WindowState(
                 size = DpSize(1280.dp, 800.dp),
                 position = WindowPosition(Alignment.Center)

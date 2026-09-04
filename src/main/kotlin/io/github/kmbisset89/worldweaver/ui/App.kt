@@ -92,6 +92,7 @@ internal fun App(
                 ?: "Character sheet"
             Window(
                 title = sheetTitle,
+                icon = appWindowIcon(),
                 onCloseRequest = {
                     viewModel.characterSheetViewModel.onInteraction(
                         CharacterSheetInteraction.SheetDismissed
@@ -116,6 +117,7 @@ internal fun App(
             }
             Window(
                 title = playerTitle,
+                icon = appWindowIcon(),
                 onCloseRequest = {
                     if (encounterPlayerContent != null && encounterPlayerContent.playerViewOpen) {
                         viewModel.encountersViewModel.onInteraction(
@@ -184,6 +186,7 @@ internal fun App(
             }
             Window(
                 title = "Dice",
+                icon = appWindowIcon(),
                 alwaysOnTop = diceContent.isAlwaysOnTop,
                 onCloseRequest = {
                     viewModel.diceViewModel.onInteraction(DiceInteraction.FloatingClosed)

@@ -24,6 +24,7 @@ repositories {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation("org.jetbrains.compose.components:components-resources-desktop:1.11.1")
     implementation("org.jetbrains.compose.material3:material3:1.11.0-alpha07")
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
@@ -51,7 +52,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "WorldWeaver"
-            packageVersion = "1.0.0"
+            packageVersion = version.toString()
             description = "World Weaver — tabletop campaign manager ($appHomepage)"
             vendor = appPublisher
             copyright = appCopyright
@@ -72,10 +73,12 @@ compose.desktop {
             )
 
             windows {
+                iconFile.set(project.file("icons/icon.ico"))
                 menuGroup = "World Weaver"
             }
 
             macOS {
+                iconFile.set(project.file("icons/icon.icns"))
                 bundleID = "io.github.kmbisset89.worldweaver"
                 infoPlist {
                     extraKeysRawXml = """
@@ -86,6 +89,7 @@ compose.desktop {
             }
 
             linux {
+                iconFile.set(project.file("icons/icon.png"))
                 debMaintainer = "$appPublisher <kmbisset89@users.noreply.github.com>"
             }
         }
@@ -103,4 +107,20 @@ compose.desktop {
 
 kotlin {
     jvmToolchain(17)
+}
+
+compose.resources {
+    packageOfResClass = "io.github.kmbisset89.worldweaver.generated.resources"
+    generateResClass = always
+}
+
+tasks.register("printPackageVersion") {
+    group = "help"
+    description = "Prints the Compose Desktop native package version."
+    doLast {
+        println(
+            compose.desktop.application.nativeDistributions.packageVersion
+                ?: version.toString(),
+        )
+    }
 }
