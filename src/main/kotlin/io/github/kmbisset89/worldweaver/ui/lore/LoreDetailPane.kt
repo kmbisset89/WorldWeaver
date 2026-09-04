@@ -28,6 +28,7 @@ import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
 internal fun LoreDetailPane(
     lore: Lore,
     relatedLinks: List<LoreViewState.RelatedLink>,
+    observedOn: List<LoreViewState.ObservedOnLink>,
     attachedLocationName: String?,
     attachedCharacterName: String?,
     onInteraction: (LoreInteraction) -> Unit,
@@ -64,6 +65,9 @@ internal fun LoreDetailPane(
         if (attachedCharacterName != null) {
             DetailSection("Attached character", attachedCharacterName)
         }
+        if (observedOn.isNotEmpty()) {
+            ObservedOnSection(links = observedOn, onInteraction = onInteraction)
+        }
         RelatedSection(relatedLinks = relatedLinks, onInteraction = onInteraction)
         SecretsSection(lore = lore, onInteraction = onInteraction)
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -72,6 +76,40 @@ internal fun LoreDetailPane(
             }
             TextButton(onClick = { onInteraction(LoreInteraction.DeleteLoreSelected(lore.id)) }) {
                 Text("Delete")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ObservedOnSection(
+    links: List<LoreViewState.ObservedOnLink>,
+    onInteraction: (LoreInteraction) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = "Observed on",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+            links.forEach { link ->
+                Text(
+                    text = "${link.name} · ${link.dateLabel}",
+                    fontSize = 13.sp,
+                    color = NavyBlue,
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .clickable {
+                            onInteraction(LoreInteraction.ObservedOnSelected(link.observanceId))
+                        }
+                )
             }
         }
     }

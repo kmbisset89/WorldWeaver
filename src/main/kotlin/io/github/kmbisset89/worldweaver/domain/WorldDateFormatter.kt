@@ -22,6 +22,52 @@ internal class WorldDateFormatter {
         }
     }
 
+    fun isValidObservance(
+        calendar: WorldCalendar,
+        monthId: String,
+        day: Int,
+        year: Int?,
+    ): Boolean {
+        if (year != null) {
+            if (year < 1) {
+                return false
+            }
+            return isValid(calendar, WorldDate(year = year, monthId = monthId, day = day))
+        }
+        if (day < 1) {
+            return false
+        }
+        val month = calendar.months.firstOrNull { it.id == monthId } ?: return false
+        return day <= month.days
+    }
+
+    /**
+     * Formats an observance date as `12 Hammer` when [year] is omitted, or
+     * `12 Hammer, 1489 DR` when a year is present.
+     */
+    fun formatObservance(
+        calendar: WorldCalendar,
+        monthId: String,
+        day: Int,
+        year: Int?,
+    ): String? {
+        if (!isValidObservance(calendar, monthId, day, year)) {
+            return null
+        }
+        val month = calendar.months.firstOrNull { it.id == monthId } ?: return null
+        val body = if (year == null) {
+            "$day ${month.name}"
+        } else {
+            "$day ${month.name}, $year"
+        }
+        val suffix = calendar.eraSuffix.trim()
+        return if (year == null || suffix.isEmpty()) {
+            body
+        } else {
+            "$body $suffix"
+        }
+    }
+
     fun weekdayName(calendar: WorldCalendar, date: WorldDate): String? {
         val weekdays = calendar.weekdays
         if (weekdays.isEmpty()) {

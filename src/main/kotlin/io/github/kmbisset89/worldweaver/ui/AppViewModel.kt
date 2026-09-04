@@ -9,6 +9,7 @@ import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCas
 import io.github.kmbisset89.worldweaver.domain.SearchKind
 import io.github.kmbisset89.worldweaver.domain.SetActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.SetActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.ui.calendar.CalendarInteraction
 import io.github.kmbisset89.worldweaver.ui.calendar.CalendarViewEffect
 import io.github.kmbisset89.worldweaver.ui.calendar.CalendarViewModel
 import io.github.kmbisset89.worldweaver.ui.campaigns.CampaignsInteraction
@@ -203,6 +204,12 @@ internal class AppViewModel(
             loreViewModel.effects.collect { effect ->
                 when (effect) {
                     LoreViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    is LoreViewEffect.OpenCalendar -> {
+                        navigation.navigateToRoot(Screen.CALENDAR)
+                        calendarViewModel.onInteraction(
+                            CalendarInteraction.ObservanceOpened(effect.observanceId)
+                        )
+                    }
                 }
             }
         }
@@ -210,6 +217,10 @@ internal class AppViewModel(
             calendarViewModel.effects.collect { effect ->
                 when (effect) {
                     CalendarViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    is CalendarViewEffect.OpenLore -> {
+                        navigation.navigateToRoot(Screen.LORE)
+                        loreViewModel.onInteraction(LoreInteraction.LoreOpened(effect.loreId))
+                    }
                 }
             }
         }
@@ -450,6 +461,11 @@ internal class AppViewModel(
                     hit.worldId?.let { setActiveWorld(it) }
                     navigation.navigateToRoot(Screen.LORE)
                     loreViewModel.onInteraction(LoreInteraction.LoreOpened(hit.id))
+                }
+                SearchKind.Observance -> {
+                    hit.worldId?.let { setActiveWorld(it) }
+                    navigation.navigateToRoot(Screen.CALENDAR)
+                    calendarViewModel.onInteraction(CalendarInteraction.ObservanceOpened(hit.id))
                 }
                 SearchKind.Faction -> {
                     hit.worldId?.let { setActiveWorld(it) }

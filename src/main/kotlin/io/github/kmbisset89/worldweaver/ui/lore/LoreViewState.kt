@@ -24,6 +24,7 @@ internal sealed class LoreViewState {
         val groups: List<LoreGroup>,
         val selectedLore: Lore?,
         val relatedLinks: List<RelatedLink>,
+        val observedOn: List<ObservedOnLink>,
         val attachedLocationName: String?,
         val attachedCharacterName: String?,
         val categoryFilter: LoreCategory?,
@@ -40,6 +41,12 @@ internal sealed class LoreViewState {
         val loreId: String,
         val title: String,
         val missing: Boolean,
+    )
+
+    data class ObservedOnLink(
+        val observanceId: String,
+        val name: String,
+        val dateLabel: String,
     )
 
     data class LoreEditorState(

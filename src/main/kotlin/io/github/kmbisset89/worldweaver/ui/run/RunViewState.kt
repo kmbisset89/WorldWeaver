@@ -29,6 +29,7 @@ internal sealed class RunViewState {
         val recap: String,
         val inWorldDateLabel: String?,
         val calendarTodayLabel: String?,
+        val observanceNames: List<String>,
         val party: List<PartyMember>,
         val questObjectives: List<QuestObjectiveLine>,
         val scenes: List<SceneLine>,

@@ -22,6 +22,9 @@ internal class DemoWorldBundleFactoryTest {
         assertEquals("The Shattered Expanse", bundle.world.name)
         assertEquals("TR", bundle.calendar?.eraSuffix)
         assertEquals(12, bundle.calendar?.months?.size)
+        assertEquals(listOf("Tidefeast", "Night the Coast Split"), bundle.observances.map { it.name })
+        assertTrue(bundle.observances.any { it.year == null && it.loreIds.isNotEmpty() })
+        assertTrue(bundle.observances.any { it.year != null })
         assertTrue(bundle.sessions.all { it.inWorldDate != null })
         assertEquals(listOf("Salt and Silence"), bundle.campaigns.map { it.name })
         assertEquals(

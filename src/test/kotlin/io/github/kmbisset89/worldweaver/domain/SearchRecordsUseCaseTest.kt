@@ -44,6 +44,33 @@ internal class SearchRecordsUseCaseTest {
     }
 
     @Test
+    fun matchesObservanceName() = runTest {
+        val harness = Harness()
+        val now = Instant.parse("2026-08-29T12:00:00Z")
+        harness.observances.insert(
+            WorldCalendarObservance(
+                id = "obs-1",
+                worldId = "world-1",
+                name = "Midwinter",
+                notes = "Lamps stay lit",
+                kind = WorldCalendarObservanceKind.Holiday,
+                monthId = "m-1",
+                day = 1,
+                year = null,
+                loreIds = emptyList(),
+                createdAt = now,
+                updatedAt = now,
+            )
+        )
+
+        val hits = harness.search("Midwinter")
+        assertEquals(1, hits.size)
+        assertEquals(SearchKind.Observance, hits.single().kind)
+        assertEquals("obs-1", hits.single().id)
+        assertEquals("world-1", hits.single().worldId)
+    }
+
+    @Test
     fun matchesWorldName() = runTest {
         val harness = Harness()
         val now = Instant.parse("2026-08-29T12:00:00Z")
@@ -62,6 +89,7 @@ internal class SearchRecordsUseCaseTest {
         val campaigns = FakeCampaignRepository()
         val locations = FakeLocationRepository()
         val lore = FakeLoreRepository()
+        val observances = FakeWorldCalendarObservanceRepository()
         val factions = FakeFactionRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
@@ -72,6 +100,7 @@ internal class SearchRecordsUseCaseTest {
             campaigns,
             locations,
             lore,
+            observances,
             factions,
             worldPeople,
             campaignPeople,

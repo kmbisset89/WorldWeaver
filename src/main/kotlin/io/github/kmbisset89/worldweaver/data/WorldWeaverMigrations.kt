@@ -1022,6 +1022,52 @@ internal object WorldWeaverMigrations {
         }
     }
 
+    val MIGRATION_22_23 = object : Migration(22, 23) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `world_calendar_observances` (
+                    `id` TEXT NOT NULL,
+                    `worldId` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `notes` TEXT NOT NULL,
+                    `kind` TEXT NOT NULL,
+                    `monthId` TEXT NOT NULL,
+                    `day` INTEGER NOT NULL,
+                    `year` INTEGER,
+                    `createdAtEpochMillis` INTEGER NOT NULL,
+                    `updatedAtEpochMillis` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`worldId`) REFERENCES `worlds`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_world_calendar_observances_worldId` ON `world_calendar_observances` (`worldId`)"
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_world_calendar_observances_monthId` ON `world_calendar_observances` (`monthId`)"
+            )
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `world_calendar_observance_lore` (
+                    `observanceId` TEXT NOT NULL,
+                    `loreId` TEXT NOT NULL,
+                    PRIMARY KEY(`observanceId`, `loreId`),
+                    FOREIGN KEY(`observanceId`) REFERENCES `world_calendar_observances`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(`loreId`) REFERENCES `lore`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_world_calendar_observance_lore_observanceId` ON `world_calendar_observance_lore` (`observanceId`)"
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_world_calendar_observance_lore_loreId` ON `world_calendar_observance_lore` (`loreId`)"
+            )
+        }
+    }
+
     private val DEFAULT_MONTHS = listOf(
         "January" to 31,
         "February" to 28,

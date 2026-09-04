@@ -3,6 +3,7 @@ package io.github.kmbisset89.worldweaver.domain
 internal class UpdateWorldCalendarUseCase(
     private val worldCalendarRepository: WorldCalendarRepository,
     private val findSessionMonthIds: FindSessionCalendarMonthIdsForWorldUseCase,
+    private val observanceRepository: WorldCalendarObservanceRepository,
     private val entityIdFactory: EntityIdFactory,
     private val instantProvider: InstantProvider,
     private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
@@ -13,6 +14,7 @@ internal class UpdateWorldCalendarUseCase(
         data object InvalidMonths : Result
         data object InvalidWeekdays : Result
         data object InvalidCurrentDate : Result
+        data object InvalidObservanceDate : Result
         data object MonthReferenced : Result
     }
 
@@ -34,10 +36,19 @@ internal class UpdateWorldCalendarUseCase(
         if (currentDate != null && !dateFormatter.isValid(calendarForValidation, currentDate)) {
             return Result.InvalidCurrentDate
         }
+        val observances = observanceRepository.getByWorld(existing.worldId)
         val keptMonthIds = months.map { it.id }.toSet()
-        val referenced = referencedMonthIds(existing, currentDate)
+        val referenced = referencedMonthIds(existing, currentDate, observances)
         if (referenced.any { it !in keptMonthIds }) {
             return Result.MonthReferenced
+        }
+        val daysByMonthId = months.associate { it.id to it.days }
+        val observancesFit = observances.all { observance ->
+            val days = daysByMonthId[observance.monthId] ?: return@all false
+            observance.day in 1..days
+        }
+        if (!observancesFit) {
+            return Result.InvalidObservanceDate
         }
         worldCalendarRepository.update(
             existing.copy(
@@ -54,10 +65,12 @@ internal class UpdateWorldCalendarUseCase(
     private suspend fun referencedMonthIds(
         existing: WorldCalendar,
         currentDate: WorldDate?,
+        observances: List<WorldCalendarObservance>,
     ): Set<String> {
         val fromSessions = findSessionMonthIds(existing.worldId)
+        val fromObservances = observances.map { it.monthId }
         val fromCurrent = listOfNotNull(currentDate?.monthId)
-        return fromSessions + fromCurrent
+        return fromSessions + fromObservances + fromCurrent
     }
 
     private fun assignMonths(months: List<WorldCalendarMonth>): List<WorldCalendarMonth> {
