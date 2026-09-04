@@ -344,6 +344,17 @@ private fun MapsContent(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         TextButton(
+                            onClick = {
+                                chooseUniversalVttPath(selected.name)?.let { path ->
+                                    onInteraction(
+                                        MapsInteraction.UniversalVttExportPathChosen(selected.id, path)
+                                    )
+                                }
+                            }
+                        ) {
+                            Text("Export VTT")
+                        }
+                        TextButton(
                             onClick = { onInteraction(MapsInteraction.PlayerViewSelected) }
                         ) {
                             Text(if (state.playerViewOpen) "Player view open" else "Player view")
@@ -953,6 +964,29 @@ private fun choosePngPath(title: String): String? {
     return File(directory, fileName).absolutePath
 }
 
+private fun chooseUniversalVttPath(mapName: String): String? {
+    val dialog = FileDialog(null as Frame?, "Export Universal VTT", FileDialog.SAVE)
+    dialog.filenameFilter = FilenameFilter { _, name ->
+        name.lowercase().endsWith(UNIVERSAL_VTT_EXTENSION)
+    }
+    dialog.file = sanitizedUniversalVttFileName(mapName)
+    dialog.isVisible = true
+    val fileName = dialog.file ?: return null
+    val directory = dialog.directory ?: return null
+    val file = File(directory, fileName)
+    return if (!file.name.endsWith(UNIVERSAL_VTT_EXTENSION, ignoreCase = true)) {
+        File(directory, file.name + UNIVERSAL_VTT_EXTENSION).absolutePath
+    } else {
+        file.absolutePath
+    }
+}
+
+private fun sanitizedUniversalVttFileName(mapName: String): String {
+    val cleaned = mapName.replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_')
+    val base = cleaned.ifBlank { "battle-map" }
+    return base + UNIVERSAL_VTT_EXTENSION
+}
+
 private fun formatUnits(value: Double): String {
     return if (value == value.toLong().toDouble()) {
         value.toLong().toString()
@@ -962,3 +996,4 @@ private fun formatUnits(value: Double): String {
 }
 
 private const val RENDER_TILE_SIZE_PX = 256
+private const val UNIVERSAL_VTT_EXTENSION = ".uvtt"

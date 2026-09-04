@@ -1008,6 +1008,20 @@ internal object WorldWeaverMigrations {
         }
     }
 
+    val MIGRATION_21_22 = object : Migration(21, 22) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "ALTER TABLE `campaigns` ADD COLUMN `levelingMode` TEXT NOT NULL DEFAULT 'Milestone'"
+            )
+            connection.execSQL(
+                "ALTER TABLE `world_people` ADD COLUMN `currentXp` INTEGER NOT NULL DEFAULT 0"
+            )
+            connection.execSQL(
+                "ALTER TABLE `campaign_people` ADD COLUMN `currentXp` INTEGER NOT NULL DEFAULT 0"
+            )
+        }
+    }
+
     private val DEFAULT_MONTHS = listOf(
         "January" to 31,
         "February" to 28,

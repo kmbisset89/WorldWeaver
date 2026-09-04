@@ -51,4 +51,5 @@ internal sealed interface MapsInteraction {
     data class DeleteMapSelected(val battleMapId: String) : MapsInteraction
     data object DeleteConfirmed : MapsInteraction
     data object DeleteCancelled : MapsInteraction
+    data class UniversalVttExportPathChosen(val battleMapId: String, val path: String) : MapsInteraction
 }

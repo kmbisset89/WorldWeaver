@@ -316,10 +316,14 @@ internal class AppViewModel(
             }
         }
         appScope.scope.launch {
-            mapsViewModel.effects.collect { effect ->
+                    mapsViewModel.effects.collect { effect ->
                 when (effect) {
                     MapsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
                     MapsViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
+                    is MapsViewEffect.UniversalVttExported -> emitUiEvent(
+                        UiEvent.Success("Exported “${effect.mapName}” as Universal VTT")
+                    )
+                    is MapsViewEffect.Failed -> emitUiEvent(UiEvent.Error(effect.message))
                 }
             }
         }

@@ -9,6 +9,7 @@ internal data class Campaign(
     val description: String,
     val notes: String,
     val gameSystem: GameSystem?,
+    val levelingMode: LevelingMode = LevelingMode.Milestone,
     val status: CampaignStatus,
     val createdAt: Instant,
     val updatedAt: Instant,

@@ -7,6 +7,7 @@ import io.github.kmbisset89.worldweaver.domain.QuestLinkKind
 import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
 import io.github.kmbisset89.worldweaver.domain.Session
+import io.github.kmbisset89.worldweaver.ui.advancement.AdvancementPrompt
 
 internal sealed class QuestsViewState {
     data object Loading : QuestsViewState()
@@ -36,6 +37,7 @@ internal sealed class QuestsViewState {
         val links: List<QuestLinkRow>,
         val editor: QuestEditorState?,
         val pendingDelete: PendingDelete?,
+        val advancementPrompt: AdvancementPrompt?,
     ) : QuestsViewState()
 
     data class QuestLinkRow(

@@ -52,6 +52,7 @@ internal data class CampaignPersonEntity(
     val spellSlots: String = "",
     val concentratingSpell: String = "",
     val creatureSize: String = "Medium",
+    val currentXp: Int = 0,
     val sheetSystem: String,
     val pf2ePayload: String,
     val createdAtEpochMillis: Long,

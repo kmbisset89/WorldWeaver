@@ -23,6 +23,35 @@ internal class FifthEditionSheetConverterTest {
     }
 
     @Test
+    fun encodeAndDecodePreserveCurrentXp() {
+        val sheet = FifthEditionSheet.empty().copy(currentXp = 2700)
+
+        val decoded = converter.decode(converter.encode(sheet))
+
+        assertEquals(2700, decoded.currentXp)
+    }
+
+    @Test
+    fun missingCurrentXpDecodesAsZero() {
+        val encoded = FifthEditionSheetConverter.EncodedSheet(
+            race = "",
+            classLevels = "",
+            abilities = "10\u001f10\u001f10\u001f10\u001f10\u001f10",
+            hitPoints = 10,
+            maxHitPoints = 10,
+            temporaryHitPoints = 0,
+            armorClass = 12,
+            deathSaves = "0\u001f0",
+            items = "",
+            features = "",
+            spells = "",
+            notes = "",
+        )
+
+        assertEquals(0, converter.decode(encoded).currentXp)
+    }
+
+    @Test
     fun missingWalkSpeedDecodesAsThirty() {
         val encoded = FifthEditionSheetConverter.EncodedSheet(
             race = "",

@@ -230,6 +230,8 @@ internal sealed class CharactersViewState {
         val overlayNotes: String,
         val nameError: String?,
         val membershipError: String?,
+        val currentXpText: String,
+        val showExperience: Boolean,
     )
 
     data class ClassLevelEditor(
@@ -339,6 +341,8 @@ internal sealed class CharactersViewState {
         val overlayNotes: String,
         val nameError: String?,
         val membershipError: String?,
+        val currentXpText: String,
+        val showExperience: Boolean,
     )
 
     data class PathfinderWizardState(

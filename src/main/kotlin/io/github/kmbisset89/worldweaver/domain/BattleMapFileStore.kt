@@ -19,6 +19,10 @@ internal class BattleMapFileStore(
         }
     }
 
+    fun readOriginalPng(battleMapId: String): ByteArray? {
+        return readBytesIfPresent(File(mapDirectory(battleMapId), ORIGINAL_FILE_NAME))
+    }
+
     fun readTile(battleMapId: String, zoom: Int, x: Int, y: Int): ByteArray? {
         return readBytesIfPresent(tileFile(battleMapId, zoom, x, y))
     }

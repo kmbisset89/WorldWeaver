@@ -40,6 +40,7 @@ internal class Pathfinder2ESheetConverterTest {
             notes = "Prepared caster",
             dying = 1,
             wounded = 2,
+            currentXp = 1200,
         )
 
         val decoded = converter.decode(converter.encode(sheet))

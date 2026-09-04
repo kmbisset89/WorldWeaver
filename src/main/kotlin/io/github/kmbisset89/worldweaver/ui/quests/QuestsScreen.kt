@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.Quest
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
+import io.github.kmbisset89.worldweaver.ui.advancement.AdvancementPromptComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
@@ -232,6 +233,15 @@ private fun QuestsContent(
             confirmLabel = "Delete",
             onConfirm = { onInteraction(QuestsInteraction.DeleteConfirmed) },
             onDismiss = { onInteraction(QuestsInteraction.DeleteCancelled) },
+        )
+    }
+    state.advancementPrompt?.let { prompt ->
+        AdvancementPromptComposeWidget(
+            prompt = prompt,
+            onDismiss = { onInteraction(QuestsInteraction.AdvancementDismissed) },
+            onAwardLevel = { onInteraction(QuestsInteraction.AwardLevelConfirmed) },
+            onAmountChanged = { onInteraction(QuestsInteraction.AwardExperienceAmountChanged(it)) },
+            onAwardExperience = { onInteraction(QuestsInteraction.AwardExperienceConfirmed) },
         )
     }
 }

@@ -18,6 +18,7 @@ internal data class FifthEditionSheet(
     val spellSlots: List<FifthEditionSpellSlot> = emptyList(),
     val concentratingSpell: String = "",
     val creatureSize: CreatureSize = CreatureSize.Medium,
+    override val currentXp: Int = 0,
 ) : PersonSheet {
     override fun gameSystem(): GameSystem = GameSystem.FifthEdition
 

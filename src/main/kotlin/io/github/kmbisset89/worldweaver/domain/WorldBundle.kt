@@ -330,6 +330,7 @@ internal data class WorldBundle(
         val description: String,
         val notes: String,
         val gameSystem: String?,
+        val levelingMode: String = LevelingMode.Milestone.name,
         val status: String,
         val createdAtEpochMillis: Long,
         val updatedAtEpochMillis: Long,
@@ -342,6 +343,7 @@ internal data class WorldBundle(
                 description = description,
                 notes = notes,
                 gameSystem = gameSystem?.let(GameSystem::fromStorage),
+                levelingMode = LevelingMode.fromStorage(levelingMode),
                 status = CampaignStatus.fromStorage(status),
                 createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
                 updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
@@ -357,6 +359,7 @@ internal data class WorldBundle(
                     description = campaign.description,
                     notes = campaign.notes,
                     gameSystem = campaign.gameSystem?.name,
+                    levelingMode = campaign.levelingMode.name,
                     status = campaign.status.name,
                     createdAtEpochMillis = campaign.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = campaign.updatedAt.toEpochMilli(),
@@ -644,6 +647,7 @@ internal data class WorldBundle(
         val spellSlots: List<FifthEditionSpellSlotRecord> = emptyList(),
         val concentratingSpell: String = "",
         val creatureSize: String = "Medium",
+        val currentXp: Int = 0,
     ) {
         fun toDomain(): FifthEditionSheet {
             return FifthEditionSheet(
@@ -664,6 +668,7 @@ internal data class WorldBundle(
                 spellSlots = spellSlots.map { it.toDomain() },
                 concentratingSpell = concentratingSpell,
                 creatureSize = CreatureSize.fromStorage(creatureSize),
+                currentXp = currentXp,
             )
         }
 
@@ -687,6 +692,7 @@ internal data class WorldBundle(
                     spellSlots = sheet.spellSlots.map(FifthEditionSpellSlotRecord::from),
                     concentratingSpell = sheet.concentratingSpell,
                     creatureSize = sheet.creatureSize.name,
+                    currentXp = sheet.currentXp,
                 )
             }
         }
@@ -748,6 +754,7 @@ internal data class WorldBundle(
         val dying: Int = 0,
         val wounded: Int = 0,
         val creatureSize: String = "Medium",
+        val currentXp: Int = 0,
     ) {
         fun toDomain(): Pathfinder2ESheet {
             return Pathfinder2ESheet(
@@ -771,6 +778,7 @@ internal data class WorldBundle(
                 dying = dying,
                 wounded = wounded,
                 creatureSize = CreatureSize.fromStorage(creatureSize),
+                currentXp = currentXp,
             )
         }
 
@@ -797,6 +805,7 @@ internal data class WorldBundle(
                     dying = sheet.dying,
                     wounded = sheet.wounded,
                     creatureSize = sheet.creatureSize.name,
+                    currentXp = sheet.currentXp,
                 )
             }
         }

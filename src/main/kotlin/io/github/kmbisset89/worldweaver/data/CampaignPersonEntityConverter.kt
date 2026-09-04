@@ -56,6 +56,7 @@ internal class CampaignPersonEntityConverter(
             spellSlots = fifth.spellSlots,
             concentratingSpell = fifth.concentratingSpell,
             creatureSize = fifth.creatureSize,
+            currentXp = fifth.currentXp,
             sheetSystem = encoded.sheetSystem,
             pf2ePayload = encoded.pf2ePayload,
             createdAtEpochMillis = person.createdAt.toEpochMilli(),
@@ -84,6 +85,7 @@ internal class CampaignPersonEntityConverter(
             spellSlots = entity.spellSlots,
             concentratingSpell = entity.concentratingSpell,
             creatureSize = entity.creatureSize,
+            currentXp = entity.currentXp,
         )
     }
 }

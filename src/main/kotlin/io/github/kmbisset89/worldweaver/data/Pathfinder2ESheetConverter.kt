@@ -68,6 +68,7 @@ internal class Pathfinder2ESheetConverter {
             dying = sheet.dying,
             wounded = sheet.wounded,
             creatureSize = sheet.creatureSize.name,
+            currentXp = sheet.currentXp,
         )
     }
 
@@ -117,6 +118,7 @@ internal class Pathfinder2ESheetConverter {
             dying = payload.dying.coerceAtLeast(0),
             wounded = payload.wounded.coerceAtLeast(0),
             creatureSize = CreatureSize.fromStorage(payload.creatureSize),
+            currentXp = payload.currentXp.coerceAtLeast(0),
         )
     }
 }
@@ -148,6 +150,7 @@ private data class Pathfinder2ESheetPayload(
     val dying: Int = 0,
     val wounded: Int = 0,
     val creatureSize: String = "Medium",
+    val currentXp: Int = 0,
 )
 
 @Serializable

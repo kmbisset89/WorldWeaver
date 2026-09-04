@@ -20,6 +20,7 @@ internal class PersonSheetFactory {
                     )
                 }.filter { it.className.isNotEmpty() },
                 notes = sheet.notes.trim(),
+                currentXp = sheet.currentXp.coerceAtLeast(0),
             )
             is Pathfinder2ESheet -> sheet.copy(
                 ancestry = sheet.ancestry.trim(),
@@ -47,6 +48,7 @@ internal class PersonSheetFactory {
                 }.filter { it.name.isNotEmpty() },
                 dying = sheet.dying.coerceAtLeast(0),
                 wounded = sheet.wounded.coerceAtLeast(0),
+                currentXp = sheet.currentXp.coerceAtLeast(0),
             )
         }
     }

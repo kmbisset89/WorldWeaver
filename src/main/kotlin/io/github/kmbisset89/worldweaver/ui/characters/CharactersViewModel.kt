@@ -30,6 +30,7 @@ import io.github.kmbisset89.worldweaver.domain.CreateWorldPersonUseCase
 import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalog
 import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalogResolver
 import io.github.kmbisset89.worldweaver.domain.GameSystem
+import io.github.kmbisset89.worldweaver.domain.LevelingMode
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2EFeat
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2EReference
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESheet
@@ -147,6 +148,7 @@ internal class CharactersViewModel(
     private var hasActiveCampaign = false
     private var latestWorldSystem = GameSystem.FifthEdition
     private var latestCampaignSystem = GameSystem.FifthEdition
+    private var latestLevelingMode = LevelingMode.Milestone
     private var isRecordingVoice = false
     private var isPlayingVoice = false
 
@@ -295,6 +297,10 @@ internal class CharactersViewModel(
             }
             is CharactersInteraction.EditorClassLevelChanged -> updateClassLevel(interaction.index) { level ->
                 level.copy(levelText = interaction.level)
+            }
+            is CharactersInteraction.EditorExperienceChanged -> {
+                updateEditor { editor -> editor?.copy(currentXpText = interaction.value) }
+                updatePathfinderEditor { editor -> editor?.copy(currentXpText = interaction.value) }
             }
             is CharactersInteraction.EditorStrengthChanged -> {
                 updateEditor { editor -> editor?.copy(strength = interaction.value) }
@@ -917,6 +923,7 @@ internal class CharactersViewModel(
         latestWorldSystem = world.defaultGameSystem
         latestCampaignSystem = details.campaign?.resolvedGameSystem(world.defaultGameSystem)
             ?: world.defaultGameSystem
+        latestLevelingMode = details.campaign?.levelingMode ?: LevelingMode.Milestone
         hasActiveCampaign = details.campaign != null
         val current = _state.value
         val editor = editorFrom(current)
@@ -1595,6 +1602,8 @@ internal class CharactersViewModel(
             overlayNotes = overlayNotes,
             nameError = null,
             membershipError = null,
+            currentXpText = sheet.currentXp.toString(),
+            showExperience = latestLevelingMode == LevelingMode.Experience,
         )
     }
 
@@ -1667,6 +1676,8 @@ internal class CharactersViewModel(
             overlayNotes = overlayNotes,
             nameError = null,
             membershipError = null,
+            currentXpText = sheet.currentXp.toString(),
+            showExperience = latestLevelingMode == LevelingMode.Experience,
         )
     }
 
@@ -2012,6 +2023,7 @@ internal class CharactersViewModel(
             },
             concentratingSpell = editor.concentratingSpell.trim(),
             creatureSize = editor.creatureSize,
+            currentXp = editor.currentXpText.toIntOrNull()?.coerceAtLeast(0) ?: 0,
         )
     }
 
@@ -2072,6 +2084,7 @@ internal class CharactersViewModel(
             notes = editor.notes,
             dying = editor.dying.toIntOrNull()?.coerceAtLeast(0) ?: 0,
             wounded = editor.wounded.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+            currentXp = editor.currentXpText.toIntOrNull()?.coerceAtLeast(0) ?: 0,
         )
     }
 

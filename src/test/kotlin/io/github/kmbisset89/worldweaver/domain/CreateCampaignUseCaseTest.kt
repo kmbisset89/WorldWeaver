@@ -52,9 +52,37 @@ internal class CreateCampaignUseCaseTest {
         val created = assertIs<CreateCampaignUseCase.Result.Created>(result)
         assertEquals(world.id, created.campaign.worldId)
         assertEquals(GameSystem.Pathfinder2E, created.campaign.gameSystem)
+        assertEquals(LevelingMode.Milestone, created.campaign.levelingMode)
         assertEquals(CampaignStatus.Active, created.campaign.status)
         assertEquals(created.campaign.id, harness.context.get().activeCampaignId)
         assertEquals(world.id, harness.context.get().activeWorldId)
+    }
+
+    @Test
+    fun createPersistsExperienceLevelingMode() = runTest {
+        val harness = Harness()
+        harness.worlds.insert(
+            World(
+                id = "world-1",
+                name = "Faerun",
+                description = "",
+                defaultGameSystem = GameSystem.FifthEdition,
+                createdAt = Instant.parse("2026-08-29T12:00:00Z"),
+                updatedAt = Instant.parse("2026-08-29T12:00:00Z"),
+            )
+        )
+        harness.context.setActiveWorldId("world-1")
+
+        val result = harness.createCampaign(
+            "Icewind Dale",
+            "",
+            "",
+            GameSystem.FifthEdition,
+            LevelingMode.Experience,
+        )
+
+        val created = assertIs<CreateCampaignUseCase.Result.Created>(result)
+        assertEquals(LevelingMode.Experience, created.campaign.levelingMode)
     }
 
     private class Harness {

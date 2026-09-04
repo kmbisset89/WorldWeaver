@@ -18,6 +18,7 @@ internal class CreateCampaignUseCase(
         description: String,
         notes: String,
         gameSystem: GameSystem,
+        levelingMode: LevelingMode = LevelingMode.Milestone,
     ): Result {
         val worldId = activeContextRepository.get().activeWorldId ?: return Result.NoActiveWorld
         val trimmedName = name.trim()
@@ -32,6 +33,7 @@ internal class CreateCampaignUseCase(
             description = description.trim(),
             notes = notes.trim(),
             gameSystem = gameSystem,
+            levelingMode = levelingMode,
             status = CampaignStatus.Active,
             createdAt = now,
             updatedAt = now,

@@ -12,9 +12,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.ActiveContextDetails
+import io.github.kmbisset89.worldweaver.domain.AwardPartyExperienceUseCase
+import io.github.kmbisset89.worldweaver.domain.AwardPartyLevelUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateQuestUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteQuestUseCase
 import io.github.kmbisset89.worldweaver.domain.Location
+import io.github.kmbisset89.worldweaver.domain.LevelingMode
 import io.github.kmbisset89.worldweaver.domain.Lore
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
@@ -23,6 +26,7 @@ import io.github.kmbisset89.worldweaver.domain.ObservePeopleForActiveContextUseC
 import io.github.kmbisset89.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
+import io.github.kmbisset89.worldweaver.domain.PersonKind
 import io.github.kmbisset89.worldweaver.domain.Quest
 import io.github.kmbisset89.worldweaver.domain.QuestDraft
 import io.github.kmbisset89.worldweaver.domain.QuestLink
@@ -32,6 +36,7 @@ import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
 import io.github.kmbisset89.worldweaver.domain.Session
 import io.github.kmbisset89.worldweaver.domain.UpdateQuestUseCase
+import io.github.kmbisset89.worldweaver.ui.advancement.AdvancementPrompt
 
 internal class QuestsViewModel(
     private val appScope: AppCoroutineScope,
@@ -44,6 +49,8 @@ internal class QuestsViewModel(
     private val createQuest: CreateQuestUseCase,
     private val updateQuest: UpdateQuestUseCase,
     private val deleteQuest: DeleteQuestUseCase,
+    private val awardPartyLevel: AwardPartyLevelUseCase,
+    private val awardPartyExperience: AwardPartyExperienceUseCase,
 ) {
     private val _state = MutableStateFlow<QuestsViewState>(QuestsViewState.Loading)
     val state: StateFlow<QuestsViewState> = _state.asStateFlow()
@@ -62,6 +69,9 @@ internal class QuestsViewModel(
     private var latestSessions: List<Session> = emptyList()
     private var latestWorldName: String = ""
     private var latestCampaignName: String = ""
+    private var latestCampaignId: String? = null
+    private var latestLevelingMode = LevelingMode.Milestone
+    private var advancementPrompt: AdvancementPrompt? = null
 
     init {
         observe()
@@ -172,6 +182,19 @@ internal class QuestsViewModel(
             }
             QuestsInteraction.EditorSaved -> saveEditor()
             QuestsInteraction.EditorDismissed -> updateEditor { null }
+            QuestsInteraction.AdvancementDismissed -> dismissAdvancement()
+            QuestsInteraction.AwardLevelConfirmed -> confirmAwardLevel()
+            is QuestsInteraction.AwardExperienceAmountChanged -> {
+                val current = advancementPrompt
+                if (current is AdvancementPrompt.AwardExperience) {
+                    advancementPrompt = current.copy(
+                        amountText = interaction.value,
+                        amountError = null,
+                    )
+                    refreshAdvancementPrompt()
+                }
+            }
+            QuestsInteraction.AwardExperienceConfirmed -> confirmAwardExperience()
         }
     }
 
@@ -245,6 +268,8 @@ internal class QuestsViewModel(
         latestSessions = snapshot.sessions
         latestWorldName = world.name
         latestCampaignName = campaign.name
+        latestCampaignId = campaign.id
+        latestLevelingMode = campaign.levelingMode
         val current = _state.value
         val editor = if (openCreateOnNextLoad) {
             openCreateOnNextLoad = false
@@ -303,6 +328,7 @@ internal class QuestsViewModel(
             links = linkRows(selected),
             editor = editor,
             pendingDelete = pendingDelete,
+            advancementPrompt = advancementPrompt,
         )
     }
 
@@ -385,8 +411,12 @@ internal class QuestsViewModel(
 
     private fun changeQuestStatus(questId: String, status: QuestStatus) {
         val quest = latestQuests.firstOrNull { it.id == questId } ?: return
+        val alreadyCompleted = quest.status == QuestStatus.Completed
         appScope.scope.launch {
             updateQuest(quest.id, draftFromQuest(quest.copy(status = status)))
+            if (status == QuestStatus.Completed && !alreadyCompleted) {
+                showAdvancementPrompt()
+            }
         }
     }
 
@@ -599,6 +629,67 @@ internal class QuestsViewModel(
         latestPeople = PeopleSnapshot(emptyList(), emptyList())
         latestSessions = emptyList()
         selectedQuestId = null
+        latestCampaignId = null
+        latestLevelingMode = LevelingMode.Milestone
+        advancementPrompt = null
+    }
+
+    private fun showAdvancementPrompt() {
+        val partySize = latestPeople.campaignPeople.count { it.kind == PersonKind.PlayerCharacter }
+        advancementPrompt = promptFor(latestLevelingMode, partySize)
+        refreshAdvancementPrompt()
+    }
+
+    private fun dismissAdvancement() {
+        advancementPrompt = null
+        refreshAdvancementPrompt()
+    }
+
+    private fun confirmAwardLevel() {
+        val campaignId = latestCampaignId ?: return
+        appScope.scope.launch {
+            awardPartyLevel(campaignId)
+            advancementPrompt = null
+            refreshAdvancementPrompt()
+        }
+    }
+
+    private fun confirmAwardExperience() {
+        val current = advancementPrompt as? AdvancementPrompt.AwardExperience ?: return
+        val amount = current.amountText.toIntOrNull()
+        if (amount == null || amount <= 0) {
+            advancementPrompt = current.copy(amountError = "Enter a positive number")
+            refreshAdvancementPrompt()
+            return
+        }
+        val campaignId = latestCampaignId ?: return
+        appScope.scope.launch {
+            awardPartyExperience(campaignId, amount)
+            advancementPrompt = null
+            refreshAdvancementPrompt()
+        }
+    }
+
+    private fun refreshAdvancementPrompt() {
+        when (val current = _state.value) {
+            is QuestsViewState.Content -> {
+                _state.value = current.copy(advancementPrompt = advancementPrompt)
+            }
+            else -> Unit
+        }
+    }
+
+    private fun promptFor(mode: LevelingMode, partySize: Int): AdvancementPrompt? {
+        if (partySize == 0) {
+            return null
+        }
+        return when (mode) {
+            LevelingMode.Milestone -> AdvancementPrompt.AwardLevel
+            LevelingMode.Experience -> AdvancementPrompt.AwardExperience(
+                amountText = "",
+                amountError = null,
+            )
+        }
     }
 
     private data class LoadedSnapshot(

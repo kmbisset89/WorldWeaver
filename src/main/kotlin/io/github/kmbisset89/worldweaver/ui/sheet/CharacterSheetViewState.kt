@@ -23,6 +23,7 @@ internal sealed class CharacterSheetViewState {
         val name: String,
         val kind: PersonKind,
         val identityLine: String,
+        val experiencePoints: Int?,
         val systemBadge: String,
         val avatarPath: String?,
         val abilityScores: List<AbilityScoreTile>,

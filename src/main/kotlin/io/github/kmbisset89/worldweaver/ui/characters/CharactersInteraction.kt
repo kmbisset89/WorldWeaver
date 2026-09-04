@@ -61,6 +61,7 @@ internal sealed interface CharactersInteraction {
     data class EditorClassNameChanged(val index: Int, val className: String) : CharactersInteraction
     data class EditorSubclassChanged(val index: Int, val subclass: String) : CharactersInteraction
     data class EditorClassLevelChanged(val index: Int, val level: String) : CharactersInteraction
+    data class EditorExperienceChanged(val value: String) : CharactersInteraction
     data class EditorStrengthChanged(val value: String) : CharactersInteraction
     data class EditorDexterityChanged(val value: String) : CharactersInteraction
     data class EditorConstitutionChanged(val value: String) : CharactersInteraction

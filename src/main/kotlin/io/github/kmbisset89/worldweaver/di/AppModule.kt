@@ -67,6 +67,8 @@ import io.github.kmbisset89.worldweaver.domain.CalculateReachableCellsUseCase
 import io.github.kmbisset89.worldweaver.domain.DiceRoller
 import io.github.kmbisset89.worldweaver.domain.ActiveContextRepository
 import io.github.kmbisset89.worldweaver.domain.AddWorldPersonToCampaignUseCase
+import io.github.kmbisset89.worldweaver.domain.AwardPartyExperienceUseCase
+import io.github.kmbisset89.worldweaver.domain.AwardPartyLevelUseCase
 import io.github.kmbisset89.worldweaver.domain.CampaignPersonRepository
 import io.github.kmbisset89.worldweaver.domain.CampaignRepository
 import io.github.kmbisset89.worldweaver.domain.ClearActiveCampaignUseCase
@@ -119,6 +121,8 @@ import io.github.kmbisset89.worldweaver.domain.ExportAppBackupUseCase
 import io.github.kmbisset89.worldweaver.domain.FactionMembershipRepository
 import io.github.kmbisset89.worldweaver.domain.FactionRepository
 import io.github.kmbisset89.worldweaver.domain.ExportWorldBundleUseCase
+import io.github.kmbisset89.worldweaver.domain.ExportUniversalVttUseCase
+import io.github.kmbisset89.worldweaver.domain.UniversalVttDocumentFactory
 import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalogResolver
 import io.github.kmbisset89.worldweaver.domain.ImportBundledBattleMapUseCase
 import io.github.kmbisset89.worldweaver.domain.ImportSrdCatalogUseCase
@@ -398,6 +402,8 @@ internal fun appModule() = module {
     factory { UpdateWorldUseCase(get(), get()) }
     factory { DeleteWorldUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { ExportWorldBundleUseCase(get(), get()) }
+    factory { UniversalVttDocumentFactory() }
+    factory { ExportUniversalVttUseCase(get(), get(), get()) }
     factory {
         ExportAppBackupUseCase(
             dataDirectory = get(),
@@ -533,6 +539,8 @@ internal fun appModule() = module {
     factory { UpdateBattleMapFogUseCase(get(), get()) }
     factory { UpdateBattleMapTerrainUseCase(get(), get()) }
     factory { CloseSessionUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { AwardPartyLevelUseCase(get(), get(), get()) }
+    factory { AwardPartyExperienceUseCase(get(), get(), get()) }
     factory { DeleteBattleMapUseCase(get(), get(), get(), get()) }
     factory { ObserveBattleMapsForActiveCampaignUseCase(get(), get()) }
     factory { CreateWorldMapUseCase(get(), get(), get(), get(), get(), get(), get()) }
@@ -744,6 +752,7 @@ internal fun appModule() = module {
             updateCampaignPerson = get(),
             updateDeathSaves = get(),
             avatarFileStore = get(),
+            observeActiveContextDetails = get(),
         )
     }
     single {
@@ -758,6 +767,8 @@ internal fun appModule() = module {
             createQuest = get(),
             updateQuest = get(),
             deleteQuest = get(),
+            awardPartyLevel = get(),
+            awardPartyExperience = get(),
         )
     }
     single {
@@ -837,6 +848,7 @@ internal fun appModule() = module {
             placeBattleMapItem = get(),
             deleteBattleMapItem = get(),
             importBundledBattleMap = get(),
+            exportUniversalVtt = get(),
             bundledCatalogLoader = get(),
         )
     }
@@ -868,6 +880,8 @@ internal fun appModule() = module {
             observeOverlays = get(),
             observeLocations = get(),
             closeSession = get(),
+            awardPartyLevel = get(),
+            awardPartyExperience = get(),
         )
     }
     single {

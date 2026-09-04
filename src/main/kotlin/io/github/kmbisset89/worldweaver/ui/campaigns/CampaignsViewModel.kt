@@ -18,6 +18,7 @@ import io.github.kmbisset89.worldweaver.domain.CreateCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSheet
 import io.github.kmbisset89.worldweaver.domain.GameSystem
+import io.github.kmbisset89.worldweaver.domain.LevelingMode
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESheet
 import io.github.kmbisset89.worldweaver.domain.PersonSheet
 import io.github.kmbisset89.worldweaver.domain.CampaignPerson
@@ -111,6 +112,9 @@ internal class CampaignsViewModel(
             }
             is CampaignsInteraction.EditorGameSystemSelected -> updateEditor { editor ->
                 editor?.copy(gameSystem = interaction.gameSystem)
+            }
+            is CampaignsInteraction.EditorLevelingModeSelected -> updateEditor { editor ->
+                editor?.copy(levelingMode = interaction.levelingMode)
             }
             CampaignsInteraction.EditorSaved -> saveEditor()
             CampaignsInteraction.EditorDismissed -> updateEditor { null }
@@ -240,6 +244,7 @@ internal class CampaignsViewModel(
             description = campaign.description,
             notes = campaign.notes,
             gameSystem = campaign.resolvedGameSystem(latestWorldDefault),
+            levelingMode = campaign.levelingMode,
             nameError = null,
         )
         when (val current = _state.value) {
@@ -318,6 +323,7 @@ internal class CampaignsViewModel(
                     editor.description,
                     editor.notes,
                     editor.gameSystem,
+                    editor.levelingMode,
                 ) is
                     CreateCampaignUseCase.Result.InvalidName
             } else {
@@ -327,6 +333,7 @@ internal class CampaignsViewModel(
                     editor.description,
                     editor.notes,
                     editor.gameSystem,
+                    editor.levelingMode,
                 ) is UpdateCampaignUseCase.Result.InvalidName
             }
             if (invalidName) {
@@ -369,6 +376,7 @@ internal class CampaignsViewModel(
             description = "",
             notes = "",
             gameSystem = latestWorldDefault,
+            levelingMode = LevelingMode.Milestone,
             nameError = null,
         )
     }
