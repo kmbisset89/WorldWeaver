@@ -1,5 +1,6 @@
 import java.time.Year
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "2.4.0"
@@ -7,14 +8,24 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.0"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.0"
     id("com.google.devtools.ksp") version "2.3.10"
+    id("io.github.kmbisset89.semver.plugin") version "1.1.16"
 }
 
 group = "io.github.kmbisset89.worldweaver"
-version = "1.0.0"
 
 val appPublisher = "Kerry Bisset"
 val appHomepage = "https://github.com/kmbisset89/WorldWeaver"
 val appCopyright = "Copyright © ${Year.now()} $appPublisher"
+val generatedAppVersionDir = layout.buildDirectory.dir("generated/appversion")
+
+semVerConfig {
+    gitDirectory.set(rootProject.projectDir.path)
+    baseBranchName.set("main")
+    gitEmail.set(
+        providers.environmentVariable("SEMVER_GIT_USER").orElse("x-access-token"),
+    )
+    gitPat.set(providers.environmentVariable("GITHUB_TOKEN").orElse(""))
+}
 
 repositories {
     google()
@@ -52,7 +63,6 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "WorldWeaver"
-            packageVersion = version.toString()
             description = "World Weaver — tabletop campaign manager ($appHomepage)"
             vendor = appPublisher
             copyright = appCopyright
@@ -107,11 +117,67 @@ compose.desktop {
 
 kotlin {
     jvmToolchain(17)
+    sourceSets.getByName("main").kotlin.srcDir(generatedAppVersionDir)
 }
 
 compose.resources {
     packageOfResClass = "io.github.kmbisset89.worldweaver.generated.resources"
     generateResClass = always
+}
+
+/**
+ * Compose Desktop `packageVersion` must be exactly `x.y.z`.
+ *
+ * The SemVer plugin assigns [Project.getVersion] in `afterEvaluate`, so this
+ * extra must be computed in a later `afterEvaluate` or it snapshots Gradle's
+ * default `unspecified` as `0.0.0`.
+ */
+afterEvaluate {
+    val rawVersion = version.toString()
+    check(rawVersion.isNotBlank() && rawVersion != "unspecified") {
+        "Desktop packageVersion requires a SemVer project version; got '$rawVersion'"
+    }
+    compose.desktop.application.nativeDistributions.packageVersion =
+        rawVersion.toNumericPackageVersion()
+}
+
+val generateAppVersion by tasks.registering {
+    val outputFile = generatedAppVersionDir.map {
+        it.file("io/github/kmbisset89/worldweaver/generated/AppVersion.kt")
+    }
+    inputs.property("semver") { project.version.toString() }
+    outputs.file(outputFile)
+    doLast {
+        val semver = project.version.toString()
+        val file = outputFile.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            package io.github.kmbisset89.worldweaver.generated
+
+            internal object AppVersion {
+                const val VALUE = "$semver"
+            }
+
+            """.trimIndent() + "\n",
+        )
+    }
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    dependsOn(generateAppVersion)
+}
+
+tasks.matching { it.name.startsWith("ksp") }.configureEach {
+    dependsOn(generateAppVersion)
+}
+
+tasks.register("printVersion") {
+    group = "help"
+    description = "Prints the SemVer project version from git tags."
+    doLast {
+        println(version)
+    }
 }
 
 tasks.register("printPackageVersion") {
@@ -120,7 +186,16 @@ tasks.register("printPackageVersion") {
     doLast {
         println(
             compose.desktop.application.nativeDistributions.packageVersion
-                ?: version.toString(),
+                ?: version.toString().toNumericPackageVersion(),
         )
     }
+}
+
+/** Compose Desktop `packageVersion` must be exactly `x.y.z`. */
+fun String.toNumericPackageVersion(): String {
+    val core = substringBefore("-").substringBefore("+")
+    val parts = core.split('.').map { part ->
+        part.filter { it.isDigit() }.ifBlank { "0" }
+    }.take(3)
+    return (parts + List(3 - parts.size) { "0" }).joinToString(".")
 }
