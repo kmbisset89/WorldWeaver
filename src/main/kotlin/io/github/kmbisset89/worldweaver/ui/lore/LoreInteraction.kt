@@ -15,6 +15,7 @@ internal sealed interface LoreInteraction {
     data object DeleteCancelled : LoreInteraction
     data class CategoryFilterSelected(val category: LoreCategory?) : LoreInteraction
     data class RelatedLoreSelected(val loreId: String) : LoreInteraction
+    data class ObservedOnSelected(val observanceId: String) : LoreInteraction
     data class HintRevealToggled(val secretId: String, val hintId: String) : LoreInteraction
     data class EditorTitleChanged(val title: String) : LoreInteraction
     data class EditorContentChanged(val content: String) : LoreInteraction

@@ -9,6 +9,7 @@ internal class ImportWorldBundleUseCase(
     private val worldRepository: WorldRepository,
     private val worldCalendarRepository: WorldCalendarRepository,
     private val defaultCalendarFactory: DefaultWorldCalendarFactory,
+    private val observanceRepository: WorldCalendarObservanceRepository,
     private val campaignRepository: CampaignRepository,
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
@@ -68,6 +69,7 @@ internal class ImportWorldBundleUseCase(
             }
             bundle.worldPeople.forEach { worldPersonRepository.insert(it) }
             bundle.loreEntries.forEach { loreRepository.insert(it) }
+            bundle.observances.forEach { observanceRepository.insert(it) }
             bundle.factions.forEach { factionRepository.insert(it) }
             bundle.campaigns.forEach { campaignRepository.insert(it) }
             bundle.campaignPeople.forEach { campaignPersonRepository.insert(it) }

@@ -11,6 +11,7 @@ internal class WorldBundleIdRemapper(
         val locationIds = remapIds(bundle.locations.map { it.id })
         val worldPersonIds = remapIds(bundle.worldPeople.map { it.id })
         val loreIds = remapIds(bundle.loreEntries.map { it.id })
+        val observanceIds = remapIds(bundle.observances.map { it.id })
         val factionIds = remapIds(bundle.factions.map { it.id })
         val membershipIds = remapIds(bundle.memberships.map { it.id })
         val campaignIds = remapIds(bundle.campaigns.map { it.id })
@@ -69,6 +70,14 @@ internal class WorldBundleIdRemapper(
                     },
                     locationId = lore.locationId?.let(locationIds::get),
                     characterId = remapCharacterId(lore.characterId, worldPersonIds, campaignPersonIds),
+                )
+            },
+            observances = bundle.observances.map { observance ->
+                observance.copy(
+                    id = observanceIds.getValue(observance.id),
+                    worldId = worldId,
+                    monthId = monthIds[observance.monthId] ?: observance.monthId,
+                    loreIds = observance.loreIds.mapNotNull(loreIds::get),
                 )
             },
             factions = bundle.factions.map { faction ->

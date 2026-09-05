@@ -146,6 +146,13 @@ private fun RunContent(
                         label = { Text("Today $label") },
                     )
                 }
+                state.observanceNames.forEach { name ->
+                    FilterChip(
+                        selected = false,
+                        onClick = {},
+                        label = { Text(name) },
+                    )
+                }
             }
         }
         item {

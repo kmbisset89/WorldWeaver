@@ -2,16 +2,19 @@ package io.github.kmbisset89.worldweaver.ui.calendar
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PublicOff
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -21,6 +24,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -144,7 +148,10 @@ private fun CalendarContent(
                         Text("Clear")
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     state.months.forEach { month ->
                         FilterChip(
                             selected = state.currentMonthId == month.id,
@@ -164,8 +171,26 @@ private fun CalendarContent(
                     color = TextSecondary,
                     fontSize = 13.sp,
                 )
+                if (state.todayObservances.isNotEmpty()) {
+                    Text("Today", fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.todayObservances.forEach { observance ->
+                            FilterChip(
+                                selected = observance.id == state.selectedObservanceId,
+                                onClick = {
+                                    onInteraction(CalendarInteraction.ObservanceSelected(observance.id))
+                                },
+                                label = { Text("${observance.name} · ${observance.kindLabel}") },
+                            )
+                        }
+                    }
+                }
             }
         }
+        ObservancesCard(state = state, onInteraction = onInteraction)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCard),
@@ -301,5 +326,140 @@ private fun CalendarContent(
             Text("Save calendar")
         }
         Spacer(modifier = Modifier.padding(bottom = 8.dp))
+        state.editor?.let { editor ->
+            ObservanceEditorDialog(
+                editor = editor,
+                months = state.months,
+                onInteraction = onInteraction,
+            )
+        }
+        state.pendingDelete?.let { pending ->
+            ConfirmDestructiveDialog(
+                title = "Delete this day?",
+                message = "Delete “${pending.name}”? Lore links to this day will be removed.",
+                confirmLabel = "Delete",
+                onConfirm = { onInteraction(CalendarInteraction.DeleteConfirmed) },
+                onDismiss = { onInteraction(CalendarInteraction.DeleteCancelled) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ObservancesCard(
+    state: CalendarViewState.Content,
+    onInteraction: (CalendarInteraction) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Holidays and important days", fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                TextButton(onClick = { onInteraction(CalendarInteraction.NewObservanceSelected) }) {
+                    Text("Add day")
+                }
+            }
+            if (state.observances.isEmpty()) {
+                Text(
+                    text = "Add festivals, holy days, and dated events for this world’s calendar.",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                )
+            }
+            state.observances.forEach { observance ->
+                ObservanceRow(
+                    observance = observance,
+                    selected = observance.id == state.selectedObservanceId,
+                    onInteraction = onInteraction,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ObservanceRow(
+    observance: CalendarViewState.ObservanceLine,
+    selected: Boolean,
+    onInteraction: (CalendarInteraction) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onInteraction(CalendarInteraction.ObservanceSelected(observance.id)) },
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) SurfaceCard.copy(alpha = 0.65f) else SurfaceCard,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 2.dp else 0.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = observance.name,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
+                    )
+                    Text(
+                        text = "${observance.dateLabel} · ${observance.kindLabel}",
+                        color = TextSecondary,
+                        fontSize = 13.sp,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = { onInteraction(CalendarInteraction.EditObservanceSelected(observance.id)) }
+                    ) {
+                        Text("Edit")
+                    }
+                    TextButton(
+                        onClick = {
+                            onInteraction(CalendarInteraction.DeleteObservanceSelected(observance.id))
+                        }
+                    ) {
+                        Text("Delete")
+                    }
+                }
+            }
+            if (observance.notes.isNotBlank()) {
+                Text(text = observance.notes, color = TextSecondary, fontSize = 13.sp)
+            }
+            if (observance.loreLinks.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    observance.loreLinks.forEach { link ->
+                        FilterChip(
+                            selected = false,
+                            onClick = {
+                                onInteraction(CalendarInteraction.LinkedLoreSelected(link.loreId))
+                            },
+                            label = { Text(link.title) },
+                        )
+                    }
+                }
+            }
+        }
     }
 }

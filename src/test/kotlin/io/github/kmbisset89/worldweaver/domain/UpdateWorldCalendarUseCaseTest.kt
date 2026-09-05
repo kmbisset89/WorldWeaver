@@ -79,6 +79,48 @@ internal class UpdateWorldCalendarUseCaseTest {
     }
 
     @Test
+    fun updateRejectsDroppingAMonthUsedByAnObservance() = runTest {
+        val harness = Harness()
+        val calendar = harness.insertCalendar()
+        harness.insertObservance(monthId = "m-1", day = 12)
+
+        val result = harness.updateCalendar(
+            calendar.id,
+            WorldCalendarDraft(
+                eraSuffix = "",
+                months = listOf(WorldCalendarMonth(id = "m-2", name = "Alturiak", days = 30)),
+                weekdays = emptyList(),
+                currentDate = null,
+            ),
+        )
+
+        assertIs<UpdateWorldCalendarUseCase.Result.MonthReferenced>(result)
+    }
+
+    @Test
+    fun updateRejectsShrinkingAMonthBelowAnObservanceDay() = runTest {
+        val harness = Harness()
+        val calendar = harness.insertCalendar()
+        harness.insertObservance(monthId = "m-1", day = 28)
+
+        val result = harness.updateCalendar(
+            calendar.id,
+            WorldCalendarDraft(
+                eraSuffix = "",
+                months = listOf(
+                    WorldCalendarMonth(id = "m-1", name = "Hammer", days = 20),
+                    WorldCalendarMonth(id = "m-2", name = "Alturiak", days = 30),
+                ),
+                weekdays = emptyList(),
+                currentDate = null,
+            ),
+        )
+
+        assertIs<UpdateWorldCalendarUseCase.Result.InvalidObservanceDate>(result)
+        assertEquals(30, harness.calendars.getById(calendar.id)?.months?.first()?.days)
+    }
+
+    @Test
     fun updateRejectsInvalidCurrentDate() = runTest {
         val harness = Harness()
         val calendar = harness.insertCalendar()
@@ -100,12 +142,14 @@ internal class UpdateWorldCalendarUseCaseTest {
         val calendars = FakeWorldCalendarRepository()
         val campaigns = FakeCampaignRepository()
         val sessions = FakeSessionRepository()
+        val observances = FakeWorldCalendarObservanceRepository()
         private val instant = InstantProvider { Instant.parse("2026-08-31T13:00:00Z") }
         private var nextId = 0
         private val ids = EntityIdFactory { "cal-update-${++nextId}" }
         val updateCalendar = UpdateWorldCalendarUseCase(
             calendars,
             FindSessionCalendarMonthIdsForWorldUseCase(campaigns, sessions),
+            observances,
             ids,
             instant,
         )
@@ -127,6 +171,25 @@ internal class UpdateWorldCalendarUseCaseTest {
             )
             calendars.insert(calendar)
             return calendar
+        }
+
+        suspend fun insertObservance(monthId: String, day: Int) {
+            val now = Instant.parse("2026-08-31T12:00:00Z")
+            observances.insert(
+                WorldCalendarObservance(
+                    id = "obs-1",
+                    worldId = "world-1",
+                    name = "Midwinter",
+                    notes = "",
+                    kind = WorldCalendarObservanceKind.Holiday,
+                    monthId = monthId,
+                    day = day,
+                    year = null,
+                    loreIds = emptyList(),
+                    createdAt = now,
+                    updatedAt = now,
+                )
+            )
         }
     }
 }

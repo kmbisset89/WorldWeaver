@@ -11,6 +11,7 @@ internal data class WorldBundle(
     val campaigns: List<Campaign>,
     val locations: List<Location>,
     val loreEntries: List<Lore>,
+    val observances: List<WorldCalendarObservance> = emptyList(),
     val factions: List<Faction> = emptyList(),
     val memberships: List<FactionMembership> = emptyList(),
     val worldPeople: List<WorldPerson>,
@@ -68,6 +69,7 @@ internal data class WorldBundle(
             campaigns = campaigns.map(CampaignRecord::from),
             locations = locations.map(LocationRecord::from),
             loreEntries = loreEntries.map(LoreRecord::from),
+            observances = observances.map(WorldCalendarObservanceRecord::from),
             factions = factions.map(FactionRecord::from),
             memberships = memberships.map(FactionMembershipRecord::from),
             worldPeople = worldPeople.map(WorldPersonRecord::from),
@@ -109,6 +111,7 @@ internal data class WorldBundle(
                 campaigns = payload.campaigns.map { it.toDomain() },
                 locations = payload.locations.map { it.toDomain() },
                 loreEntries = payload.loreEntries.map { it.toDomain() },
+                observances = payload.observances.map { it.toDomain() },
                 factions = factions,
                 memberships = payload.memberships.map { it.toDomain() },
                 worldPeople = payload.worldPeople.map { it.toDomain() },
@@ -187,6 +190,7 @@ internal data class WorldBundle(
         val campaigns: List<CampaignRecord>,
         val locations: List<LocationRecord>,
         val loreEntries: List<LoreRecord>,
+        val observances: List<WorldCalendarObservanceRecord> = emptyList(),
         val factions: List<FactionRecord> = emptyList(),
         val memberships: List<FactionMembershipRecord> = emptyList(),
         val worldPeople: List<WorldPersonRecord>,
@@ -427,6 +431,55 @@ internal data class WorldBundle(
                     mapAnchorY = location.mapAnchorY,
                     createdAtEpochMillis = location.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = location.updatedAt.toEpochMilli(),
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class WorldCalendarObservanceRecord(
+        val id: String,
+        val worldId: String,
+        val name: String,
+        val notes: String,
+        val kind: String,
+        val monthId: String,
+        val day: Int,
+        val year: Int? = null,
+        val loreIds: List<String> = emptyList(),
+        val createdAtEpochMillis: Long,
+        val updatedAtEpochMillis: Long,
+    ) {
+        fun toDomain(): WorldCalendarObservance {
+            return WorldCalendarObservance(
+                id = id,
+                worldId = worldId,
+                name = name,
+                notes = notes,
+                kind = WorldCalendarObservanceKind.fromStorage(kind),
+                monthId = monthId,
+                day = day,
+                year = year,
+                loreIds = loreIds,
+                createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+                updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+            )
+        }
+
+        companion object {
+            fun from(observance: WorldCalendarObservance): WorldCalendarObservanceRecord {
+                return WorldCalendarObservanceRecord(
+                    id = observance.id,
+                    worldId = observance.worldId,
+                    name = observance.name,
+                    notes = observance.notes,
+                    kind = observance.kind.name,
+                    monthId = observance.monthId,
+                    day = observance.day,
+                    year = observance.year,
+                    loreIds = observance.loreIds,
+                    createdAtEpochMillis = observance.createdAt.toEpochMilli(),
+                    updatedAtEpochMillis = observance.updatedAt.toEpochMilli(),
                 )
             }
         }

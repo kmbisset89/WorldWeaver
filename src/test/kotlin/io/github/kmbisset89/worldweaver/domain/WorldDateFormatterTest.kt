@@ -39,6 +39,17 @@ internal class WorldDateFormatterTest {
     }
 
     @Test
+    fun formatsRecurringAndDatedObservances() {
+        val calendar = calendar()
+
+        assertEquals("12 Hammer", formatter.formatObservance(calendar, "m-1", 12, year = null))
+        assertEquals("12 Hammer, 1489 DR", formatter.formatObservance(calendar, "m-1", 12, year = 1489))
+        assertTrue(formatter.isValidObservance(calendar, "m-1", 12, year = null))
+        assertFalse(formatter.isValidObservance(calendar, "m-1", 40, year = null))
+        assertFalse(formatter.isValidObservance(calendar, "m-1", 12, year = 0))
+    }
+
+    @Test
     fun rejectsDayOutsideMonth() {
         val calendar = calendar()
         val date = WorldDate(year = 1492, monthId = "m-2", day = 31)

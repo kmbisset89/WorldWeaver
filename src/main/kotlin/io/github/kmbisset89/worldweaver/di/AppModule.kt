@@ -40,6 +40,8 @@ import io.github.kmbisset89.worldweaver.data.ReferenceDocRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.SessionEntityConverter
 import io.github.kmbisset89.worldweaver.data.SessionRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldCalendarEntityConverter
+import io.github.kmbisset89.worldweaver.data.WorldCalendarObservanceEntityConverter
+import io.github.kmbisset89.worldweaver.data.WorldCalendarObservanceRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldCalendarRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldEntityConverter
 import io.github.kmbisset89.worldweaver.data.WorldMapEntityConverter
@@ -80,6 +82,7 @@ import io.github.kmbisset89.worldweaver.domain.CreateCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateEncounterUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateFactionMembershipUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateFactionUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateWorldCalendarObservanceUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateWorldMapUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateLocationUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateLoreUseCase
@@ -165,11 +168,15 @@ import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignU
 import io.github.kmbisset89.worldweaver.domain.ObserveDashboardCountsUseCase
 import io.github.kmbisset89.worldweaver.domain.SearchRecordsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarObservancesForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteWorldCalendarObservanceUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldMapsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldsUseCase
 import io.github.kmbisset89.worldweaver.domain.OneShotDraftFactory
 import io.github.kmbisset89.worldweaver.domain.OneShotTemplateCatalog
+import io.github.kmbisset89.worldweaver.domain.UpdateWorldCalendarObservanceUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldCalendarUseCase
+import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservanceRepository
 import io.github.kmbisset89.worldweaver.domain.PersonAvatarFileStore
 import io.github.kmbisset89.worldweaver.domain.PersonSheetFactory
 import io.github.kmbisset89.worldweaver.domain.PersonCompanionRepository
@@ -261,6 +268,7 @@ internal fun appModule() = module {
     single { EntityIdFactory() }
     single { WorldEntityConverter() }
     single { WorldCalendarEntityConverter() }
+    single { WorldCalendarObservanceEntityConverter() }
     single { WorldDateFormatter() }
     single { DefaultWorldCalendarFactory(get()) }
     single { CampaignEntityConverter() }
@@ -311,6 +319,8 @@ internal fun appModule() = module {
     single { get<WorldWeaverDatabase>().worldCalendarDao() }
     single { get<WorldWeaverDatabase>().worldCalendarMonthDao() }
     single { get<WorldWeaverDatabase>().worldCalendarWeekdayDao() }
+    single { get<WorldWeaverDatabase>().worldCalendarObservanceDao() }
+    single { get<WorldWeaverDatabase>().worldCalendarObservanceLoreLinkDao() }
     single { get<WorldWeaverDatabase>().campaignDao() }
     single { get<WorldWeaverDatabase>().locationDao() }
     single { get<WorldWeaverDatabase>().locationOverlayDao() }
@@ -338,6 +348,9 @@ internal fun appModule() = module {
     single { get<WorldWeaverDatabase>().worldMapDao() }
     single<WorldRepository> { WorldRepositoryImpl(get(), get()) }
     single<WorldCalendarRepository> { WorldCalendarRepositoryImpl(get(), get(), get(), get()) }
+    single<WorldCalendarObservanceRepository> {
+        WorldCalendarObservanceRepositoryImpl(get(), get(), get())
+    }
     single<CampaignRepository> { CampaignRepositoryImpl(get(), get()) }
     single<LocationRepository> { LocationRepositoryImpl(get(), get()) }
     single<LocationOverlayRepository> { LocationOverlayRepositoryImpl(get(), get()) }
@@ -365,6 +378,7 @@ internal fun appModule() = module {
         WorldBundleSnapshotFactory(
             worldRepository = get(),
             worldCalendarRepository = get(),
+            observanceRepository = get(),
             campaignRepository = get(),
             locationRepository = get(),
             loreRepository = get(),
@@ -431,6 +445,7 @@ internal fun appModule() = module {
             worldRepository = get(),
             worldCalendarRepository = get(),
             defaultCalendarFactory = get(),
+            observanceRepository = get(),
             campaignRepository = get(),
             locationRepository = get(),
             loreRepository = get(),
@@ -458,7 +473,7 @@ internal fun appModule() = module {
     }
     factory { ObserveWorldsUseCase(get()) }
     factory { ObserveDashboardCountsUseCase(get(), get(), get(), get()) }
-    factory { SearchRecordsUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { SearchRecordsUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { CreateCampaignUseCase(get(), get(), get(), get(), get()) }
     factory { UpdateCampaignUseCase(get(), get()) }
     factory { SetCampaignStatusUseCase(get(), get()) }
@@ -483,8 +498,12 @@ internal fun appModule() = module {
     factory { DeleteFactionMembershipUseCase(get()) }
     factory { ObserveFactionMembershipsUseCase(get()) }
     factory { ObserveWorldCalendarForActiveWorldUseCase(get(), get()) }
+    factory { ObserveWorldCalendarObservancesForActiveWorldUseCase(get(), get()) }
     factory { FindSessionCalendarMonthIdsForWorldUseCase(get(), get()) }
-    factory { UpdateWorldCalendarUseCase(get(), get(), get(), get(), get()) }
+    factory { UpdateWorldCalendarUseCase(get(), get(), get(), get(), get(), get()) }
+    factory { CreateWorldCalendarObservanceUseCase(get(), get(), get(), get(), get(), get()) }
+    factory { UpdateWorldCalendarObservanceUseCase(get(), get(), get(), get()) }
+    factory { DeleteWorldCalendarObservanceUseCase(get()) }
     factory { CreateWorldPersonUseCase(get(), get(), get(), get()) }
     factory { UpdateWorldPersonUseCase(get(), get()) }
     factory { DeleteWorldPersonUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
@@ -668,8 +687,13 @@ internal fun appModule() = module {
             appScope = get(),
             observeActiveContextDetails = get(),
             observeCalendar = get(),
+            observeObservances = get(),
+            observeLore = get(),
             findSessionMonthIds = get(),
             updateCalendar = get(),
+            createObservance = get(),
+            updateObservance = get(),
+            deleteObservance = get(),
             dateFormatter = get(),
         )
     }
@@ -678,6 +702,8 @@ internal fun appModule() = module {
             appScope = get(),
             observeActiveContextDetails = get(),
             observeLore = get(),
+            observeObservances = get(),
+            observeCalendar = get(),
             observeLocations = get(),
             observePeople = get(),
             createLore = get(),
@@ -877,6 +903,7 @@ internal fun appModule() = module {
             observePeople = get(),
             observeEncounters = get(),
             observeCalendar = get(),
+            observeObservances = get(),
             observeOverlays = get(),
             observeLocations = get(),
             closeSession = get(),

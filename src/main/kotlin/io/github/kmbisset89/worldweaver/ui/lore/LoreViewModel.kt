@@ -24,18 +24,26 @@ import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCas
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveLoreForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObservePeopleForActiveContextUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarObservancesForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
 import io.github.kmbisset89.worldweaver.domain.UpdateLoreUseCase
+import io.github.kmbisset89.worldweaver.domain.WorldCalendar
+import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservance
+import io.github.kmbisset89.worldweaver.domain.WorldDateFormatter
 
 internal class LoreViewModel(
     private val appScope: AppCoroutineScope,
     private val observeActiveContextDetails: ObserveActiveContextDetailsUseCase,
     private val observeLore: ObserveLoreForActiveWorldUseCase,
+    private val observeObservances: ObserveWorldCalendarObservancesForActiveWorldUseCase,
+    private val observeCalendar: ObserveWorldCalendarForActiveWorldUseCase,
     private val observeLocations: ObserveLocationsForActiveWorldUseCase,
     private val observePeople: ObservePeopleForActiveContextUseCase,
     private val createLore: CreateLoreUseCase,
     private val updateLore: UpdateLoreUseCase,
     private val deleteLore: DeleteLoreUseCase,
+    private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
 ) {
     private val _state = MutableStateFlow<LoreViewState>(LoreViewState.Loading)
     val state: StateFlow<LoreViewState> = _state.asStateFlow()
@@ -48,6 +56,8 @@ internal class LoreViewModel(
     private var categoryFilter: LoreCategory? = null
     private var selectedLoreId: String? = null
     private var latestLore: List<Lore> = emptyList()
+    private var latestObservances: List<WorldCalendarObservance> = emptyList()
+    private var latestCalendar: WorldCalendar? = null
     private var latestLocations: List<Location> = emptyList()
     private var latestPeople: PeopleSnapshot = PeopleSnapshot(emptyList(), emptyList())
     private var latestWorldName: String = ""
@@ -67,6 +77,9 @@ internal class LoreViewModel(
             is LoreInteraction.LoreSelected,
             is LoreInteraction.RelatedLoreSelected,
             -> selectLore(selectedId(interaction))
+            is LoreInteraction.ObservedOnSelected -> {
+                _effects.tryEmit(LoreViewEffect.OpenCalendar(interaction.observanceId))
+            }
             is LoreInteraction.LoreOpened -> selectLore(interaction.loreId)
             is LoreInteraction.EditLoreSelected -> openEditEditor(interaction.loreId)
             is LoreInteraction.DeleteLoreSelected -> requestDelete(interaction.loreId)
@@ -166,10 +179,20 @@ internal class LoreViewModel(
             combine(
                 observeActiveContextDetails(),
                 observeLore(),
-                observeLocations(),
-                observePeople(),
-            ) { details, lore, locations, people ->
-                LoadedSnapshot(details, lore, locations, people)
+                observeObservances(),
+                observeCalendar(),
+                combine(observeLocations(), observePeople()) { locations, people ->
+                    locations to people
+                },
+            ) { details, lore, observances, calendar, locationPeople ->
+                LoadedSnapshot(
+                    details = details,
+                    lore = lore,
+                    observances = observances,
+                    calendar = calendar,
+                    locations = locationPeople.first,
+                    people = locationPeople.second,
+                )
             }
                 .catch { error ->
                     _state.value = LoreViewState.Error(
@@ -181,6 +204,8 @@ internal class LoreViewModel(
                     applyLoaded(
                         snapshot.details,
                         snapshot.lore,
+                        snapshot.observances,
+                        snapshot.calendar,
                         snapshot.locations,
                         snapshot.people,
                     )
@@ -191,12 +216,16 @@ internal class LoreViewModel(
     private fun applyLoaded(
         details: ActiveContextDetails,
         lore: List<Lore>,
+        observances: List<WorldCalendarObservance>,
+        calendar: WorldCalendar?,
         locations: List<Location>,
         people: PeopleSnapshot,
     ) {
         val world = details.world
         if (world == null) {
             latestLore = emptyList()
+            latestObservances = emptyList()
+            latestCalendar = null
             latestLocations = emptyList()
             latestPeople = PeopleSnapshot(emptyList(), emptyList())
             selectedLoreId = null
@@ -204,6 +233,8 @@ internal class LoreViewModel(
             return
         }
         latestLore = lore
+        latestObservances = observances
+        latestCalendar = calendar
         latestLocations = locations
         latestPeople = people
         latestWorldName = world.name
@@ -257,6 +288,7 @@ internal class LoreViewModel(
             groups = groupLore(visible),
             selectedLore = selected,
             relatedLinks = relatedLinks(selected),
+            observedOn = observedOn(selected),
             attachedLocationName = selected?.locationId?.let { locationId ->
                 latestLocations.firstOrNull { it.id == locationId }?.name
             },
@@ -278,6 +310,29 @@ internal class LoreViewModel(
                 LoreViewState.LoreGroup(category = category, entries = inCategory)
             }
         }
+    }
+
+    private fun observedOn(selected: Lore?): List<LoreViewState.ObservedOnLink> {
+        if (selected == null) {
+            return emptyList()
+        }
+        val calendar = latestCalendar
+        return latestObservances
+            .filter { selected.id in it.loreIds }
+            .map { observance ->
+                LoreViewState.ObservedOnLink(
+                    observanceId = observance.id,
+                    name = observance.name,
+                    dateLabel = calendar?.let {
+                        dateFormatter.formatObservance(
+                            it,
+                            observance.monthId,
+                            observance.day,
+                            observance.year,
+                        )
+                    } ?: observance.name,
+                )
+            }
     }
 
     private fun relatedLinks(selected: Lore?): List<LoreViewState.RelatedLink> {
@@ -641,6 +696,8 @@ internal class LoreViewModel(
     private data class LoadedSnapshot(
         val details: ActiveContextDetails,
         val lore: List<Lore>,
+        val observances: List<WorldCalendarObservance>,
+        val calendar: WorldCalendar?,
         val locations: List<Location>,
         val people: PeopleSnapshot,
     )

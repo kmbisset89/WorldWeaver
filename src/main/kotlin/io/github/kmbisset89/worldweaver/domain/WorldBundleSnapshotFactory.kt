@@ -3,6 +3,7 @@ package io.github.kmbisset89.worldweaver.domain
 internal class WorldBundleSnapshotFactory(
     private val worldRepository: WorldRepository,
     private val worldCalendarRepository: WorldCalendarRepository,
+    private val observanceRepository: WorldCalendarObservanceRepository,
     private val campaignRepository: CampaignRepository,
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
@@ -45,6 +46,7 @@ internal class WorldBundleSnapshotFactory(
             campaigns = campaigns,
             locations = locations,
             loreEntries = loreRepository.getByWorld(worldId),
+            observances = observanceRepository.getByWorld(worldId),
             factions = factionRepository.getByWorld(worldId),
             memberships = factionMembershipRepository.getAll().filter { membership ->
                 containsPerson(membership.person, personIds)

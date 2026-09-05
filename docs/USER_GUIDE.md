@@ -40,7 +40,7 @@ Most screens need an **active world**. Campaign-scoped screens (quests, sessions
 
 | Scope | What lives there |
 |-------|------------------|
-| **World** | Locations, world maps, lore, calendar, factions, the people library |
+| **World** | Locations, world maps, lore, calendar, holidays, factions, the people library |
 | **Campaign** | Status, party PCs, quests, sessions, battle maps, encounters, campaign notes on locations |
 
 Create a world first, then a campaign inside it. You can keep several campaigns in one world (an ongoing game, an archived run, a completed chronicle).
@@ -153,6 +153,8 @@ Each entry can have body text, tags, related lore, and links to locations or peo
 
 The calendar belongs to the world: era suffix, custom month names, weekday names, and the current in-world date. Sessions can stamp an in-world date so the calendar reflects what you have already played.
 
+Add **holidays and important days** on the same screen. A holiday repeats every year on a month and day. An important day can also carry a year so it marks one date in history. Link either kind to lore; those days show up on the lore entry, and matching days appear on **Run** when the session date or calendar today lands on them.
+
 You need an active world before the calendar has a setting to edit.
 
 ## Factions
@@ -223,7 +225,7 @@ You need an active world, campaign, and session. Empty states send you to the ma
 
 The run screen shows:
 
-- Session name, in-world date, and calendar “today”
+- Session name, in-world date, calendar “today”, and any holiday or important day that falls on that date
 - Party cards (HP and AC; click to open the sheet)
 - Combat summary and **Open tracker** when an encounter is running
 - Objectives, party locations, scenes

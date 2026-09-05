@@ -34,6 +34,7 @@ internal class WorldBundleUseCaseTest {
         assertEquals(2, harness.worlds.all().size)
         val importedCalendar = harness.calendars.getByWorld(created.world.id)
         assertEquals(12, importedCalendar?.months?.size)
+        assertTrue(harness.observances.getByWorld(created.world.id).isEmpty())
     }
 
     @Test
@@ -70,6 +71,11 @@ internal class WorldBundleUseCaseTest {
         assertEquals("DR", calendar.eraSuffix)
         assertEquals(listOf("Hammer"), calendar.months.map { it.name })
         assertEquals(calendar.months.single().id, session.inWorldDate?.monthId)
+        val observance = harness.observances.getByWorld(newWorld.id).single()
+        assertEquals("Midwinter", observance.name)
+        assertEquals(calendar.months.single().id, observance.monthId)
+        assertEquals(listOf(lore.id), observance.loreIds)
+        assertNotEquals(source.observance.id, observance.id)
         assertEquals(12, session.inWorldDate?.day)
         val quest = harness.quests.getByCampaign(campaign.id).single()
         assertEquals(city.id, quest.locationId)
@@ -310,6 +316,7 @@ internal class WorldBundleUseCaseTest {
         val campaigns = FakeCampaignRepository()
         val locations = FakeLocationRepository()
         val lore = FakeLoreRepository()
+        val observances = FakeWorldCalendarObservanceRepository()
         val factions = FakeFactionRepository()
         val memberships = FakeFactionMembershipRepository()
         val worldPeople = FakeWorldPersonRepository()
@@ -337,6 +344,7 @@ internal class WorldBundleUseCaseTest {
         private val snapshotFactory = WorldBundleSnapshotFactory(
             worldRepository = worlds,
             worldCalendarRepository = calendars,
+            observanceRepository = observances,
             campaignRepository = campaigns,
             locationRepository = locations,
             loreRepository = lore,
@@ -370,6 +378,7 @@ internal class WorldBundleUseCaseTest {
             worldRepository = worlds,
             worldCalendarRepository = calendars,
             defaultCalendarFactory = DefaultWorldCalendarFactory(ids),
+            observanceRepository = observances,
             campaignRepository = campaigns,
             locationRepository = locations,
             loreRepository = lore,
@@ -488,6 +497,20 @@ internal class WorldBundleUseCaseTest {
                 updatedAt = now,
             )
             lore.insert(loreEntry)
+            val observance = WorldCalendarObservance(
+                id = "obs-1",
+                worldId = world.id,
+                name = "Midwinter",
+                notes = "Lamps",
+                kind = WorldCalendarObservanceKind.Holiday,
+                monthId = "m-hammer",
+                day = 1,
+                year = null,
+                loreIds = listOf(loreEntry.id),
+                createdAt = now,
+                updatedAt = now,
+            )
+            observances.insert(observance)
             val campaign = Campaign(
                 id = "camp-1",
                 worldId = world.id,
@@ -637,6 +660,7 @@ internal class WorldBundleUseCaseTest {
                 worldPerson = worldPerson,
                 battleMap = battleMap,
                 relationship = relationship,
+                observance = observance,
             )
         }
     }
@@ -646,6 +670,7 @@ internal class WorldBundleUseCaseTest {
         val worldPerson: WorldPerson,
         val battleMap: BattleMap,
         val relationship: PersonRelationship,
+        val observance: WorldCalendarObservance,
     )
 
     private class ImmediateTransactionRunner : TransactionRunner {

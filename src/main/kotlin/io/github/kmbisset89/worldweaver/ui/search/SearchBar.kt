@@ -48,7 +48,7 @@ private fun SearchBarContent(
         OutlinedTextField(
             value = state.query,
             onValueChange = { onInteraction(SearchInteraction.QueryChanged(it)) },
-            label = { Text("Search worlds, campaigns, locations, lore, people, quests, and sessions") },
+            label = { Text("Search worlds, campaigns, locations, lore, holidays, people, quests, and sessions") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

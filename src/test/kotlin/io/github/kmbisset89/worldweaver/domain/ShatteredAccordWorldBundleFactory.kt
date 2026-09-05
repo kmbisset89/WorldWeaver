@@ -24,6 +24,7 @@ internal class ShatteredAccordWorldBundleFactory(
             campaigns = listOf(campaign),
             locations = locations,
             loreEntries = loreEntries,
+            observances = observances(world.id, loreEntries),
             factions = factions(world.id),
             memberships = memberships(worldPeople, campaignPeople),
             worldPeople = worldPeople,
@@ -1179,6 +1180,39 @@ internal class ShatteredAccordWorldBundleFactory(
         )
     }
 
+    private fun observances(worldId: String, loreEntries: List<Lore>): List<WorldCalendarObservance> {
+        val harmony = loreEntries.first { it.id == LORE_HARMONY }
+        val wars = loreEntries.first { it.id == LORE_WARS }
+        return listOf(
+            WorldCalendarObservance(
+                id = OBS_AONTACHD,
+                worldId = worldId,
+                name = "Aontachd Vigil",
+                notes = "Lamps stay lit on the high roads. Villages send a speaker to name who kept the peace this year.",
+                kind = WorldCalendarObservanceKind.Holiday,
+                monthId = MONTH_AONTACHD,
+                day = 1,
+                year = null,
+                loreIds = listOf(harmony.id),
+                createdAt = now,
+                updatedAt = now,
+            ),
+            WorldCalendarObservance(
+                id = OBS_SHATTERING,
+                worldId = worldId,
+                name = "Day the Harmony Broke",
+                notes = "A dated mark, not a feast. Clerks still file it as the year the old accord failed.",
+                kind = WorldCalendarObservanceKind.ImportantDay,
+                monthId = MONTH_STOIRM,
+                day = 19,
+                year = 387,
+                loreIds = listOf(wars.id),
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+    }
+
     private fun campaign(worldId: String): Campaign {
         return Campaign(
             id = CAMPAIGN_ID,
@@ -2226,6 +2260,8 @@ internal class ShatteredAccordWorldBundleFactory(
         const val SESS_MEMORY = "sess-memory"
         const val SESS_DEATH = "sess-death"
         const val SESS_GATHERING = "sess-gathering"
+        const val OBS_AONTACHD = "obs-aontachd"
+        const val OBS_SHATTERING = "obs-shattering"
         const val LORE_CEO = "lore-ceo"
         const val LORE_HARMONY = "lore-harmony"
         const val LORE_WARS = "lore-wars"

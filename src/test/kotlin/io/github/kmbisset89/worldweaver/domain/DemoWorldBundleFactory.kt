@@ -37,6 +37,7 @@ internal class DemoWorldBundleFactory(
             campaigns = listOf(campaign),
             locations = locations,
             loreEntries = loreEntries,
+            observances = observances(world.id, loreEntries),
             factions = factions(world.id),
             memberships = memberships(worldPeople, campaignPeople),
             worldPeople = worldPeople,
@@ -513,6 +514,39 @@ internal class DemoWorldBundleFactory(
                 ),
                 locationId = duskhaven.id,
                 characterId = lysa.id,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+    }
+
+    private fun observances(worldId: String, loreEntries: List<Lore>): List<WorldCalendarObservance> {
+        val sundering = loreEntries.first { it.id == LORE_SUNDERING }
+        val saltLaw = loreEntries.first { it.id == LORE_SALT_LAW }
+        return listOf(
+            WorldCalendarObservance(
+                id = OBS_TIDEFEAST,
+                worldId = worldId,
+                name = "Tidefeast",
+                notes = "Harbor tables stay open until the last lantern. Skip it and the dockmasters notice.",
+                kind = WorldCalendarObservanceKind.Holiday,
+                monthId = MONTH_SALTWAKE,
+                day = 1,
+                year = null,
+                loreIds = listOf(saltLaw.id),
+                createdAt = now,
+                updatedAt = now,
+            ),
+            WorldCalendarObservance(
+                id = OBS_SUNDERING,
+                worldId = worldId,
+                name = "Night the Coast Split",
+                notes = "A dated remembrance, not a holiday. Inland clerks still write it as a year mark.",
+                kind = WorldCalendarObservanceKind.ImportantDay,
+                monthId = MONTH_OATHFALL,
+                day = 12,
+                year = 812,
+                loreIds = listOf(sundering.id),
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -1585,6 +1619,8 @@ internal class DemoWorldBundleFactory(
         const val MAP_SHRINE = "map-shrine"
         const val MAP_VAULTS = "map-vaults"
         const val SIT_FLOOD = "sit-vault-flood"
+        const val OBS_TIDEFEAST = "obs-tidefeast"
+        const val OBS_SUNDERING = "obs-sundering"
         const val LORE_SUNDERING = "lore-sundering"
         const val LORE_SALT_LAW = "lore-salt-law"
         const val LORE_BELL = "lore-bell"

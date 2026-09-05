@@ -201,6 +201,7 @@ private fun LoreContent(
                 LoreDetailPane(
                     lore = state.selectedLore,
                     relatedLinks = state.relatedLinks,
+                    observedOn = state.observedOn,
                     attachedLocationName = state.attachedLocationName,
                     attachedCharacterName = state.attachedCharacterName,
                     onInteraction = onInteraction,

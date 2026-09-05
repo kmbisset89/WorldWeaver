@@ -13,7 +13,7 @@ World Weaver is built with [Compose Multiplatform](https://www.jetbrains.com/com
 - **Worlds and campaigns** — Maintain a library of settings, each with one or more play-throughs. Choose **5E** or **PF2E** per world (campaigns can override).
 - **One-shot wizard** — Walk through identity, hook, places, people, conflict, and table plan, then generate a starter world and campaign.
 - **Places and world maps** — Nest continents, areas, cities, and places. Import PNG maps, pin child locations, and drill into nested cartography.
-- **Lore, calendar, factions, and links** — Write setting entries (including DM-only secrets), keep an in-world calendar, track factions, and browse a relationship web.
+- **Lore, calendar, factions, and links** — Write setting entries (including DM-only secrets), keep an in-world calendar with holidays and important days, track factions, and browse a relationship web.
 - **People and sheets** — Create PCs, NPCs, and monsters. Open a dedicated character sheet window with HP, abilities, spells, and gear. Optional 5E SRD import fills race, class, spell, and monster pickers.
 - **Sessions and tonight** — Plan recaps, scenes, and plot threads. From Home, **Continue tonight** opens the run screen for the active session: party, objectives, notes, maps, and encounters.
 - **Battle maps and combat** — Import grid maps, measure, paint fog of war, place tokens, and open a **Player view** window for the table. Run initiative, HP, conditions, and death saves from Encounters.

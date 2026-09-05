@@ -32,6 +32,8 @@ import io.github.kmbisset89.worldweaver.domain.ObservePeopleForActiveContextUseC
 import io.github.kmbisset89.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarObservancesForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservance
 import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
 import io.github.kmbisset89.worldweaver.domain.PersonKind
 import io.github.kmbisset89.worldweaver.domain.Quest
@@ -52,6 +54,7 @@ internal class RunViewModel(
     private val observePeople: ObservePeopleForActiveContextUseCase,
     private val observeEncounters: ObserveEncountersForActiveCampaignUseCase,
     private val observeCalendar: ObserveWorldCalendarForActiveWorldUseCase,
+    private val observeObservances: ObserveWorldCalendarObservancesForActiveWorldUseCase,
     private val observeOverlays: ObserveLocationOverlaysForActiveCampaignUseCase,
     private val observeLocations: ObserveLocationsForActiveWorldUseCase,
     private val closeSession: CloseSessionUseCase,
@@ -133,10 +136,11 @@ internal class RunViewModel(
                 combine(
                     observeEncounters(),
                     observeCalendar(),
+                    observeObservances(),
                     observeOverlays(),
                     observeLocations(),
-                ) { encounters, calendar, overlays, locations ->
-                    SupportBundle(encounters, calendar, overlays, locations)
+                ) { encounters, calendar, observances, overlays, locations ->
+                    SupportBundle(encounters, calendar, observances, overlays, locations)
                 },
             ) { primary, support ->
                 LoadedSnapshot(primary, support)
@@ -197,6 +201,7 @@ internal class RunViewModel(
             people = snapshot.primary.people,
             encounters = snapshot.support.encounters,
             calendar = snapshot.support.calendar,
+            observances = snapshot.support.observances,
             overlays = snapshot.support.overlays,
             locations = snapshot.support.locations,
         )
@@ -210,6 +215,7 @@ internal class RunViewModel(
         people: PeopleSnapshot,
         encounters: List<Encounter>,
         calendar: WorldCalendar?,
+        observances: List<WorldCalendarObservance>,
         overlays: List<LocationOverlay>,
         locations: List<Location>,
     ): RunViewState.Content {
@@ -221,6 +227,12 @@ internal class RunViewModel(
         val calendarTodayLabel = calendar?.currentDate?.let { date ->
             dateFormatter.format(calendar, date)
         }
+        val matchDate = session.inWorldDate ?: calendar?.currentDate
+        val observanceNames = if (matchDate == null) {
+            emptyList()
+        } else {
+            observances.filter { it.matches(matchDate) }.map { it.name }
+        }
         val activeEncounter = encounters.firstOrNull { it.status == EncounterStatus.Active }
         return RunViewState.Content(
             worldName = worldName,
@@ -231,6 +243,7 @@ internal class RunViewModel(
             recap = session.recap,
             inWorldDateLabel = inWorldDateLabel,
             calendarTodayLabel = calendarTodayLabel,
+            observanceNames = observanceNames,
             party = people.campaignPeople
                 .filter { it.kind == PersonKind.PlayerCharacter }
                 .map { person -> partyMember(person) },
@@ -389,6 +402,7 @@ internal class RunViewModel(
     private data class SupportBundle(
         val encounters: List<Encounter>,
         val calendar: WorldCalendar?,
+        val observances: List<WorldCalendarObservance>,
         val overlays: List<LocationOverlay>,
         val locations: List<Location>,
     )
