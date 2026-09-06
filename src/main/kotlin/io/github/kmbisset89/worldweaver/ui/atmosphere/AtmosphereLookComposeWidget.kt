@@ -22,8 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingEffect
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingLoop
 import io.github.kmbisset89.worldweaver.domain.AtmosphereMood
 import io.github.kmbisset89.worldweaver.domain.GoveeLightingPreset
+import io.github.kmbisset89.worldweaver.domain.LightingTransitionCalculator
 import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -37,6 +40,9 @@ internal fun AtmosphereLookComposeWidget(
     colorHex: String,
     brightness: String,
     powerOn: Boolean,
+    transitionMs: Int,
+    playingEffect: AtmosphereLightingEffect?,
+    playingLoop: AtmosphereLightingLoop?,
     moods: List<AtmosphereMood>,
     draftMoodName: String,
     lookError: String?,
@@ -47,9 +53,9 @@ internal fun AtmosphereLookComposeWidget(
 ) {
     Text(
         text = if (compact) {
-            "Applies immediately to the selected Hue and Govee lights."
+            "Applies to the selected Hue and Govee lights, using the transition below."
         } else {
-            "Moods, the color picker, brightness, and power apply to the Hue and Govee lights selected above. Skip this if you are using a Hue scene instead."
+            "Moods, the color picker, brightness, transition, and power apply to the Hue and Govee lights selected above. Skip this if you are using a Hue scene instead."
         },
         fontSize = 13.sp,
         color = TextSecondary,
@@ -175,6 +181,48 @@ internal fun AtmosphereLookComposeWidget(
             singleLine = true,
         )
     }
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        text = "Transition ${transitionLabel(transitionMs)}",
+        fontSize = 13.sp,
+        color = TextSecondary,
+    )
+    Slider(
+        value = transitionMs.toFloat(),
+        onValueChange = { next ->
+            onInteraction(
+                AtmosphereInteraction.LookTransitionChanged(
+                    next.toInt().coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS),
+                ),
+            )
+        },
+        valueRange = 0f..LightingTransitionCalculator.MAX_DURATION_MS.toFloat(),
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        TRANSITION_PRESETS.forEach { (name, duration) ->
+            FilterChip(
+                selected = transitionMs == duration,
+                onClick = { onInteraction(AtmosphereInteraction.LookTransitionChanged(duration)) },
+                label = { Text(name) },
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+    AtmosphereLightingEffectsComposeWidget(
+        playingEffect = playingEffect,
+        hasSelectedLights = hasSelectedLights,
+        onInteraction = onInteraction,
+    )
+    Spacer(modifier = Modifier.height(12.dp))
+    AtmosphereLightingLoopsComposeWidget(
+        playingLoop = playingLoop,
+        hasSelectedLights = hasSelectedLights,
+        onInteraction = onInteraction,
+    )
     lookError?.let { error ->
         Spacer(modifier = Modifier.height(8.dp))
         Text(text = error, fontSize = 13.sp, color = TextPrimary)
@@ -209,3 +257,23 @@ private fun MoodChip(
         }
     }
 }
+
+private fun transitionLabel(durationMs: Int): String {
+    return when (durationMs) {
+        0 -> "instant"
+        else -> {
+            val tenths = (durationMs + 50) / 100
+            val whole = tenths / 10
+            val fraction = tenths % 10
+            if (fraction == 0) "${whole}s" else "$whole.${fraction}s"
+        }
+    }
+}
+
+private val TRANSITION_PRESETS = listOf(
+    "Instant" to 0,
+    "Soft" to LightingTransitionCalculator.DEFAULT_DURATION_MS,
+    "Slow" to 1_200,
+    "Dramatic" to 2_500,
+)
+

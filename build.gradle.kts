@@ -33,6 +33,11 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
+val javacppPlatform = currentJavacppPlatform()
+val javacvVersion = "1.5.12"
+val javacppVersion = "1.5.12"
+val ffmpegVersion = "7.1.1-1.5.12"
+
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation("org.jetbrains.compose.components:components-resources-desktop:1.11.1")
@@ -46,6 +51,10 @@ dependencies {
     implementation("ovh.plrapps:mapcompose-mp:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("org.bytedeco:javacv:$javacvVersion")
+    implementation("org.bytedeco:ffmpeg:$ffmpegVersion")
+    implementation("org.bytedeco:ffmpeg:$ffmpegVersion:$javacppPlatform")
+    implementation("org.bytedeco:javacpp:$javacppVersion:$javacppPlatform")
     ksp("androidx.room:room-compiler:2.7.2")
 
     testImplementation(kotlin("test"))
@@ -95,6 +104,10 @@ compose.desktop {
                     extraKeysRawXml = """
                         <key>NSHumanReadableCopyright</key>
                         <string>$appCopyright</string>
+                        <key>NSMicrophoneUsageDescription</key>
+                        <string>World Weaver records the table microphone for session audio on Tonight.</string>
+                        <key>NSCameraUsageDescription</key>
+                        <string>World Weaver previews and records the default camera for session video on Tonight.</string>
                     """.trimIndent()
                 }
             }
@@ -189,6 +202,20 @@ tasks.register("printPackageVersion") {
             compose.desktop.application.nativeDistributions.packageVersion
                 ?: version.toString().toNumericPackageVersion(),
         )
+    }
+}
+
+private fun currentJavacppPlatform(): String {
+    val osName = System.getProperty("os.name").lowercase()
+    val osArch = System.getProperty("os.arch").lowercase()
+    val arm = osArch == "aarch64" || osArch == "arm64"
+    return when {
+        osName.contains("mac") && arm -> "macosx-arm64"
+        osName.contains("mac") -> "macosx-x86_64"
+        osName.contains("windows") && arm -> "windows-arm64"
+        osName.contains("windows") -> "windows-x86_64"
+        arm -> "linux-arm64"
+        else -> "linux-x86_64"
     }
 }
 

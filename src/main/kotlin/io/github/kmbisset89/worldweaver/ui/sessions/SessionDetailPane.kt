@@ -75,6 +75,15 @@ internal fun SessionDetailPane(
             )
             Text(text = session.recap, fontSize = 14.sp, color = TextPrimary)
         }
+        if (session.scratchNotes.isNotBlank()) {
+            Text(
+                text = "Scratch pad",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextSecondary,
+            )
+            Text(text = session.scratchNotes, fontSize = 14.sp, color = TextPrimary)
+        }
         ChecklistSection(checklist = checklist)
         LinkedQuestsSection(linkedQuests = linkedQuests, onInteraction = onInteraction)
         ScenesSection(session = session, onInteraction = onInteraction)

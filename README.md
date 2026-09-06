@@ -15,7 +15,7 @@ World Weaver is built with [Compose Multiplatform](https://www.jetbrains.com/com
 - **Places and world maps** — Nest continents, areas, cities, and places. Import PNG maps, pin child locations, and drill into nested cartography.
 - **Lore, calendar, factions, and links** — Write setting entries (including DM-only secrets), keep an in-world calendar with holidays and important days, track factions, and browse a relationship web.
 - **People and sheets** — Create PCs, NPCs, and monsters. Open a dedicated character sheet window with HP, abilities, spells, and gear. Optional 5E SRD import fills race, class, spell, and monster pickers.
-- **Sessions and tonight** — Plan recaps, scenes, and plot threads. From Home, **Continue tonight** opens the run screen for the active session: party, objectives, notes, maps, and encounters.
+- **Sessions and tonight** — Plan recaps, scenes, and plot threads. **Tonight** is the live session runner: notes, scratch pad, lookup, progress clocks, a table timer, session recording (mic or camera), atmosphere, party, and objectives. Open it from the sidebar or Home (**Continue tonight**).
 - **Battle maps and combat** — Import grid maps, measure, paint fog of war, place tokens, and open a **Player view** window for the table. Run initiative, HP, conditions, and death saves from Encounters.
 - **Dice** — Roll digital dice (including advantage/disadvantage) or log table faces. Pop the tray out and keep it always on top.
 - **Search** — Find worlds, campaigns, locations, lore, factions, people, quests, and sessions from the top bar.
@@ -31,7 +31,7 @@ Download the latest installer from [Releases](https://github.com/kmbisset89/Worl
 | Windows | `.exe` |
 | Linux | `.deb` |
 
-World Weaver stores data under `~/.worldweaver` (database, avatars, maps, voice clips, and imported SRD). Changing machines is a Settings backup/restore, not a cloud login.
+World Weaver stores data under `~/.worldweaver` (database, avatars, maps, voice clips, session recordings, and imported SRD). Changing machines is a Settings backup/restore, not a cloud login. Session recordings stay on this computer with the session and are not included in world bundles or machine backups.
 
 Try a sample setting from this repo: **Worlds → Import world**, then choose `fixtures/demo-campaign.wwbundle`.
 

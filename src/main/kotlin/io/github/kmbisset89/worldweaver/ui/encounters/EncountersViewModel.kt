@@ -16,6 +16,13 @@ import io.github.kmbisset89.worldweaver.domain.AdvanceEncounterTurnUseCase
 import io.github.kmbisset89.worldweaver.domain.BattleMapFogEdit
 import io.github.kmbisset89.worldweaver.domain.BattleMap
 import io.github.kmbisset89.worldweaver.domain.BattleMapSituation
+import io.github.kmbisset89.worldweaver.domain.CalculateGridDistanceUseCase
+import io.github.kmbisset89.worldweaver.domain.CalculateReachableCellsUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteBattleMapItemUseCase
+import io.github.kmbisset89.worldweaver.domain.PlaceBattleMapItemUseCase
+import io.github.kmbisset89.worldweaver.domain.PlaceEncounterTokenUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateBattleMapFogUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateBattleMapTerrainUseCase
 import io.github.kmbisset89.worldweaver.domain.CampaignPerson
 import io.github.kmbisset89.worldweaver.domain.CombatState
 import io.github.kmbisset89.worldweaver.domain.CreateEncounterUseCase
@@ -50,7 +57,10 @@ import io.github.kmbisset89.worldweaver.domain.UpdateCampaignPersonDeathSavesUse
 import io.github.kmbisset89.worldweaver.domain.UpdateEncounterParticipantCombatUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateEncounterUseCase
 import io.github.kmbisset89.worldweaver.domain.WorldPerson
+import io.github.kmbisset89.worldweaver.ui.maps.BattleMapBoardOutcome
 import io.github.kmbisset89.worldweaver.ui.maps.BattleMapBoardSession
+import io.github.kmbisset89.worldweaver.ui.maps.BattleMapBoardSnapshot
+import io.github.kmbisset89.worldweaver.ui.maps.BattleMapBoardWork
 import ovh.plrapps.mapcompose.ui.state.MapState
 
 internal class EncountersViewModel(
@@ -72,6 +82,13 @@ internal class EncountersViewModel(
     private val rollEncounterInitiative: RollEncounterInitiativeUseCase,
     private val rollAllInitiative: RollAllEncounterInitiativeUseCase,
     private val updateDeathSaves: UpdateCampaignPersonDeathSavesUseCase,
+    private val calculateReachableCells: CalculateReachableCellsUseCase,
+    private val calculateGridDistance: CalculateGridDistanceUseCase,
+    private val placeEncounterToken: PlaceEncounterTokenUseCase,
+    private val updateBattleMapFog: UpdateBattleMapFogUseCase,
+    private val updateBattleMapTerrain: UpdateBattleMapTerrainUseCase,
+    private val placeBattleMapItem: PlaceBattleMapItemUseCase,
+    private val deleteBattleMapItem: DeleteBattleMapItemUseCase,
     private val boardSession: BattleMapBoardSession,
 ) {
     private val _state = MutableStateFlow<EncountersViewState>(EncountersViewState.Loading)
@@ -149,8 +166,7 @@ internal class EncountersViewModel(
             }
             is EncountersInteraction.ParticipantSelected -> {
                 selectedParticipantId = interaction.participantId
-                boardSession.selectParticipant(interaction.participantId)
-                refreshRunning()
+                runBoard { boardSession.selectParticipant(interaction.participantId) }
             }
             is EncountersInteraction.SheetSelected -> {
                 _effects.tryEmit(
@@ -309,81 +325,62 @@ internal class EncountersViewModel(
             EncountersInteraction.EditorSaved -> saveSetup()
             EncountersInteraction.EditorDismissed -> updateSetup { null }
             is EncountersInteraction.MapCellSelected -> {
-                boardSession.selectCell(interaction.x, interaction.y)
-                refreshRunning()
+                runBoard { boardSession.selectCell(interaction.x, interaction.y) }
             }
             is EncountersInteraction.TokenSelected -> {
                 selectedParticipantId = interaction.participantId
-                boardSession.selectToken(interaction.participantId)
-                refreshRunning()
+                runBoard { boardSession.selectToken(interaction.participantId) }
             }
             is EncountersInteraction.MovementSpeedChanged -> {
-                boardSession.changeMovementSpeed(interaction.speed)
-                refreshRunning()
+                runBoard { boardSession.changeMovementSpeed(interaction.speed) }
             }
             EncountersInteraction.MovementCleared -> {
-                boardSession.clearMovement()
-                refreshRunning()
+                runBoard { boardSession.clearMovement() }
             }
             EncountersInteraction.BoardToolCleared -> {
-                boardSession.clearBoardTools()
-                refreshRunning()
+                runBoard { boardSession.clearBoardTools() }
             }
             EncountersInteraction.MeasureToggled -> {
-                boardSession.toggleMeasure()
-                refreshRunning()
+                runBoard { boardSession.toggleMeasure() }
             }
             EncountersInteraction.MeasureCleared -> {
-                boardSession.clearMeasure()
-                refreshRunning()
+                runBoard { boardSession.clearMeasure() }
             }
             EncountersInteraction.FogToggled -> {
-                boardSession.toggleFogPaint()
-                refreshRunning()
+                runBoard { boardSession.toggleFogPaint() }
             }
             EncountersInteraction.FogRevealBrushSelected -> {
-                boardSession.setFogRevealBrush(true)
-                refreshRunning()
+                runBoard { boardSession.setFogRevealBrush(true) }
             }
             EncountersInteraction.FogHideBrushSelected -> {
-                boardSession.setFogRevealBrush(false)
-                refreshRunning()
+                runBoard { boardSession.setFogRevealBrush(false) }
             }
             EncountersInteraction.FogRevealAllSelected -> {
-                boardSession.applyFogEdit(BattleMapFogEdit.RevealAll)
-                refreshRunning()
+                runBoard { boardSession.applyFogEdit(BattleMapFogEdit.RevealAll) }
             }
             EncountersInteraction.FogHideAllSelected -> {
-                boardSession.applyFogEdit(BattleMapFogEdit.HideAll)
-                refreshRunning()
+                runBoard { boardSession.applyFogEdit(BattleMapFogEdit.HideAll) }
             }
             is EncountersInteraction.TerrainPaintSelected -> {
-                boardSession.setTerrainPaint(interaction.kind)
-                refreshRunning()
+                runBoard { boardSession.setTerrainPaint(interaction.kind) }
             }
             EncountersInteraction.ItemDropToggled -> {
-                boardSession.toggleItemDrop()
-                refreshRunning()
+                runBoard { boardSession.toggleItemDrop() }
             }
             is EncountersInteraction.ItemNameChanged -> {
-                boardSession.changeItemName(interaction.name)
-                refreshRunning()
+                runBoard { boardSession.changeItemName(interaction.name) }
             }
             is EncountersInteraction.ItemSelected -> {
-                boardSession.selectItem(interaction.itemId)
-                refreshRunning()
+                runBoard { boardSession.selectItem(interaction.itemId) }
             }
             EncountersInteraction.ItemRemoved -> {
-                boardSession.removeSelectedItem()
-                refreshRunning()
+                runBoard { boardSession.removeSelectedItem() }
             }
             EncountersInteraction.PlayerViewSelected -> {
-                boardSession.openPlayerView(currentTurnWalkSpeed())
-                refreshRunning()
+                runBoard { boardSession.openPlayerView(currentTurnWalkSpeed()) }
             }
             EncountersInteraction.PlayerViewClosed -> {
-                boardSession.closePlayerView()
-                refreshRunning()
+                runBoard { boardSession.closePlayerView() }
             }
         }
     }
@@ -525,6 +522,87 @@ internal class EncountersViewModel(
         showRunning(encounter, pendingEndFrom(_state.value))
     }
 
+    private fun runBoard(transform: () -> BattleMapBoardOutcome) {
+        fulfillBoardWork(transform())
+        refreshRunning()
+    }
+
+    private fun fulfillBoardWork(outcome: BattleMapBoardOutcome): BattleMapBoardSnapshot {
+        return when (val work = outcome.work) {
+            is BattleMapBoardWork.UpdateFog -> {
+                appScope.scope.launch {
+                    updateBattleMapFog(work.mapId, work.edit)
+                }
+                outcome.snapshot
+            }
+            is BattleMapBoardWork.UpdateTerrain -> {
+                appScope.scope.launch {
+                    updateBattleMapTerrain(work.mapId, work.edit)
+                }
+                outcome.snapshot
+            }
+            is BattleMapBoardWork.PlaceItem -> {
+                appScope.scope.launch {
+                    val result = placeBattleMapItem(work.mapId, work.name, work.cell)
+                    if (result is PlaceBattleMapItemUseCase.Result.Placed) {
+                        boardSession.selectPlacedItem(result.item.id)
+                        refreshRunning()
+                    }
+                }
+                outcome.snapshot
+            }
+            is BattleMapBoardWork.PlaceToken -> {
+                appScope.scope.launch {
+                    val result = placeEncounterToken(
+                        encounterId = work.encounterId,
+                        participantId = work.participantId,
+                        cell = work.cell,
+                        columns = work.columns,
+                        rows = work.rows,
+                        span = work.span,
+                    )
+                    if (result is PlaceEncounterTokenUseCase.Result.Placed) {
+                        fulfillBoardWork(boardSession.tokenPlaced(result.participant))
+                        refreshRunning()
+                    }
+                }
+                outcome.snapshot
+            }
+            is BattleMapBoardWork.DeleteItem -> {
+                appScope.scope.launch {
+                    deleteBattleMapItem(work.mapId, work.itemId)
+                    boardSession.clearSelectedItem()
+                    refreshRunning()
+                }
+                outcome.snapshot
+            }
+            is BattleMapBoardWork.ComputeReachableCells -> {
+                boardSession.applyReachableCells(
+                    calculateReachableCells(
+                        origin = work.origin,
+                        walkSpeed = work.walkSpeed,
+                        unitsPerTile = work.unitsPerTile,
+                        columns = work.columns,
+                        rows = work.rows,
+                        blockedCells = work.blockedCells,
+                        difficultCells = work.difficultCells,
+                        occupiedCells = work.occupiedCells,
+                    ),
+                )
+            }
+            is BattleMapBoardWork.ComputeMeasureDistance -> {
+                boardSession.applyMeasureDistance(
+                    calculateGridDistance(
+                        from = work.from,
+                        to = work.to,
+                        unitsPerTile = work.unitsPerTile,
+                    ),
+                )
+            }
+            null -> outcome.snapshot
+        }
+    }
+
     private fun contentState(
         selected: Encounter?,
         setup: EncountersViewState.EncounterSetupState?,
@@ -576,11 +654,13 @@ internal class EncountersViewModel(
         val situations = battleMap?.id?.let { mapId ->
             latestSituations.filter { it.battleMapId == mapId }.sortedBy { it.sortIndex }
         }.orEmpty()
-        val board = boardSession.sync(
-            battleMap = battleMap,
-            situations = situations,
-            encounter = encounter,
-            people = latestPeople,
+        val board = fulfillBoardWork(
+            boardSession.sync(
+                battleMap = battleMap,
+                situations = situations,
+                encounter = encounter,
+                people = latestPeople,
+            ),
         )
         if (board.selectedTokenParticipantId != null) {
             selectedParticipantId = board.selectedTokenParticipantId

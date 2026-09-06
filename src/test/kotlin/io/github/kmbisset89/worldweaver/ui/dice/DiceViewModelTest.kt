@@ -4,6 +4,8 @@ import io.github.kmbisset89.worldweaver.domain.DiceRollSource
 import io.github.kmbisset89.worldweaver.domain.DiceRoller
 import io.github.kmbisset89.worldweaver.domain.DieSides
 import io.github.kmbisset89.worldweaver.domain.FakeActiveContextRepository
+import io.github.kmbisset89.worldweaver.domain.GetActiveContextUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextUseCase
 import io.github.kmbisset89.worldweaver.domain.RollMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -55,7 +57,8 @@ internal class DiceViewModelTest {
             initialColorStyle = DiceColorStyle.BONE,
             persistColorStyle = { },
             persistAlwaysOnTop = { },
-            activeContextRepository = context,
+            observeActiveContext = ObserveActiveContextUseCase(context),
+            getActiveContext = GetActiveContextUseCase(context),
         )
 
         viewModel.onInteraction(DiceInteraction.RollSelected)

@@ -1,7 +1,5 @@
-package io.github.kmbisset89.worldweaver.ui.settings
+package io.github.kmbisset89.worldweaver.domain
 
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeSkin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,16 +45,12 @@ internal class ShellSettingsStore(
 
     private fun readThemeMode(): ThemeMode {
         val stored = preferences.get(KEY_THEME_MODE, ThemeMode.SYSTEM.name)
-        return parseThemeMode(stored)
+        return ThemeMode.entries.firstOrNull { it.name == stored } ?: ThemeMode.SYSTEM
     }
 
     private fun readThemeSkin(): ThemeSkin {
         val stored = preferences.get(KEY_THEME_SKIN, ThemeSkin.FANTASY.name)
         return ThemeSkin.entries.firstOrNull { it.name == stored } ?: ThemeSkin.FANTASY
-    }
-
-    private fun parseThemeMode(raw: String): ThemeMode {
-        return ThemeMode.entries.firstOrNull { it.name == raw } ?: ThemeMode.SYSTEM
     }
 
     private fun readNonBlank(key: String, default: String): String {

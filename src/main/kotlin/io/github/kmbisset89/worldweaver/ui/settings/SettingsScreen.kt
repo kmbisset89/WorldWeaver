@@ -34,8 +34,8 @@ import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeSkin
+import io.github.kmbisset89.worldweaver.domain.ThemeMode
+import io.github.kmbisset89.worldweaver.domain.ThemeSkin
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File

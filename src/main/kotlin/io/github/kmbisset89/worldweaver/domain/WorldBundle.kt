@@ -20,6 +20,7 @@ internal data class WorldBundle(
     val locationOverlays: List<LocationOverlay>,
     val quests: List<Quest>,
     val sessions: List<Session>,
+    val sessionClocks: List<SessionClock> = emptyList(),
     val plotThreads: List<PlotThread>,
     val referenceDocs: List<ReferenceDoc>,
     val battleMaps: List<BattleMap>,
@@ -78,7 +79,12 @@ internal data class WorldBundle(
             campaignPeople = campaignPeople.map(CampaignPersonRecord::from),
             locationOverlays = locationOverlays.map(LocationOverlayRecord::from),
             quests = quests.map(QuestRecord::from),
-            sessions = sessions.map(SessionRecord::from),
+            sessions = sessions.map { session ->
+                SessionRecord.from(
+                    session = session,
+                    clocks = sessionClocks.filter { clock -> clock.sessionId == session.id },
+                )
+            },
             plotThreads = plotThreads.map(PlotThreadRecord::from),
             referenceDocs = referenceDocs.map(ReferenceDocRecord::from),
             battleMaps = battleMaps.map(BattleMapRecord::from),
@@ -122,6 +128,9 @@ internal data class WorldBundle(
                 locationOverlays = payload.locationOverlays.map { it.toDomain() },
                 quests = payload.quests.map { it.toDomain() },
                 sessions = payload.sessions.map { it.toDomain() },
+                sessionClocks = payload.sessions.flatMap { record ->
+                    record.clocks.map { clock -> clock.toDomain(record.id) }
+                },
                 plotThreads = payload.plotThreads.map { it.toDomain() },
                 referenceDocs = payload.referenceDocs.map { it.toDomain() },
                 battleMaps = payload.battleMaps.map { it.toDomain() },
@@ -1273,6 +1282,8 @@ internal data class WorldBundle(
         val scenes: List<SessionSceneRecord>,
         val marchOrder: List<MarchOrderEntryRecord>,
         val recap: String = "",
+        val scratchNotes: String = "",
+        val clocks: List<SessionClockRecord> = emptyList(),
         val createdAtEpochMillis: Long,
         val updatedAtEpochMillis: Long,
     ) {
@@ -1286,13 +1297,14 @@ internal data class WorldBundle(
                 scenes = scenes.map { it.toDomain() },
                 marchOrder = marchOrder.map { it.toDomain() },
                 recap = recap,
+                scratchNotes = scratchNotes,
                 createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
                 updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
             )
         }
 
         companion object {
-            fun from(session: Session): SessionRecord {
+            fun from(session: Session, clocks: List<SessionClock> = emptyList()): SessionRecord {
                 return SessionRecord(
                     id = session.id,
                     campaignId = session.campaignId,
@@ -1304,6 +1316,8 @@ internal data class WorldBundle(
                     scenes = session.scenes.map(SessionSceneRecord::from),
                     marchOrder = session.marchOrder.map(MarchOrderEntryRecord::from),
                     recap = session.recap,
+                    scratchNotes = session.scratchNotes,
+                    clocks = clocks.map(SessionClockRecord::from),
                     createdAtEpochMillis = session.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = session.updatedAt.toEpochMilli(),
                 )
@@ -1331,6 +1345,38 @@ internal data class WorldBundle(
         companion object {
             fun from(scene: SessionScene): SessionSceneRecord {
                 return SessionSceneRecord(id = scene.id, title = scene.title, notes = scene.notes)
+            }
+        }
+    }
+
+    @Serializable
+    data class SessionClockRecord(
+        val id: String,
+        val label: String,
+        val segmentCount: Int,
+        val filledCount: Int,
+        val sortIndex: Int,
+    ) {
+        fun toDomain(sessionId: String): SessionClock {
+            return SessionClock(
+                id = id,
+                sessionId = sessionId,
+                label = label,
+                segmentCount = segmentCount,
+                filledCount = filledCount,
+                sortIndex = sortIndex,
+            )
+        }
+
+        companion object {
+            fun from(clock: SessionClock): SessionClockRecord {
+                return SessionClockRecord(
+                    id = clock.id,
+                    label = clock.label,
+                    segmentCount = clock.segmentCount,
+                    filledCount = clock.filledCount,
+                    sortIndex = clock.sortIndex,
+                )
             }
         }
     }

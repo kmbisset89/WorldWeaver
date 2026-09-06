@@ -6,12 +6,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
-import io.github.kmbisset89.worldweaver.domain.ActiveContextRepository
 import io.github.kmbisset89.worldweaver.domain.DiceNotationParser
 import io.github.kmbisset89.worldweaver.domain.DiceRollRequest
 import io.github.kmbisset89.worldweaver.domain.DiceRollResult
 import io.github.kmbisset89.worldweaver.domain.DiceRoller
 import io.github.kmbisset89.worldweaver.domain.DieSides
+import io.github.kmbisset89.worldweaver.domain.GetActiveContextUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextUseCase
 import io.github.kmbisset89.worldweaver.domain.RollMode
 
 internal class DiceViewModel(
@@ -21,7 +22,8 @@ internal class DiceViewModel(
     private val persistColorStyle: (DiceColorStyle) -> Unit = { DiceColorStyle.save(it) },
     initialAlwaysOnTop: Boolean = DiceAlwaysOnTopStore.load(),
     private val persistAlwaysOnTop: (Boolean) -> Unit = { DiceAlwaysOnTopStore.save(it) },
-    private val activeContextRepository: ActiveContextRepository? = null,
+    private val observeActiveContext: ObserveActiveContextUseCase? = null,
+    private val getActiveContext: GetActiveContextUseCase? = null,
     appScope: AppCoroutineScope? = null,
 ) {
     private val _state = MutableStateFlow<DiceViewState>(
@@ -36,10 +38,10 @@ internal class DiceViewModel(
     private val lastResultBySession = mutableMapOf<String, DiceRollResult?>()
 
     init {
-        val repository = activeContextRepository
-        if (repository != null && appScope != null) {
+        val observe = observeActiveContext
+        if (observe != null && appScope != null) {
             appScope.scope.launch {
-                repository.observe().collect {
+                observe().collect {
                     showSessionHistory()
                 }
             }
@@ -247,7 +249,7 @@ internal class DiceViewModel(
     }
 
     private fun sessionKey(): String {
-        return activeContextRepository?.get()?.activeSessionId.orEmpty()
+        return getActiveContext?.invoke()?.activeSessionId.orEmpty()
     }
 
     private fun clearHistory() {

@@ -31,6 +31,7 @@ internal class AtmosphereSettingsStoreTest {
         store.setSelectedHueLightIds(listOf("light-1"))
         store.setSelectedGoveeDeviceIds(listOf("AA:BB"))
         store.setAlwaysOnTop(true)
+        store.setLookTransitionMs(1_200)
 
         val reloaded = AtmosphereSettingsStore(preferences).settings.value
         assertEquals("http://ha.local:8123", reloaded.connection.baseUrl)
@@ -47,6 +48,7 @@ internal class AtmosphereSettingsStoreTest {
         assertEquals(listOf("light-1"), reloaded.selectedHueLightIds)
         assertEquals(listOf("AA:BB"), reloaded.selectedGoveeDeviceIds)
         assertEquals(true, reloaded.isAlwaysOnTop)
+        assertEquals(1_200, reloaded.lookTransitionMs)
     }
 
     @Test
@@ -60,6 +62,7 @@ internal class AtmosphereSettingsStoreTest {
         assertEquals(emptyList(), settings.selectedHueLightIds)
         assertEquals(emptyList(), settings.selectedGoveeDeviceIds)
         assertFalse(settings.isAlwaysOnTop)
+        assertEquals(LightingTransitionCalculator.DEFAULT_DURATION_MS, settings.lookTransitionMs)
     }
 
     private companion object {

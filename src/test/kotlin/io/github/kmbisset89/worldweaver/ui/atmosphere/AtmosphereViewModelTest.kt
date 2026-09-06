@@ -8,6 +8,8 @@ import kotlinx.coroutines.withTimeout
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.ActivateAtmosphereSceneUseCase
 import io.github.kmbisset89.worldweaver.domain.ApplyAtmosphereLookUseCase
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingEffect
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingLoop
 import io.github.kmbisset89.worldweaver.domain.AtmosphereMood
 import io.github.kmbisset89.worldweaver.domain.AtmosphereScene
 import io.github.kmbisset89.worldweaver.domain.AtmosphereSettingsStore
@@ -35,7 +37,10 @@ import io.github.kmbisset89.worldweaver.domain.HueScene
 import io.github.kmbisset89.worldweaver.domain.ListHomeAssistantScenesUseCase
 import io.github.kmbisset89.worldweaver.domain.ListHueLightsUseCase
 import io.github.kmbisset89.worldweaver.domain.ListHueScenesUseCase
+import io.github.kmbisset89.worldweaver.domain.LightingTransitionCalculator
 import io.github.kmbisset89.worldweaver.domain.PairHueBridgeUseCase
+import io.github.kmbisset89.worldweaver.domain.PlayAtmosphereLightingEffectUseCase
+import io.github.kmbisset89.worldweaver.domain.PlayAtmosphereLightingLoopUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHomeAssistantConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHueConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.ScanGoveeDevicesUseCase
@@ -432,7 +437,99 @@ internal class AtmosphereViewModelTest {
         assertEquals(163, hueClient.lastColorGreen)
         assertEquals(90, hueClient.lastColorBlue)
         assertEquals(40, hueClient.lastColorBrightness)
+        assertEquals(LightingTransitionCalculator.DEFAULT_DURATION_MS, hueClient.lastColorTransitionDurationMs)
         assertEquals("#C4A35A", content(viewModel).draftLookColorHex)
+    }
+
+    @Test
+    fun transitionDurationIsPersisted() {
+        val viewModel = viewModel()
+        viewModel.onInteraction(AtmosphereInteraction.LookTransitionChanged(2_500))
+        assertEquals(2_500, content(viewModel).draftLookTransitionMs)
+        assertEquals(2_500, AtmosphereSettingsStore(preferences).settings.value.lookTransitionMs)
+    }
+
+    @Test
+    fun lightningEffectFlashesThenRestoresTheCurrentLook() {
+        hueClient.lightListResult = HueClient.LightListResult.Lights(
+            listOf(HueLight(id = "light-1", name = "Table lamp")),
+        )
+        val store = AtmosphereSettingsStore(preferences)
+        store.setHueConnection(HueConnection("192.168.1.40", "hue-key"))
+        val viewModel = viewModel(store)
+
+        viewModel.onInteraction(AtmosphereInteraction.HueLightsRefreshSelected)
+        awaitContent(viewModel) { it.hueLights.isNotEmpty() && !it.isLoadingHueLights }
+        viewModel.onInteraction(AtmosphereInteraction.HueLightToggled("light-1"))
+        viewModel.onInteraction(
+            AtmosphereInteraction.LookPresetSelected(
+                colorHex = "#E39B5A",
+                brightness = 55,
+                powerOn = true,
+            ),
+        )
+        awaitAppliedColor(hueClient)
+        hueClient.appliedColors = emptyList()
+        viewModel.onInteraction(
+            AtmosphereInteraction.LightingEffectSelected(AtmosphereLightingEffect.Lightning),
+        )
+
+        awaitContent(viewModel) { it.playingEffect == null && hueClient.appliedColors.size > 2 }
+        assertEquals(255, hueClient.appliedColors.first().red)
+        assertEquals(227, hueClient.appliedColors.last().red)
+        assertEquals(155, hueClient.appliedColors.last().green)
+        assertEquals(90, hueClient.appliedColors.last().blue)
+        assertNull(content(viewModel).playingEffect)
+    }
+
+    @Test
+    fun fireLoopOscillatesUntilStopped() {
+        hueClient.lightListResult = HueClient.LightListResult.Lights(
+            listOf(HueLight(id = "light-1", name = "Table lamp")),
+        )
+        val store = AtmosphereSettingsStore(preferences)
+        store.setHueConnection(HueConnection("192.168.1.40", "hue-key"))
+        val viewModel = viewModel(store)
+
+        viewModel.onInteraction(AtmosphereInteraction.HueLightsRefreshSelected)
+        awaitContent(viewModel) { it.hueLights.isNotEmpty() && !it.isLoadingHueLights }
+        viewModel.onInteraction(AtmosphereInteraction.HueLightToggled("light-1"))
+        viewModel.onInteraction(
+            AtmosphereInteraction.LookPresetSelected(
+                colorHex = "#E39B5A",
+                brightness = 55,
+                powerOn = true,
+            ),
+        )
+        awaitAppliedColor(hueClient)
+        hueClient.appliedColors = emptyList()
+        viewModel.onInteraction(
+            AtmosphereInteraction.LightingLoopSelected(AtmosphereLightingLoop.Fire),
+        )
+
+        runBlocking {
+            withTimeout(3_000) {
+                while (hueClient.appliedColors.size < 2) {
+                    delay(10)
+                }
+            }
+        }
+        assertEquals(AtmosphereLightingLoop.Fire, content(viewModel).playingLoop)
+        viewModel.onInteraction(
+            AtmosphereInteraction.LightingLoopSelected(AtmosphereLightingLoop.Fire),
+        )
+        awaitContent(viewModel) { it.playingLoop == null }
+        runBlocking {
+            withTimeout(3_000) {
+                while (hueClient.lastColorRed != 227 || hueClient.lastColorGreen != 155) {
+                    delay(10)
+                }
+            }
+        }
+        assertNull(content(viewModel).playingLoop)
+        assertEquals(227, hueClient.lastColorRed)
+        assertEquals(155, hueClient.lastColorGreen)
+        assertEquals(90, hueClient.lastColorBlue)
     }
 
     @Test
@@ -464,6 +561,7 @@ internal class AtmosphereViewModelTest {
     ): AtmosphereViewModel {
         val parser = HomeAssistantConnectionParser()
         val hueParser = HueBridgeHostParser()
+        val applyLook = ApplyAtmosphereLookUseCase(store, hueClient, goveeClient)
         return AtmosphereViewModel(
             store = store,
             saveConnection = SaveHomeAssistantConnectionUseCase(parser, store),
@@ -484,9 +582,11 @@ internal class AtmosphereViewModelTest {
                 store,
                 client,
                 hueClient,
-                ApplyAtmosphereLookUseCase(store, hueClient, goveeClient),
+                applyLook,
             ),
-            applyLook = ApplyAtmosphereLookUseCase(store, hueClient, goveeClient),
+            applyLook = applyLook,
+            playEffect = PlayAtmosphereLightingEffectUseCase(applyLook),
+            playLoop = PlayAtmosphereLightingLoopUseCase(applyLook),
             appScope = scope,
         )
     }

@@ -1,5 +1,7 @@
 package io.github.kmbisset89.worldweaver.ui.atmosphere
 
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingEffect
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingLoop
 import io.github.kmbisset89.worldweaver.domain.AtmosphereMood
 import io.github.kmbisset89.worldweaver.domain.AtmosphereScene
 import io.github.kmbisset89.worldweaver.domain.GoveeDevice
@@ -35,6 +37,9 @@ internal sealed class AtmosphereViewState {
         val draftLookPowerOn: Boolean,
         val draftLookBrightness: String,
         val draftLookColorHex: String,
+        val draftLookTransitionMs: Int,
+        val playingEffect: AtmosphereLightingEffect?,
+        val playingLoop: AtmosphereLightingLoop?,
         val connectionCheck: ConnectionCheck,
         val hueCheck: ConnectionCheck,
         val goveeMessage: String?,

@@ -1,9 +1,6 @@
 package io.github.kmbisset89.worldweaver.domain
 
-import io.github.kmbisset89.worldweaver.ui.dice.DiceColorStyle
-import io.github.kmbisset89.worldweaver.ui.settings.ShellSettingsStore
 import java.io.File
-import java.util.prefs.Preferences
 
 internal class ExportAppBackupUseCase(
     private val dataDirectory: WorldWeaverDataDirectory,
@@ -13,7 +10,7 @@ internal class ExportAppBackupUseCase(
     private val shellSettingsStore: ShellSettingsStore,
     private val atmosphereSettingsStore: AtmosphereSettingsStore,
     private val instantProvider: InstantProvider,
-    private val dicePreferences: Preferences = Preferences.userRoot(),
+    private val diceColorStyleStore: DiceColorStyleStore,
 ) {
     sealed interface Result {
         data object Written : Result
@@ -49,7 +46,7 @@ internal class ExportAppBackupUseCase(
                     themeMode = settings.themeMode.name,
                     themeSkin = settings.themeSkin.name,
                     navExpanded = settings.navExpanded,
-                    diceColorStyle = DiceColorStyle.load(dicePreferences).name,
+                    diceColorStyle = diceColorStyleStore.loadName(),
                     homeAssistantBaseUrl = atmosphere.connection.baseUrl,
                     homeAssistantToken = atmosphere.connection.token,
                     hueBridgeHost = atmosphere.hue.bridgeHost,
@@ -61,6 +58,7 @@ internal class ExportAppBackupUseCase(
                     atmosphereMoods = atmosphere.moods,
                     atmosphereSelectedHueLightIds = atmosphere.selectedHueLightIds,
                     atmosphereSelectedGoveeDeviceIds = atmosphere.selectedGoveeDeviceIds,
+                    atmosphereLookTransitionMs = atmosphere.lookTransitionMs,
                 ),
                 databaseFile = snapshotDb,
                 avatarsDir = dataDirectory.avatarsDir,

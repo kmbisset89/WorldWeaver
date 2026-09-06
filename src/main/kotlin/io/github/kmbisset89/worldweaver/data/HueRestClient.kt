@@ -163,12 +163,14 @@ internal class HueRestClient(
         red: Int,
         green: Int,
         blue: Int,
+        transitionDurationMs: Int,
     ): HueClient.ActivateResult {
         val commands = clipV2LightColorCommandTransformer.transform(
             lightIds = lightIds,
             powerOn = powerOn,
             brightness = brightness,
             xy = rgbXyTransformer.transform(red, green, blue),
+            transitionDurationMs = transitionDurationMs,
         )
         if (commands.isEmpty()) {
             return HueClient.ActivateResult.Failed("Select Hue lights for that look")

@@ -19,8 +19,8 @@ import io.github.kmbisset89.worldweaver.domain.ObserveDashboardCountsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldsUseCase
 import io.github.kmbisset89.worldweaver.domain.SetActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ShellSettingsStore
 import io.github.kmbisset89.worldweaver.domain.World
-import io.github.kmbisset89.worldweaver.ui.settings.ShellSettingsStore
 
 internal class HomeViewModel(
     private val shellSettingsStore: ShellSettingsStore,

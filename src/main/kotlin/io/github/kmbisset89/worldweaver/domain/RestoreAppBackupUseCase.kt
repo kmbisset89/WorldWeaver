@@ -1,11 +1,6 @@
 package io.github.kmbisset89.worldweaver.domain
 
-import io.github.kmbisset89.worldweaver.ui.dice.DiceColorStyle
-import io.github.kmbisset89.worldweaver.ui.settings.ShellSettingsStore
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeSkin
 import java.io.File
-import java.util.prefs.Preferences
 
 internal class RestoreAppBackupUseCase(
     private val dataDirectory: WorldWeaverDataDirectory,
@@ -14,7 +9,7 @@ internal class RestoreAppBackupUseCase(
     private val activeContextRepository: ActiveContextRepository,
     private val shellSettingsStore: ShellSettingsStore,
     private val atmosphereSettingsStore: AtmosphereSettingsStore,
-    private val dicePreferences: Preferences = Preferences.userRoot(),
+    private val diceColorStyleStore: DiceColorStyleStore,
 ) {
     sealed interface Result {
         data object Restored : Result
@@ -88,9 +83,7 @@ internal class RestoreAppBackupUseCase(
             displayName = prefs.displayName,
             email = prefs.email,
         )
-        val diceStyle = DiceColorStyle.entries.firstOrNull { it.name == prefs.diceColorStyle }
-            ?: DiceColorStyle.BONE
-        DiceColorStyle.save(diceStyle, dicePreferences)
+        diceColorStyleStore.saveName(prefs.diceColorStyle)
         atmosphereSettingsStore.replaceAll(
             AtmosphereSettings(
                 connection = HomeAssistantConnection(
@@ -108,6 +101,10 @@ internal class RestoreAppBackupUseCase(
                 selectedHueLightIds = prefs.atmosphereSelectedHueLightIds,
                 selectedGoveeDeviceIds = prefs.atmosphereSelectedGoveeDeviceIds,
                 isAlwaysOnTop = prefs.atmosphereAlwaysOnTop,
+                lookTransitionMs = prefs.atmosphereLookTransitionMs.coerceIn(
+                    0,
+                    LightingTransitionCalculator.MAX_DURATION_MS,
+                ),
             ),
         )
     }

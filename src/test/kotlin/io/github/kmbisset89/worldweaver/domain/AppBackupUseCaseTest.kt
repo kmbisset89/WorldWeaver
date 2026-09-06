@@ -1,10 +1,6 @@
 package io.github.kmbisset89.worldweaver.domain
 
 import kotlinx.coroutines.test.runTest
-import io.github.kmbisset89.worldweaver.ui.dice.DiceColorStyle
-import io.github.kmbisset89.worldweaver.ui.settings.ShellSettingsStore
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeSkin
 import java.io.File
 import java.nio.file.Files
 import java.time.Instant
@@ -52,7 +48,7 @@ internal class AppBackupUseCaseTest {
         harness.settings.setThemeSkin(ThemeSkin.GOTHIC)
         harness.settings.setNavExpanded(false)
         harness.settings.setProfile("Ada", "ada@local")
-        DiceColorStyle.save(DiceColorStyle.ONYX, dicePreferences)
+        DiceColorStyleStore(dicePreferences).saveName("ONYX")
         harness.atmosphere.replaceAll(
             AtmosphereSettings(
                 connection = HomeAssistantConnection("http://ha.local:8123", "secret-token"),
@@ -66,6 +62,7 @@ internal class AppBackupUseCaseTest {
                 selectedHueLightIds = listOf("light-1"),
                 selectedGoveeDeviceIds = listOf("AA:BB"),
                 isAlwaysOnTop = true,
+                lookTransitionMs = 1_200,
             ),
         )
         val dest = File(tempDir, "app.wwbackup")
@@ -81,7 +78,7 @@ internal class AppBackupUseCaseTest {
         harness.context.setActiveWorldId("other-world")
         harness.settings.setProfile("Other", "other@local")
         harness.settings.setThemeMode(ThemeMode.LIGHT)
-        DiceColorStyle.save(DiceColorStyle.BONE, dicePreferences)
+        DiceColorStyleStore(dicePreferences).saveName("BONE")
         harness.atmosphere.replaceAll(
             AtmosphereSettings(
                 connection = HomeAssistantConnection("", ""),
@@ -117,7 +114,7 @@ internal class AppBackupUseCaseTest {
         assertEquals(ThemeMode.DARK, harness.settings.settings.value.themeMode)
         assertEquals(ThemeSkin.GOTHIC, harness.settings.settings.value.themeSkin)
         assertEquals(false, harness.settings.settings.value.navExpanded)
-        assertEquals(DiceColorStyle.ONYX, DiceColorStyle.load(dicePreferences))
+        assertEquals("ONYX", DiceColorStyleStore(dicePreferences).loadName())
         assertEquals("http://ha.local:8123", harness.atmosphere.settings.value.connection.baseUrl)
         assertEquals("secret-token", harness.atmosphere.settings.value.connection.token)
         assertEquals("192.168.1.40", harness.atmosphere.settings.value.hue.bridgeHost)
@@ -131,6 +128,7 @@ internal class AppBackupUseCaseTest {
             harness.atmosphere.settings.value.hueLights,
         )
         assertEquals(true, harness.atmosphere.settings.value.isAlwaysOnTop)
+        assertEquals(1_200, harness.atmosphere.settings.value.lookTransitionMs)
         assertEquals(
             listOf(AtmosphereScene("s1", "Tavern", "scene.tavern", 0)),
             harness.atmosphere.settings.value.scenes,
@@ -194,7 +192,7 @@ internal class AppBackupUseCaseTest {
                 shellSettingsStore = settings,
                 atmosphereSettingsStore = atmosphere,
                 instantProvider = instantProvider,
-                dicePreferences = dicePreferences,
+                diceColorStyleStore = DiceColorStyleStore(dicePreferences),
             )(dest)
         }
 
@@ -206,7 +204,7 @@ internal class AppBackupUseCaseTest {
                 activeContextRepository = context,
                 shellSettingsStore = settings,
                 atmosphereSettingsStore = atmosphere,
-                dicePreferences = dicePreferences,
+                diceColorStyleStore = DiceColorStyleStore(dicePreferences),
             )(source)
         }
     }

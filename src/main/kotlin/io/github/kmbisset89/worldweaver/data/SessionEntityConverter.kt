@@ -20,6 +20,7 @@ internal class SessionEntityConverter {
             notes = entity.notes,
             inWorldDate = toInWorldDate(entity),
             recap = entity.recap,
+            scratchNotes = entity.scratchNotes,
             scenes = scenes,
             marchOrder = marchOrder,
             createdAt = Instant.ofEpochMilli(entity.createdAtEpochMillis),
@@ -37,6 +38,7 @@ internal class SessionEntityConverter {
             inWorldMonthId = session.inWorldDate?.monthId,
             inWorldDay = session.inWorldDate?.day,
             recap = session.recap,
+            scratchNotes = session.scratchNotes,
             createdAtEpochMillis = session.createdAt.toEpochMilli(),
             updatedAtEpochMillis = session.updatedAt.toEpochMilli(),
         )

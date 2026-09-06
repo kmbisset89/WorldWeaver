@@ -97,6 +97,7 @@ internal class LargeWorldBundleFactoryTest {
         val overlays = FakeLocationOverlayRepository()
         val quests = FakeQuestRepository()
         val sessions = FakeSessionRepository()
+        val sessionClocks = FakeSessionClockRepository()
         val plotThreads = FakePlotThreadRepository()
         val referenceDocs = FakeReferenceDocRepository()
         val battleMaps = FakeBattleMapRepository()
@@ -133,6 +134,7 @@ internal class LargeWorldBundleFactoryTest {
             locationOverlayRepository = overlays,
             questRepository = quests,
             sessionRepository = sessions,
+            sessionClockRepository = sessionClocks,
             plotThreadRepository = plotThreads,
             referenceDocRepository = referenceDocs,
             battleMapRepository = battleMaps,

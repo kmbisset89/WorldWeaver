@@ -1097,6 +1097,31 @@ internal object WorldWeaverMigrations {
         }
     }
 
+    val MIGRATION_24_25 = object : Migration(24, 25) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "ALTER TABLE `sessions` ADD COLUMN `scratchNotes` TEXT NOT NULL DEFAULT ''"
+            )
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `session_clocks` (
+                    `id` TEXT NOT NULL,
+                    `sessionId` TEXT NOT NULL,
+                    `label` TEXT NOT NULL,
+                    `segmentCount` INTEGER NOT NULL,
+                    `filledCount` INTEGER NOT NULL,
+                    `sortIndex` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_session_clocks_sessionId` ON `session_clocks` (`sessionId`)"
+            )
+        }
+    }
+
     private val DEFAULT_MONTHS = listOf(
         "January" to 31,
         "February" to 28,

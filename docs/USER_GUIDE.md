@@ -18,7 +18,7 @@ World Weaver is a desktop app for preparing and running tabletop campaigns. Ever
 12. [Characters](#characters)
 13. [Quests](#quests)
 14. [Sessions](#sessions)
-15. [Tonight (run)](#tonight-run)
+15. [Tonight (session runner)](#tonight-session-runner)
 16. [Maps](#maps)
 17. [Encounters](#encounters)
 18. [Dice](#dice)
@@ -46,7 +46,7 @@ Most screens need an **active world**. Campaign-scoped screens (quests, sessions
 
 Create a world first, then a campaign inside it. You can keep several campaigns in one world (an ongoing game, an archived run, a completed chronicle).
 
-**World Map**, the **one-shot wizard**, and **Tonight** are not listed in the sidebar. Open them from Locations, Worlds/Home, and Home (**Continue tonight**) respectively.
+**World Map** and the **one-shot wizard** are not listed in the sidebar. Open them from Locations and Worlds/Home. **Tonight** is in the sidebar; Home **Continue tonight** also opens it.
 
 On a wide window, library screens keep a roster beside the selected item. On a narrower window the selected item fills the page; use the named control in the header to search, filter, and switch. Maps, Links, and the world map keep the canvas visible and move the list or inspector into that same control.
 
@@ -223,21 +223,31 @@ Typical fields and sections:
 
 Create with **New session**. Close-session tools help you write a recap before the next game. After you close a session, World Weaver offers **Award a party level** (milestone campaigns) or **Award party XP** (XP campaigns). Completing a quest offers the same prompt. Level-ups bump class or character level only; they do not fill in new features or spell slots.
 
-## Tonight (run)
+## Tonight (session runner)
 
-**Tonight** is the table dashboard. Open it from Home with **Continue tonight → Continue** after a session is active.
+**Tonight** is the table dashboard the GM keeps up during a session. Open it from the sidebar or from Home with **Continue tonight → Continue** after a session is active.
 
 You need an active world, campaign, and session. Empty states send you to the matching screen if something is missing.
+
+On a wide window Tonight is three columns. On a narrower window the same sections stack in one scroll.
 
 The run screen shows:
 
 - Session name, in-world date, calendar “today”, and any holiday or important day that falls on that date
+- Planned scenes
+- Progress clocks (2–12 segments) for story pressure; click a segment to fill or unfill
+- One countdown timer with 5 / 10 / 15 minute presets
+- **Record** — Pick a **microphone**, then **Mic** for table audio or **Camera** for video plus that mic with a live preview. The first Camera attempt asks the OS for access. If that is denied, **Allow camera** opens Camera privacy settings. **Open** plays the file in the OS player. Recordings stay on this computer with the session (`~/.worldweaver/recordings`); they are not included in world bundles or machine backups
+- Lookup for people, locations, and lore, with a read-only peek and **Open** to the full screen
+- Editable session notes and a separate scratch pad (scratch does not overwrite prep notes)
+- Recap (“what changed”) after you close a session
 - Party cards (HP and AC; click to open the sheet)
+- Atmosphere scenes, one-shot effects, and live loops in place, plus **Pop out** for the floating tray
 - Combat summary and **Open tracker** when an encounter is running
-- Objectives, party locations, scenes
-- Notes and recap editing
+- Objectives, party locations
+- Close-session notes
 
-Shortcuts: **Dice tray**, **Atmosphere**, **Encounters**, **Maps**, and **Player view** when the current encounter has a map.
+Shortcuts: **Dice tray**, **Encounters**, **Maps**, and **Player view** when the current encounter has a map.
 
 ## Maps
 
@@ -322,7 +332,7 @@ Hue talks to a bridge on your LAN. World Weaver uses the local Hue API, not the 
 2. Open **Atmosphere** and enter the bridge IP, or click **Find bridge**.
 3. Press the round **link button** on the bridge, then **Pair**.
 4. **Test**, then **Load Hue lights** and pick the lamps Atmosphere may change.
-5. Choose a **Look** for those lamps. Built-in moods (Warm, Campfire, Dawn, Forest, Dungeon, Night, Storm, Combat, Off), custom moods, the color picker, brightness slider, and power switch apply immediately to the selected lights. Name the current look and save it as a custom mood. You can also paste a hex color. **Or** **Load Hue scenes** and pick a Hue scene. Click a Hue scene again to clear it. Leave lights unselected only when you want a Hue scene to change every lamp in that scene.
+5. Choose a **Look** for those lamps. Built-in moods (Warm, Campfire, Dawn, Forest, Dungeon, Night, Storm, Combat, Off), custom moods, the color picker, brightness slider, and power switch apply to the selected lights. Set **Transition** to Instant, Soft, Slow, or Dramatic — Hue fades in the bulbs, and Govee is stepped in software so the change stays smooth. One-shot effects (Lightning, Critical strike, Fireball, Heal, Holy light, Poison, Darkness, Arcane burst) flash over the current look and restore it. Live effects (Fire, Water, Candle, Storm, Ice, Arcane, Forest, Lava) keep oscillating between colors until you tap them again, fire a one-shot, or change the look. Name the current look and save it as a custom mood. You can also paste a hex color. **Or** **Load Hue scenes** and pick a Hue scene. Click a Hue scene again to clear it. Leave lights unselected only when you want a Hue scene to change every lamp in that scene.
 6. Click a mapped scene in the tray to apply it. Clicking a different mapped scene switches those lights to that look.
 
 If pairing already happened, you can paste an existing application key and use the save icon (**Save**).
@@ -333,7 +343,7 @@ Govee uses LAN Control (UDP on the local network), not the Govee cloud.
 
 1. In the Govee app, enable **LAN Control** for each light you want at the table.
 2. On **Atmosphere**, click **Scan LAN**.
-3. Select the lights that should follow the next mapping. Color, brightness, and power come from **Look** (moods or the picker) and apply immediately to those lights.
+3. Select the lights that should follow the next mapping. Color, brightness, and power come from **Look** (moods or the picker) and follow the same transition as Hue.
 
 Govee has no local scene catalog. World Weaver stores the last scan so mappings can still find those lights later. If a light’s IP changes, scan again.
 
@@ -349,7 +359,7 @@ Give the table a short name, then attach any combination of:
 
 ### At the table
 
-**Pop out** opens a floating **Atmosphere** window. Named scenes, selected Hue and Govee lights, moods, and the color picker live in that tray. Turn on **Always on top** to keep it above other apps (the choice is remembered). Tonight’s **Atmosphere** button opens the same tray. Click a named scene to activate it, or use Look to set color and brightness on the selected lights.
+**Pop out** opens a floating **Atmosphere** window. Named scenes, selected Hue and Govee lights, moods, the color picker, transition, one-shot effects, and live looping effects live in that tray. Turn on **Always on top** to keep it above other apps (the choice is remembered). Tonight embeds the same scene and effect controls; **Pop out** on Tonight opens the floating tray. Click a named scene to activate it, use Look to set color and brightness on the selected lights, fire a one-shot effect when something happens at the table, or start a live loop such as Fire or Water.
 
 If the tray says you are not connected, connect Home Assistant, pair Hue, or scan Govee lights on the Atmosphere screen first.
 
@@ -395,7 +405,7 @@ Edit **Name** and **Email**, then the save icon (**Save profile**). This is disp
 
 ### Backup and restore
 
-**Export backup** writes a `.wwbackup` (default name like `worldweaver-YYYYMMDD.wwbackup`). The archive includes worlds, campaigns, maps, avatars, voice clips, imported SRD, appearance/profile, and this computer’s Home Assistant connection plus atmosphere scene mappings. A backup contains the Home Assistant access token.
+**Export backup** writes a `.wwbackup` (default name like `worldweaver-YYYYMMDD.wwbackup`). The archive includes worlds, campaigns, maps, avatars, voice clips, imported SRD, appearance/profile, and this computer’s Home Assistant connection plus atmosphere scene mappings. A backup contains the Home Assistant access token. Session recordings on Tonight are not included.
 
 **Restore backup** **replaces all World Weaver data on this computer**, then quits so you can reopen with the restored files. Confirm with **Restore and quit**. Export first if you might need the current machine’s data.
 
@@ -411,7 +421,8 @@ Character pickers start from bundled 5E lists. **Import bundled SRD** or **Impor
 | `.wwbackup` | Entire app data for this machine (**Settings**) |
 | `.uvtt` | One battle map for a virtual tabletop (**Maps → Export VTT**) |
 | `.png` | World maps and battle maps |
-| `.wav` | Voice clips on locations and people |
+| `.wav` | Voice clips on locations and people; Tonight mic recordings |
+| `.mp4` | Tonight camera recordings |
 | `.json` | SRD catalog import |
 
 On-disk folder: **`~/.worldweaver/`**
@@ -423,6 +434,7 @@ On-disk folder: **`~/.worldweaver/`**
 | `maps/` | Battle map tiles |
 | `world_maps/` | World map tiles |
 | `voices/` | Voice clips |
+| `recordings/` | Tonight session recordings (not in bundles or backups) |
 | `srd/` | Imported SRD |
 
 Appearance, profile, and Atmosphere (Home Assistant URL and token, Hue application key, scanned Govee devices, and scene mappings) also use this machine’s Java preferences. Copying only `~/.worldweaver` moves worlds and media; a `.wwbackup` is the supported way to migrate everything Settings and Atmosphere know about.

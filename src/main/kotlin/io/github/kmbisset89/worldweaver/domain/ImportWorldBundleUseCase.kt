@@ -21,6 +21,7 @@ internal class ImportWorldBundleUseCase(
     private val locationOverlayRepository: LocationOverlayRepository,
     private val questRepository: QuestRepository,
     private val sessionRepository: SessionRepository,
+    private val sessionClockRepository: SessionClockRepository,
     private val plotThreadRepository: PlotThreadRepository,
     private val referenceDocRepository: ReferenceDocRepository,
     private val battleMapRepository: BattleMapRepository,
@@ -77,6 +78,7 @@ internal class ImportWorldBundleUseCase(
             bundle.campaignPeople.forEach { campaignPersonRepository.insert(it) }
             bundle.locationOverlays.forEach { locationOverlayRepository.upsert(it) }
             bundle.sessions.forEach { sessionRepository.insert(it) }
+            bundle.sessionClocks.forEach { sessionClockRepository.insert(it) }
             bundle.plotThreads.forEach { plotThreadRepository.insert(it) }
             bundle.referenceDocs.forEach { referenceDocRepository.insert(it) }
             bundle.quests.forEach { questRepository.insert(it) }

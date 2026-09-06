@@ -15,6 +15,8 @@ internal class FakeHueClient : HueClient {
     var lastColorRed: Int? = null
     var lastColorGreen: Int? = null
     var lastColorBlue: Int? = null
+    var lastColorTransitionDurationMs: Int? = null
+    var appliedColors: List<AppliedColor> = emptyList()
     var lastPairHost: String? = null
 
     override suspend fun discoverBridges(): HueClient.DiscoverResult = discoverResult
@@ -51,6 +53,7 @@ internal class FakeHueClient : HueClient {
         red: Int,
         green: Int,
         blue: Int,
+        transitionDurationMs: Int,
     ): HueClient.ActivateResult {
         lastColorLightIds = lightIds
         lastColorPowerOn = powerOn
@@ -58,6 +61,26 @@ internal class FakeHueClient : HueClient {
         lastColorRed = red
         lastColorGreen = green
         lastColorBlue = blue
+        lastColorTransitionDurationMs = transitionDurationMs
+        appliedColors = appliedColors + AppliedColor(
+            lightIds = lightIds,
+            powerOn = powerOn,
+            brightness = brightness,
+            red = red,
+            green = green,
+            blue = blue,
+            transitionDurationMs = transitionDurationMs,
+        )
         return activateResult
     }
+
+    data class AppliedColor(
+        val lightIds: List<String>,
+        val powerOn: Boolean,
+        val brightness: Int,
+        val red: Int,
+        val green: Int,
+        val blue: Int,
+        val transitionDurationMs: Int,
+    )
 }

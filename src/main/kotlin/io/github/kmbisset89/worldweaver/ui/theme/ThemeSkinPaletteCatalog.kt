@@ -1,6 +1,7 @@
 package io.github.kmbisset89.worldweaver.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import io.github.kmbisset89.worldweaver.domain.ThemeSkin
 
 internal object ThemeSkinPaletteCatalog {
     fun palette(skin: ThemeSkin, dark: Boolean): ThemeSkinPalette {

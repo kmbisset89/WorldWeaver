@@ -9,6 +9,7 @@ internal data class Session(
     val notes: String,
     val inWorldDate: WorldDate? = null,
     val recap: String = "",
+    val scratchNotes: String = "",
     val scenes: List<SessionScene>,
     val marchOrder: List<MarchOrderEntry>,
     val createdAt: Instant,

@@ -19,6 +19,7 @@ internal class WorldBundleIdRemapper(
         val campaignPersonIds = remapIds(bundle.campaignPeople.map { it.id })
         val questIds = remapIds(bundle.quests.map { it.id })
         val sessionIds = remapIds(bundle.sessions.map { it.id })
+        val sessionClockIds = remapIds(bundle.sessionClocks.map { it.id })
         val plotThreadIds = remapIds(bundle.plotThreads.map { it.id })
         val referenceDocIds = remapIds(bundle.referenceDocs.map { it.id })
         val battleMapIds = remapIds(bundle.battleMaps.map { it.id })
@@ -147,6 +148,12 @@ internal class WorldBundleIdRemapper(
                             person = remapPersonRef(entry.person, worldPersonIds, campaignPersonIds),
                         )
                     },
+                )
+            },
+            sessionClocks = bundle.sessionClocks.map { clock ->
+                clock.copy(
+                    id = sessionClockIds.getValue(clock.id),
+                    sessionId = sessionIds.getValue(clock.sessionId),
                 )
             },
             plotThreads = bundle.plotThreads.map { thread ->

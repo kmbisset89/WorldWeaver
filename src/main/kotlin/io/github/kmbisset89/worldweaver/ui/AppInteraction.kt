@@ -7,4 +7,5 @@ internal sealed interface AppInteraction {
     data object ThemeModeCycled : AppInteraction
     data object NavDensityToggled : AppInteraction
     data object SignOutSelected : AppInteraction
+    data object SnackbarConsumed : AppInteraction
 }

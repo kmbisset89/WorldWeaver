@@ -26,6 +26,7 @@ internal data class SessionEntity(
     val inWorldMonthId: String?,
     val inWorldDay: Int?,
     val recap: String = "",
+    val scratchNotes: String = "",
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )
