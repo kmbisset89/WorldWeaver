@@ -4,6 +4,7 @@ internal class FakeGoveeLightingClient : GoveeLightingClient {
     var scanResult: GoveeLightingClient.ScanResult = GoveeLightingClient.ScanResult.Devices(emptyList())
     var applyResult: GoveeLightingClient.ApplyResult = GoveeLightingClient.ApplyResult.Applied
     var lastCommand: GoveeLightCommand? = null
+    var commands: List<GoveeLightCommand> = emptyList()
     var lastDevices: List<GoveeDevice> = emptyList()
 
     override suspend fun scan(): GoveeLightingClient.ScanResult = scanResult
@@ -14,6 +15,7 @@ internal class FakeGoveeLightingClient : GoveeLightingClient {
     ): GoveeLightingClient.ApplyResult {
         lastDevices = devices
         lastCommand = command
+        commands = commands + command
         return applyResult
     }
 }

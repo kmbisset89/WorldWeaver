@@ -1,49 +1,34 @@
 package io.github.kmbisset89.worldweaver.ui.maps
 
-import kotlinx.coroutines.launch
-import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.BattleMap
+import io.github.kmbisset89.worldweaver.domain.BattleMapFogEdit
 import io.github.kmbisset89.worldweaver.domain.BattleMapGridGeometry
 import io.github.kmbisset89.worldweaver.domain.BattleMapSituation
-import io.github.kmbisset89.worldweaver.domain.CalculateGridDistanceUseCase
-import io.github.kmbisset89.worldweaver.domain.CalculateReachableCellsUseCase
-import io.github.kmbisset89.worldweaver.domain.GridDistance
+import io.github.kmbisset89.worldweaver.domain.BattleMapTerrainEdit
+import io.github.kmbisset89.worldweaver.domain.CreatureSizeResolver
 import io.github.kmbisset89.worldweaver.domain.Encounter
 import io.github.kmbisset89.worldweaver.domain.EncounterParticipant
 import io.github.kmbisset89.worldweaver.domain.EncounterParticipantSource
 import io.github.kmbisset89.worldweaver.domain.EncounterParticipantVisibilityResolver
 import io.github.kmbisset89.worldweaver.domain.GridCell
+import io.github.kmbisset89.worldweaver.domain.GridDistance
 import io.github.kmbisset89.worldweaver.domain.OccupiedBoardCellsCalculator
-import io.github.kmbisset89.worldweaver.domain.CreatureSizeResolver
 import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
 import io.github.kmbisset89.worldweaver.domain.PersonAvatarFileStore
 import io.github.kmbisset89.worldweaver.domain.PersonRef
-import io.github.kmbisset89.worldweaver.domain.BattleMapFogEdit
-import io.github.kmbisset89.worldweaver.domain.BattleMapTerrainEdit
-import io.github.kmbisset89.worldweaver.domain.DeleteBattleMapItemUseCase
-import io.github.kmbisset89.worldweaver.domain.PlaceBattleMapItemUseCase
-import io.github.kmbisset89.worldweaver.domain.PlaceEncounterTokenUseCase
-import io.github.kmbisset89.worldweaver.domain.UpdateBattleMapFogUseCase
-import io.github.kmbisset89.worldweaver.domain.UpdateBattleMapTerrainUseCase
 import ovh.plrapps.mapcompose.ui.state.MapState
 
 internal class BattleMapBoardSession(
-    private val appScope: AppCoroutineScope,
     private val mapStateFactory: BattleMapMapStateFactory,
     private val movementOverlay: BattleMapMovementOverlay,
     private val measureOverlay: BattleMapMeasureOverlay,
     private val tokenOverlay: BattleMapTokenOverlay,
     private val itemOverlay: BattleMapItemOverlay,
-    private val calculateReachableCells: CalculateReachableCellsUseCase,
-    private val calculateGridDistance: CalculateGridDistanceUseCase,
-    private val placeEncounterToken: PlaceEncounterTokenUseCase,
-    private val updateBattleMapFog: UpdateBattleMapFogUseCase,
-    private val updateBattleMapTerrain: UpdateBattleMapTerrainUseCase,
-    private val placeBattleMapItem: PlaceBattleMapItemUseCase,
-    private val deleteBattleMapItem: DeleteBattleMapItemUseCase,
     private val avatarFileStore: PersonAvatarFileStore,
     private val visibilityResolver: EncounterParticipantVisibilityResolver =
         EncounterParticipantVisibilityResolver(),
+    private val occupiedCellsCalculator: OccupiedBoardCellsCalculator = OccupiedBoardCellsCalculator(),
+    private val sizeResolver: CreatureSizeResolver = CreatureSizeResolver(),
 ) {
     private var dmBinding: BoundViewer? = null
     private var playerBinding: BoundViewer? = null
@@ -103,7 +88,7 @@ internal class BattleMapBoardSession(
         situations: List<BattleMapSituation>,
         encounter: Encounter?,
         people: PeopleSnapshot,
-    ): BattleMapBoardSnapshot {
+    ): BattleMapBoardOutcome {
         val previousMapId = this.battleMap?.id
         this.battleMap = battleMap
         this.situations = situations
@@ -118,47 +103,43 @@ internal class BattleMapBoardSession(
             selectedItemId = null
             selectedTokenParticipantId = null
         }
-        syncSelectedToken()
+        val movementWork = syncSelectedToken()
         if (battleMap == null) {
             shutdown()
-            return snapshot()
+            return outcome()
         }
         bindViewers(battleMap, situations)
-        return snapshot()
+        return outcome(movementWork)
     }
 
-    fun selectToken(participantId: String): BattleMapBoardSnapshot {
-        val map = battleMap ?: return snapshot()
+    fun selectToken(participantId: String): BattleMapBoardOutcome {
+        val map = battleMap ?: return outcome()
         val participant = encounter?.participants?.firstOrNull { it.id == participantId }
-            ?: return snapshot()
+            ?: return outcome()
         selectedTokenParticipantId = participantId
-        applyTokenMovement(map, participant)
-        return snapshot()
+        return outcome(applyTokenMovement(map, participant))
     }
 
-    fun selectParticipant(participantId: String?): BattleMapBoardSnapshot {
+    fun selectParticipant(participantId: String?): BattleMapBoardOutcome {
         if (participantId == null) {
             selectedTokenParticipantId = null
             bindMapOverlays()
-            return snapshot()
+            return outcome()
         }
         return selectToken(participantId)
     }
 
-    fun selectCell(x: Double, y: Double): BattleMapBoardSnapshot {
-        val map = battleMap ?: return snapshot()
+    fun selectCell(x: Double, y: Double): BattleMapBoardOutcome {
+        val map = battleMap ?: return outcome()
         val geometry = geometryFor(map)
-        val cell = geometry.cellAtNormalized(x, y) ?: return snapshot()
+        val cell = geometry.cellAtNormalized(x, y) ?: return outcome()
         if (fogPaintEnabled) {
             val edit = if (fogRevealBrush) {
                 BattleMapFogEdit.Reveal(setOf(cell))
             } else {
                 BattleMapFogEdit.Hide(setOf(cell))
             }
-            appScope.scope.launch {
-                updateBattleMapFog(map.id, edit)
-            }
-            return snapshot()
+            return outcome(BattleMapBoardWork.UpdateFog(map.id, edit))
         }
         val terrain = terrainPaint
         if (terrain != null) {
@@ -167,79 +148,68 @@ internal class BattleMapBoardSession(
                 TerrainPaintKind.Difficult -> BattleMapTerrainEdit.SetDifficult(setOf(cell))
                 TerrainPaintKind.Clear -> BattleMapTerrainEdit.Clear(setOf(cell))
             }
-            appScope.scope.launch {
-                updateBattleMapTerrain(map.id, edit)
-            }
-            return snapshot()
+            return outcome(BattleMapBoardWork.UpdateTerrain(map.id, edit))
         }
         if (itemDropEnabled) {
-            appScope.scope.launch {
-                val result = placeBattleMapItem(map.id, itemNameText, cell)
-                if (result is PlaceBattleMapItemUseCase.Result.Placed) {
-                    selectedItemId = result.item.id
-                }
-            }
-            return snapshot()
+            return outcome(
+                BattleMapBoardWork.PlaceItem(
+                    mapId = map.id,
+                    name = itemNameText,
+                    cell = cell,
+                ),
+            )
         }
         if (measureEnabled) {
-            applyMeasureClick(map, cell)
-            return snapshot()
+            return applyMeasureClick(map, cell)
         }
         val currentEncounter = encounter
         val participantId = selectedTokenParticipantId
             ?: currentEncounter?.let { currentTurnParticipant(it)?.id }
         if (currentEncounter != null && participantId != null) {
             val participant = currentEncounter.participants.firstOrNull { it.id == participantId }
-            val span = participant?.let { CreatureSizeResolver().resolve(it, people).span } ?: 1
-            appScope.scope.launch {
-                val result = placeEncounterToken(
+            val span = participant?.let { sizeResolver.resolve(it, people).span } ?: 1
+            return outcome(
+                BattleMapBoardWork.PlaceToken(
                     encounterId = currentEncounter.id,
                     participantId = participantId,
                     cell = cell,
                     columns = map.columns,
                     rows = map.rows,
                     span = span,
-                )
-                if (result is PlaceEncounterTokenUseCase.Result.Placed) {
-                    selectedTokenParticipantId = participantId
-                    val latestMap = battleMap ?: return@launch
-                    applyTokenMovement(latestMap, result.participant)
-                }
-            }
-            return snapshot()
+                ),
+            )
         }
         movementOrigin = cell
-        recomputeMovement(map)
         bindMapOverlays()
-        return snapshot()
+        return outcome(movementWork(map))
     }
 
-    fun changeMovementSpeed(speed: String): BattleMapBoardSnapshot {
+    fun changeMovementSpeed(speed: String): BattleMapBoardOutcome {
         movementSpeedText = speed.filter { it.isDigit() }.take(4)
         val map = battleMap
         if (map != null && movementOrigin != null) {
-            recomputeMovement(map)
             bindMapOverlays()
+            return outcome(movementWork(map))
         }
-        return snapshot()
+        return outcome()
     }
 
-    fun clearMovement(): BattleMapBoardSnapshot {
+    fun clearMovement(): BattleMapBoardOutcome {
         clearMovement(refreshOverlays = true)
-        return snapshot()
+        return outcome()
     }
 
-    fun clearBoardTools(): BattleMapBoardSnapshot {
+    fun clearBoardTools(): BattleMapBoardOutcome {
         measureEnabled = false
         fogPaintEnabled = false
         terrainPaint = null
         itemDropEnabled = false
         clearMeasure(refreshOverlays = false)
         bindMapOverlays()
-        return snapshot()
+        return outcome()
     }
 
-    fun toggleMeasure(): BattleMapBoardSnapshot {
+    fun toggleMeasure(): BattleMapBoardOutcome {
         measureEnabled = !measureEnabled
         if (measureEnabled) {
             fogPaintEnabled = false
@@ -251,15 +221,15 @@ internal class BattleMapBoardSession(
         } else {
             bindMapOverlays()
         }
-        return snapshot()
+        return outcome()
     }
 
-    fun clearMeasure(): BattleMapBoardSnapshot {
+    fun clearMeasure(): BattleMapBoardOutcome {
         clearMeasure(refreshOverlays = true)
-        return snapshot()
+        return outcome()
     }
 
-    fun toggleFogPaint(): BattleMapBoardSnapshot {
+    fun toggleFogPaint(): BattleMapBoardOutcome {
         fogPaintEnabled = !fogPaintEnabled
         if (fogPaintEnabled) {
             terrainPaint = null
@@ -268,10 +238,10 @@ internal class BattleMapBoardSession(
             clearMeasure(refreshOverlays = false)
         }
         bindMapOverlays()
-        return snapshot()
+        return outcome()
     }
 
-    fun setFogRevealBrush(reveal: Boolean): BattleMapBoardSnapshot {
+    fun setFogRevealBrush(reveal: Boolean): BattleMapBoardOutcome {
         fogRevealBrush = reveal
         fogPaintEnabled = true
         terrainPaint = null
@@ -279,10 +249,10 @@ internal class BattleMapBoardSession(
         measureEnabled = false
         clearMeasure(refreshOverlays = false)
         bindMapOverlays()
-        return snapshot()
+        return outcome()
     }
 
-    fun setTerrainPaint(kind: TerrainPaintKind?): BattleMapBoardSnapshot {
+    fun setTerrainPaint(kind: TerrainPaintKind?): BattleMapBoardOutcome {
         terrainPaint = if (terrainPaint == kind) null else kind
         if (terrainPaint != null) {
             fogPaintEnabled = false
@@ -291,10 +261,10 @@ internal class BattleMapBoardSession(
             clearMeasure(refreshOverlays = false)
         }
         bindMapOverlays()
-        return snapshot()
+        return outcome()
     }
 
-    fun toggleItemDrop(): BattleMapBoardSnapshot {
+    fun toggleItemDrop(): BattleMapBoardOutcome {
         itemDropEnabled = !itemDropEnabled
         if (itemDropEnabled) {
             fogPaintEnabled = false
@@ -303,67 +273,91 @@ internal class BattleMapBoardSession(
             clearMeasure(refreshOverlays = false)
         }
         bindMapOverlays()
-        return snapshot()
+        return outcome()
     }
 
-    fun changeItemName(name: String): BattleMapBoardSnapshot {
+    fun changeItemName(name: String): BattleMapBoardOutcome {
         itemNameText = name.take(80)
-        return snapshot()
+        return outcome()
     }
 
-    fun selectItem(itemId: String): BattleMapBoardSnapshot {
-        val map = battleMap ?: return snapshot()
+    fun selectItem(itemId: String): BattleMapBoardOutcome {
+        val map = battleMap ?: return outcome()
         if (map.items.none { it.id == itemId }) {
-            return snapshot()
+            return outcome()
         }
         selectedItemId = itemId
+        bindMapOverlays()
+        return outcome()
+    }
+
+    fun selectPlacedItem(itemId: String): BattleMapBoardOutcome {
+        selectedItemId = itemId
+        return outcome()
+    }
+
+    fun removeSelectedItem(): BattleMapBoardOutcome {
+        val map = battleMap ?: return outcome()
+        val itemId = selectedItemId ?: return outcome()
+        return outcome(BattleMapBoardWork.DeleteItem(map.id, itemId))
+    }
+
+    fun clearSelectedItem(): BattleMapBoardOutcome {
+        selectedItemId = null
+        bindMapOverlays()
+        return outcome()
+    }
+
+    fun applyFogEdit(edit: BattleMapFogEdit): BattleMapBoardOutcome {
+        val map = battleMap ?: return outcome()
+        return outcome(BattleMapBoardWork.UpdateFog(map.id, edit))
+    }
+
+    fun applyReachableCells(cells: List<GridCell>): BattleMapBoardSnapshot {
+        reachableCells = cells
         bindMapOverlays()
         return snapshot()
     }
 
-    fun removeSelectedItem(): BattleMapBoardSnapshot {
-        val map = battleMap ?: return snapshot()
-        val itemId = selectedItemId ?: return snapshot()
-        appScope.scope.launch {
-            deleteBattleMapItem(map.id, itemId)
-            selectedItemId = null
-        }
+    fun applyMeasureDistance(distance: GridDistance): BattleMapBoardSnapshot {
+        measureDistance = distance
+        bindMapOverlays()
         return snapshot()
     }
 
-    fun applyFogEdit(edit: BattleMapFogEdit): BattleMapBoardSnapshot {
-        val map = battleMap ?: return snapshot()
-        appScope.scope.launch {
-            updateBattleMapFog(map.id, edit)
-        }
-        return snapshot()
+    fun tokenPlaced(participant: EncounterParticipant): BattleMapBoardOutcome {
+        val map = battleMap ?: return outcome()
+        selectedTokenParticipantId = participant.id
+        return outcome(applyTokenMovement(map, participant))
     }
 
-    fun openPlayerView(walkSpeed: Int?): BattleMapBoardSnapshot {
+    fun openPlayerView(walkSpeed: Int?): BattleMapBoardOutcome {
         playerViewOpen = true
         if (walkSpeed != null && walkSpeed > 0) {
             movementSpeedText = walkSpeed.toString()
         }
         val map = battleMap
         if (map != null) {
-            if (movementOrigin != null) {
-                recomputeMovement(map)
-            }
             bindViewers(map, situations)
+            return outcome(if (movementOrigin != null) movementWork(map) else null)
         }
-        return snapshot()
+        return outcome()
     }
 
-    fun closePlayerView(): BattleMapBoardSnapshot {
+    fun closePlayerView(): BattleMapBoardOutcome {
         playerViewOpen = false
         shutdownPlayerBinding()
-        return snapshot()
+        return outcome()
     }
 
     fun shutdown() {
         shutdownBinding(dmBinding)
         dmBinding = null
         shutdownPlayerBinding()
+    }
+
+    private fun outcome(work: BattleMapBoardWork? = null): BattleMapBoardOutcome {
+        return BattleMapBoardOutcome(snapshot = snapshot(), work = work)
     }
 
     private fun clearMovement(refreshOverlays: Boolean) {
@@ -376,23 +370,27 @@ internal class BattleMapBoardSession(
         }
     }
 
-    private fun applyMeasureClick(battleMap: BattleMap, cell: GridCell) {
+    private fun applyMeasureClick(battleMap: BattleMap, cell: GridCell): BattleMapBoardOutcome {
         if (cell in battleMap.blockedCells) {
-            return
+            return outcome()
         }
         if (measureOrigin == null || measureDestination != null) {
             measureOrigin = cell
             measureDestination = null
             measureDistance = null
-        } else {
-            measureDestination = cell
-            measureDistance = calculateGridDistance(
-                from = measureOrigin ?: cell,
+            bindMapOverlays()
+            return outcome()
+        }
+        measureDestination = cell
+        bindMapOverlays()
+        val origin = measureOrigin ?: cell
+        return outcome(
+            BattleMapBoardWork.ComputeMeasureDistance(
+                from = origin,
                 to = cell,
                 unitsPerTile = battleMap.unitsPerTile,
-            )
-        }
-        bindMapOverlays()
+            ),
+        )
     }
 
     private fun clearMeasure(refreshOverlays: Boolean) {
@@ -405,10 +403,10 @@ internal class BattleMapBoardSession(
         }
     }
 
-    private fun syncSelectedToken() {
+    private fun syncSelectedToken(): BattleMapBoardWork.ComputeReachableCells? {
         val current = encounter ?: run {
             selectedTokenParticipantId = null
-            return
+            return null
         }
         val stillPresent = current.participants.any { it.id == selectedTokenParticipantId }
         if (!stillPresent) {
@@ -418,26 +416,29 @@ internal class BattleMapBoardSession(
         val map = battleMap
         val participant = current.participants.firstOrNull { it.id == selectedTokenParticipantId }
         if (map != null && participant?.boardCell() != null) {
-            applyTokenMovement(map, participant)
+            return applyTokenMovement(map, participant)
         }
+        return null
     }
 
-    private fun applyTokenMovement(battleMap: BattleMap, participant: EncounterParticipant) {
+    private fun applyTokenMovement(
+        battleMap: BattleMap,
+        participant: EncounterParticipant,
+    ): BattleMapBoardWork.ComputeReachableCells? {
         walkSpeedFor(participant)?.let { speed ->
             movementSpeedText = speed.toString()
         }
         movementOrigin = participant.boardCell()
-        recomputeMovement(battleMap)
-        bindMapOverlays()
+        return movementWork(battleMap)
     }
 
-    private fun recomputeMovement(battleMap: BattleMap) {
+    private fun movementWork(battleMap: BattleMap): BattleMapBoardWork.ComputeReachableCells? {
         val origin = movementOrigin ?: run {
             reachableCells = emptyList()
-            return
+            return null
         }
         val walkSpeed = movementSpeedText.toIntOrNull()?.coerceAtLeast(0) ?: 0
-        reachableCells = calculateReachableCells(
+        return BattleMapBoardWork.ComputeReachableCells(
             origin = origin,
             walkSpeed = walkSpeed,
             unitsPerTile = battleMap.unitsPerTile,
@@ -446,7 +447,7 @@ internal class BattleMapBoardSession(
             blockedCells = battleMap.blockedCells,
             difficultCells = battleMap.difficultCells,
             occupiedCells = encounter?.let { current ->
-                OccupiedBoardCellsCalculator().occupiedCells(
+                occupiedCellsCalculator.occupiedCells(
                     encounter = current,
                     people = people,
                     exceptParticipantId = selectedTokenParticipantId,
@@ -593,7 +594,7 @@ internal class BattleMapBoardSession(
                 participantId = participant.id,
                 name = participant.name,
                 cell = cell,
-                span = CreatureSizeResolver().resolve(participant, people).span,
+                span = sizeResolver.resolve(participant, people).span,
                 avatarPath = avatarPathFor(participant),
                 selected = participant.id == selectedTokenParticipantId,
                 isCurrentTurn = participant.id == currentTurnId,

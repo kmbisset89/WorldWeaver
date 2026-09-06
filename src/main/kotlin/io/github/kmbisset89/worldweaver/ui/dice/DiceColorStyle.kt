@@ -1,6 +1,7 @@
 package io.github.kmbisset89.worldweaver.ui.dice
 
 import androidx.compose.ui.graphics.Color
+import io.github.kmbisset89.worldweaver.domain.DiceColorStyleStore
 import java.util.prefs.Preferences
 
 internal enum class DiceColorStyle(
@@ -16,15 +17,13 @@ internal enum class DiceColorStyle(
     ;
 
     companion object {
-        private const val PREF_KEY = "dice_color_style"
-
         fun load(preferences: Preferences = Preferences.userRoot()): DiceColorStyle {
-            val stored = preferences.get(PREF_KEY, BONE.name)
+            val stored = DiceColorStyleStore(preferences).loadName()
             return entries.firstOrNull { it.name == stored } ?: BONE
         }
 
         fun save(style: DiceColorStyle, preferences: Preferences = Preferences.userRoot()) {
-            preferences.put(PREF_KEY, style.name)
+            DiceColorStyleStore(preferences).saveName(style.name)
         }
     }
 }

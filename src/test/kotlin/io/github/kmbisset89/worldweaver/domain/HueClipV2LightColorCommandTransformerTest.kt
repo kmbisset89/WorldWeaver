@@ -24,6 +24,31 @@ internal class HueClipV2LightColorCommandTransformerTest {
     }
 
     @Test
+    fun includesRequestedTransitionDuration() {
+        val command = transformer.transform(
+            lightIds = listOf("light-1"),
+            powerOn = true,
+            brightness = 55,
+            xy = HueRgbXyTransformer.Xy(0.5, 0.4),
+            transitionDurationMs = 1_200,
+        ).single()
+        assertTrue(command.bodyJson.contains("\"duration\":1200"))
+    }
+
+    @Test
+    fun fadeOffIncludesDynamicsDuration() {
+        val command = transformer.transform(
+            lightIds = listOf("light-1"),
+            powerOn = false,
+            brightness = 1,
+            xy = HueRgbXyTransformer.Xy(0.3, 0.3),
+            transitionDurationMs = 400,
+        ).single()
+        assertTrue(command.bodyJson.contains("\"on\":false"))
+        assertTrue(command.bodyJson.contains("\"duration\":400"))
+    }
+
+    @Test
     fun buildsOffBodyWithoutColor() {
         val command = transformer.transform(
             lightIds = listOf("light-1"),

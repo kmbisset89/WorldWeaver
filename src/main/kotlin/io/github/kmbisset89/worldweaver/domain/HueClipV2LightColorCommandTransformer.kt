@@ -13,7 +13,9 @@ internal class HueClipV2LightColorCommandTransformer {
         powerOn: Boolean,
         brightness: Int,
         xy: HueRgbXyTransformer.Xy,
+        transitionDurationMs: Int = 0,
     ): List<HueClipV2LightCommand> {
+        val duration = transitionDurationMs.coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS)
         val body = if (powerOn) {
             buildJsonObject {
                 putJsonObject("on") { put("on", true) }
@@ -24,7 +26,12 @@ internal class HueClipV2LightColorCommandTransformer {
                         put("y", xy.y)
                     }
                 }
-                putJsonObject("dynamics") { put("duration", 0) }
+                putJsonObject("dynamics") { put("duration", duration) }
+            }.toString()
+        } else if (duration > 0) {
+            buildJsonObject {
+                putJsonObject("on") { put("on", false) }
+                putJsonObject("dynamics") { put("duration", duration) }
             }.toString()
         } else {
             """{"on":{"on":false}}"""

@@ -168,6 +168,7 @@ internal class HueRestClientTest {
                 red = 196,
                 green = 30,
                 blue = 58,
+                transitionDurationMs = 0,
             ),
         )
         assertEquals(listOf(LAMP_ID), lightPuts.map { it.first })
@@ -187,6 +188,7 @@ internal class HueRestClientTest {
                 red = 0,
                 green = 0,
                 blue = 0,
+                transitionDurationMs = 0,
             ),
         )
         assertEquals("""{"on":{"on":false}}""", lightPuts.single().second)
@@ -203,6 +205,7 @@ internal class HueRestClientTest {
                 red = 227,
                 green = 155,
                 blue = 90,
+                transitionDurationMs = 0,
             ),
         )
         assertEquals("Select Hue lights for that look", failed.message)

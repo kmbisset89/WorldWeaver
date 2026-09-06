@@ -3,6 +3,7 @@ package io.github.kmbisset89.worldweaver.domain
 internal class DeleteSessionUseCase(
     private val sessionRepository: SessionRepository,
     private val questRepository: QuestRepository,
+    private val sessionRecordingFileStore: SessionRecordingFileStore,
     private val activeContextRepository: ActiveContextRepository,
 ) {
     sealed interface Result {
@@ -14,6 +15,7 @@ internal class DeleteSessionUseCase(
         sessionRepository.getById(sessionId) ?: return Result.NotFound
         questRepository.deleteLinksByTarget(QuestLinkKind.SESSION, sessionId)
         sessionRepository.delete(sessionId)
+        sessionRecordingFileStore.deleteAll(sessionId)
         if (activeContextRepository.get().activeSessionId == sessionId) {
             activeContextRepository.setActiveSessionId(null)
         }

@@ -1,7 +1,7 @@
 package io.github.kmbisset89.worldweaver.ui.settings
 
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeSkin
+import io.github.kmbisset89.worldweaver.domain.ThemeMode
+import io.github.kmbisset89.worldweaver.domain.ThemeSkin
 
 internal sealed class SettingsViewState {
     data class Content(

@@ -13,4 +13,5 @@ internal data class AtmosphereSettings(
     val selectedHueLightIds: List<String> = emptyList(),
     val selectedGoveeDeviceIds: List<String> = emptyList(),
     val isAlwaysOnTop: Boolean,
+    val lookTransitionMs: Int = LightingTransitionCalculator.DEFAULT_DURATION_MS,
 )

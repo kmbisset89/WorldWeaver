@@ -30,6 +30,7 @@ import androidx.room.RoomDatabase
         SessionEntity::class,
         SessionSceneEntity::class,
         SessionMarchEntryEntity::class,
+        SessionClockEntity::class,
         PlotThreadEntity::class,
         ReferenceDocEntity::class,
         EncounterEntity::class,
@@ -38,7 +39,7 @@ import androidx.room.RoomDatabase
         BattleMapSituationEntity::class,
         WorldMapEntity::class,
     ],
-    version = 24,
+    version = 25,
     exportSchema = true,
 )
 internal abstract class WorldWeaverDatabase : RoomDatabase() {
@@ -67,6 +68,7 @@ internal abstract class WorldWeaverDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
     abstract fun sessionSceneDao(): SessionSceneDao
     abstract fun sessionMarchEntryDao(): SessionMarchEntryDao
+    abstract fun sessionClockDao(): SessionClockDao
     abstract fun plotThreadDao(): PlotThreadDao
     abstract fun referenceDocDao(): ReferenceDocDao
     abstract fun encounterDao(): EncounterDao

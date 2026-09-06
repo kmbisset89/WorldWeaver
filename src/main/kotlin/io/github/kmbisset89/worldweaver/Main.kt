@@ -10,7 +10,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.window.application
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.di.appModule
+import io.github.kmbisset89.worldweaver.domain.SessionRecordingCapture
 import io.github.kmbisset89.worldweaver.ui.App
+import io.github.kmbisset89.worldweaver.ui.AppViewEffect
 import io.github.kmbisset89.worldweaver.ui.AppViewModel
 import io.github.kmbisset89.worldweaver.ui.appWindowIcon
 import org.koin.core.context.startKoin
@@ -22,20 +24,28 @@ fun main() {
     }.koin
     val appScope = koin.get<AppCoroutineScope>()
     val viewModel = koin.get<AppViewModel>()
+    val recordingCapture = koin.get<SessionRecordingCapture>()
+
+    fun shutdownAndExit(exit: () -> Unit) {
+        recordingCapture.shutdown()
+        appScope.cancel()
+        stopKoin()
+        exit()
+    }
 
     application {
-        LaunchedEffect(viewModel.exitRequested) {
-            if (viewModel.exitRequested) {
-                appScope.cancel()
-                stopKoin()
-                exitApplication()
+        LaunchedEffect(Unit) {
+            viewModel.effects.collect { effect ->
+                when (effect) {
+                    AppViewEffect.ExitRequested -> {
+                        shutdownAndExit { exitApplication() }
+                    }
+                }
             }
         }
         Window(
             onCloseRequest = {
-                appScope.cancel()
-                stopKoin()
-                exitApplication()
+                shutdownAndExit { exitApplication() }
             },
             title = "World Weaver",
             icon = appWindowIcon(),

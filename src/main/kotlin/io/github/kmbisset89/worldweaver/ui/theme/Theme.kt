@@ -7,6 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import io.github.kmbisset89.worldweaver.domain.ThemeMode
+import io.github.kmbisset89.worldweaver.domain.ThemeSkin
 
 internal val LocalBrandColors = staticCompositionLocalOf {
     ThemeSkinPaletteCatalog.palette(ThemeSkin.FANTASY, dark = false).brandColors()

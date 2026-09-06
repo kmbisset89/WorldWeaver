@@ -1,14 +1,20 @@
 package io.github.kmbisset89.worldweaver.ui
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import io.github.kmbisset89.worldweaver.domain.SearchKind
 import io.github.kmbisset89.worldweaver.domain.SetActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.SetActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ShellSettings
+import io.github.kmbisset89.worldweaver.domain.ShellSettingsStore
 import io.github.kmbisset89.worldweaver.ui.calendar.CalendarInteraction
 import io.github.kmbisset89.worldweaver.ui.calendar.CalendarViewEffect
 import io.github.kmbisset89.worldweaver.ui.calendar.CalendarViewModel
@@ -68,8 +74,7 @@ import io.github.kmbisset89.worldweaver.ui.sessions.SessionsViewEffect
 import io.github.kmbisset89.worldweaver.ui.sessions.SessionsViewModel
 import io.github.kmbisset89.worldweaver.ui.settings.SettingsViewEffect
 import io.github.kmbisset89.worldweaver.ui.settings.SettingsViewModel
-import io.github.kmbisset89.worldweaver.ui.settings.ShellSettings
-import io.github.kmbisset89.worldweaver.ui.settings.ShellSettingsStore
+import io.github.kmbisset89.worldweaver.ui.session.LocalUser
 import io.github.kmbisset89.worldweaver.ui.worlds.WorldsInteraction
 import io.github.kmbisset89.worldweaver.ui.worlds.WorldsViewEffect
 import io.github.kmbisset89.worldweaver.ui.worlds.WorldsViewModel
@@ -102,31 +107,12 @@ internal class AppViewModel(
     private val setActiveWorld: SetActiveWorldUseCase,
     private val setActiveCampaign: SetActiveCampaignUseCase,
 ) {
-    val navigation = NavigationState()
+    private val navigation = NavigationState()
+    private val _state = MutableStateFlow<AppViewState>(initialContent())
+    val state: StateFlow<AppViewState> = _state.asStateFlow()
 
-    var themeMode by mutableStateOf(shellSettingsStore.settings.value.themeMode)
-        private set
-
-    var themeSkin by mutableStateOf(shellSettingsStore.settings.value.themeSkin)
-        private set
-
-    var navExpanded by mutableStateOf(shellSettingsStore.settings.value.navExpanded)
-        private set
-
-    var localUser by mutableStateOf(shellSettingsStore.settings.value.toLocalUser())
-        private set
-
-    var uiEvent by mutableStateOf<UiEvent?>(null)
-        private set
-
-    var exitRequested by mutableStateOf(false)
-        private set
-
-    var activeWorldName by mutableStateOf<String?>(null)
-        private set
-
-    var activeCampaignName by mutableStateOf<String?>(null)
-        private set
+    private val _effects = MutableSharedFlow<AppViewEffect>(extraBufferCapacity = 1)
+    val effects: SharedFlow<AppViewEffect> = _effects.asSharedFlow()
 
     init {
         appScope.scope.launch {
@@ -139,10 +125,10 @@ internal class AppViewModel(
                 when (effect) {
                     HomeViewEffect.OpenWorldCreator -> openWorldCreator()
                     HomeViewEffect.OpenOneShotWizard -> openOneShotWizard()
-                    HomeViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
-                    HomeViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
-                    HomeViewEffect.OpenCharacters -> navigation.navigateToRoot(Screen.CHARACTERS)
-                    HomeViewEffect.OpenRun -> navigation.navigateTo(Screen.RUN)
+                    HomeViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                    HomeViewEffect.OpenCampaigns -> navigateToRoot(Screen.CAMPAIGNS)
+                    HomeViewEffect.OpenCharacters -> navigateToRoot(Screen.CHARACTERS)
+                    HomeViewEffect.OpenRun -> navigateTo(Screen.RUN)
                 }
             }
         }
@@ -163,41 +149,41 @@ internal class AppViewModel(
         appScope.scope.launch {
             oneShotWizardViewModel.effects.collect { effect ->
                 when (effect) {
-                    OneShotWizardViewEffect.Completed -> navigation.navigateToRoot(Screen.HOME)
-                    OneShotWizardViewEffect.Dismissed -> navigation.goBack()
+                    OneShotWizardViewEffect.Completed -> navigateToRoot(Screen.HOME)
+                    OneShotWizardViewEffect.Dismissed -> goBack()
                 }
             }
         }
         appScope.scope.launch {
             campaignsViewModel.effects.collect { effect ->
                 when (effect) {
-                    CampaignsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
-                    CampaignsViewEffect.OpenCharacters -> navigation.navigateToRoot(Screen.CHARACTERS)
+                    CampaignsViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                    CampaignsViewEffect.OpenCharacters -> navigateToRoot(Screen.CHARACTERS)
                     CampaignsViewEffect.CreatePlayerCharacter -> {
-                        navigation.navigateToRoot(Screen.CHARACTERS)
+                        navigateToRoot(Screen.CHARACTERS)
                         charactersViewModel.onInteraction(
                             CharactersInteraction.NewPlayerCharacterSelected,
                         )
                     }
-                    CampaignsViewEffect.OpenQuests -> navigation.navigateToRoot(Screen.QUESTS)
-                    CampaignsViewEffect.OpenSessions -> navigation.navigateToRoot(Screen.SESSIONS)
+                    CampaignsViewEffect.OpenQuests -> navigateToRoot(Screen.QUESTS)
+                    CampaignsViewEffect.OpenSessions -> navigateToRoot(Screen.SESSIONS)
                 }
             }
         }
         appScope.scope.launch {
             locationsViewModel.effects.collect { effect ->
                 when (effect) {
-                    LocationsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    LocationsViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
                     is LocationsViewEffect.OpenLore -> {
-                        navigation.navigateToRoot(Screen.LORE)
+                        navigateToRoot(Screen.LORE)
                         loreViewModel.onInteraction(LoreInteraction.LoreOpened(effect.loreId))
                     }
                     is LocationsViewEffect.OpenQuest -> {
-                        navigation.navigateToRoot(Screen.QUESTS)
+                        navigateToRoot(Screen.QUESTS)
                         questsViewModel.onInteraction(QuestsInteraction.QuestOpened(effect.questId))
                     }
                     is LocationsViewEffect.OpenWorldMap -> {
-                        navigation.navigateToRoot(Screen.WORLD_MAP)
+                        navigateToRoot(Screen.WORLD_MAP)
                         worldMapViewModel.onInteraction(WorldMapInteraction.MapOpened(effect.locationId))
                     }
                 }
@@ -206,9 +192,9 @@ internal class AppViewModel(
         appScope.scope.launch {
             loreViewModel.effects.collect { effect ->
                 when (effect) {
-                    LoreViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    LoreViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
                     is LoreViewEffect.OpenCalendar -> {
-                        navigation.navigateToRoot(Screen.CALENDAR)
+                        navigateToRoot(Screen.CALENDAR)
                         calendarViewModel.onInteraction(
                             CalendarInteraction.ObservanceOpened(effect.observanceId)
                         )
@@ -219,9 +205,9 @@ internal class AppViewModel(
         appScope.scope.launch {
             calendarViewModel.effects.collect { effect ->
                 when (effect) {
-                    CalendarViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    CalendarViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
                     is CalendarViewEffect.OpenLore -> {
-                        navigation.navigateToRoot(Screen.LORE)
+                        navigateToRoot(Screen.LORE)
                         loreViewModel.onInteraction(LoreInteraction.LoreOpened(effect.loreId))
                     }
                 }
@@ -230,22 +216,22 @@ internal class AppViewModel(
         appScope.scope.launch {
             factionsViewModel.effects.collect { effect ->
                 when (effect) {
-                    FactionsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    FactionsViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
                 }
             }
         }
         appScope.scope.launch {
             linksViewModel.effects.collect { effect ->
                 when (effect) {
-                    LinksViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    LinksViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
                     is LinksViewEffect.OpenPerson -> {
-                        navigation.navigateToRoot(Screen.CHARACTERS)
+                        navigateToRoot(Screen.CHARACTERS)
                         charactersViewModel.onInteraction(
                             CharactersInteraction.PersonOpened(effect.key),
                         )
                     }
                     is LinksViewEffect.OpenFaction -> {
-                        navigation.navigateToRoot(Screen.FACTIONS)
+                        navigateToRoot(Screen.FACTIONS)
                         factionsViewModel.onInteraction(
                             FactionsInteraction.FactionOpened(effect.factionId),
                         )
@@ -256,13 +242,13 @@ internal class AppViewModel(
         appScope.scope.launch {
             charactersViewModel.effects.collect { effect ->
                 when (effect) {
-                    CharactersViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    CharactersViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
                     is CharactersViewEffect.OpenLore -> {
-                        navigation.navigateToRoot(Screen.LORE)
+                        navigateToRoot(Screen.LORE)
                         loreViewModel.onInteraction(LoreInteraction.LoreOpened(effect.loreId))
                     }
                     is CharactersViewEffect.OpenQuest -> {
-                        navigation.navigateToRoot(Screen.QUESTS)
+                        navigateToRoot(Screen.QUESTS)
                         questsViewModel.onInteraction(QuestsInteraction.QuestOpened(effect.questId))
                     }
                     is CharactersViewEffect.OpenSheet -> {
@@ -277,7 +263,7 @@ internal class AppViewModel(
             characterSheetViewModel.effects.collect { effect ->
                 when (effect) {
                     is CharacterSheetViewEffect.OpenEditor -> {
-                        navigation.navigateToRoot(Screen.CHARACTERS)
+                        navigateToRoot(Screen.CHARACTERS)
                         charactersViewModel.onInteraction(
                             CharactersInteraction.EditPersonSelected(characterKeyFrom(effect.key)),
                         )
@@ -288,16 +274,16 @@ internal class AppViewModel(
         appScope.scope.launch {
             questsViewModel.effects.collect { effect ->
                 when (effect) {
-                    QuestsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
-                    QuestsViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
-                    QuestsViewEffect.OpenLocations -> navigation.navigateToRoot(Screen.LOCATIONS)
+                    QuestsViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                    QuestsViewEffect.OpenCampaigns -> navigateToRoot(Screen.CAMPAIGNS)
+                    QuestsViewEffect.OpenLocations -> navigateToRoot(Screen.LOCATIONS)
                     is QuestsViewEffect.OpenLore -> {
-                        navigation.navigateToRoot(Screen.LORE)
+                        navigateToRoot(Screen.LORE)
                         loreViewModel.onInteraction(LoreInteraction.LoreOpened(effect.loreId))
                     }
-                    QuestsViewEffect.OpenCharacters -> navigation.navigateToRoot(Screen.CHARACTERS)
+                    QuestsViewEffect.OpenCharacters -> navigateToRoot(Screen.CHARACTERS)
                     is QuestsViewEffect.OpenSession -> {
-                        navigation.navigateToRoot(Screen.SESSIONS)
+                        navigateToRoot(Screen.SESSIONS)
                         sessionsViewModel.onInteraction(SessionsInteraction.SessionOpened(effect.sessionId))
                     }
                 }
@@ -306,10 +292,10 @@ internal class AppViewModel(
         appScope.scope.launch {
             sessionsViewModel.effects.collect { effect ->
                 when (effect) {
-                    SessionsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
-                    SessionsViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
+                    SessionsViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                    SessionsViewEffect.OpenCampaigns -> navigateToRoot(Screen.CAMPAIGNS)
                     is SessionsViewEffect.OpenQuest -> {
-                        navigation.navigateToRoot(Screen.QUESTS)
+                        navigateToRoot(Screen.QUESTS)
                         questsViewModel.onInteraction(QuestsInteraction.QuestOpened(effect.questId))
                     }
                 }
@@ -318,11 +304,11 @@ internal class AppViewModel(
         appScope.scope.launch {
             encountersViewModel.effects.collect { effect ->
                 when (effect) {
-                    EncountersViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
-                    EncountersViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
-                    EncountersViewEffect.OpenLocations -> navigation.navigateToRoot(Screen.LOCATIONS)
+                    EncountersViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                    EncountersViewEffect.OpenCampaigns -> navigateToRoot(Screen.CAMPAIGNS)
+                    EncountersViewEffect.OpenLocations -> navigateToRoot(Screen.LOCATIONS)
                     is EncountersViewEffect.OpenMap -> {
-                        navigation.navigateToRoot(Screen.MAPS)
+                        navigateToRoot(Screen.MAPS)
                         mapsViewModel.onInteraction(MapsInteraction.MapOpened(effect.battleMapId))
                     }
                     is EncountersViewEffect.OpenSheet -> openEncounterSheet(effect)
@@ -332,8 +318,8 @@ internal class AppViewModel(
         appScope.scope.launch {
                     mapsViewModel.effects.collect { effect ->
                 when (effect) {
-                    MapsViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
-                    MapsViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
+                    MapsViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                    MapsViewEffect.OpenCampaigns -> navigateToRoot(Screen.CAMPAIGNS)
                     is MapsViewEffect.UniversalVttExported -> emitUiEvent(
                         UiEvent.Success("Exported “${effect.mapName}” as Universal VTT")
                     )
@@ -344,9 +330,9 @@ internal class AppViewModel(
         appScope.scope.launch {
             worldMapViewModel.effects.collect { effect ->
                 when (effect) {
-                    WorldMapViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
+                    WorldMapViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
                     is WorldMapViewEffect.OpenLocations -> {
-                        navigation.navigateToRoot(Screen.LOCATIONS)
+                        navigateToRoot(Screen.LOCATIONS)
                         effect.locationId?.let { locationId ->
                             locationsViewModel.onInteraction(LocationsInteraction.LocationOpened(locationId))
                         }
@@ -357,13 +343,13 @@ internal class AppViewModel(
         appScope.scope.launch {
             runViewModel.effects.collect { effect ->
                 when (effect) {
-                    RunViewEffect.OpenWorlds -> navigation.navigateToRoot(Screen.WORLDS)
-                    RunViewEffect.OpenCampaigns -> navigation.navigateToRoot(Screen.CAMPAIGNS)
-                    RunViewEffect.OpenSessions -> navigation.navigateToRoot(Screen.SESSIONS)
-                    RunViewEffect.OpenEncounters -> navigation.navigateToRoot(Screen.ENCOUNTERS)
-                    RunViewEffect.OpenMaps -> navigation.navigateToRoot(Screen.MAPS)
+                    RunViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                    RunViewEffect.OpenCampaigns -> navigateToRoot(Screen.CAMPAIGNS)
+                    RunViewEffect.OpenSessions -> navigateToRoot(Screen.SESSIONS)
+                    RunViewEffect.OpenEncounters -> navigateToRoot(Screen.ENCOUNTERS)
+                    RunViewEffect.OpenMaps -> navigateToRoot(Screen.MAPS)
                     RunViewEffect.OpenPlayerView -> {
-                        navigation.navigateToRoot(Screen.ENCOUNTERS)
+                        navigateToRoot(Screen.ENCOUNTERS)
                         encountersViewModel.onInteraction(EncountersInteraction.PlayerViewSelected)
                     }
                     RunViewEffect.OpenDiceTray -> {
@@ -382,6 +368,10 @@ internal class AppViewModel(
                             )
                         )
                     }
+                    is RunViewEffect.OpenSearchHit -> openSearchHit(
+                        SearchViewEffect.RecordOpened(effect.hit)
+                    )
+                    is RunViewEffect.OpenRecording -> openRecording(effect.path)
                 }
             }
         }
@@ -399,7 +389,8 @@ internal class AppViewModel(
                         UiEvent.Success("Exported WorldWeaver backup")
                     )
                     SettingsViewEffect.RestoreReadyToQuit -> {
-                        exitRequested = true
+                        updateContent { it.copy(exitRequested = true) }
+                        _effects.tryEmit(AppViewEffect.ExitRequested)
                     }
                     SettingsViewEffect.SrdImported -> emitUiEvent(
                         UiEvent.Success("Imported 5E SRD catalog")
@@ -413,35 +404,36 @@ internal class AppViewModel(
         }
         appScope.scope.launch {
             observeActiveContextDetails().collect { details ->
-                activeWorldName = details.world?.name
-                activeCampaignName = details.campaign?.name
+                updateContent { content ->
+                    content.copy(
+                        activeWorldName = details.world?.name,
+                        activeCampaignName = details.campaign?.name,
+                    )
+                }
             }
         }
     }
 
     fun onInteraction(interaction: AppInteraction) {
         when (interaction) {
-            is AppInteraction.ScreenSelected -> navigation.navigateToRoot(interaction.screen)
+            is AppInteraction.ScreenSelected -> navigateToRoot(interaction.screen)
             AppInteraction.ThemeModeCycled -> cycleThemeMode()
             AppInteraction.NavDensityToggled -> toggleNavDensity()
             AppInteraction.SignOutSelected -> emitUiEvent(
                 UiEvent.Info("Sign out is not configured")
             )
+            AppInteraction.SnackbarConsumed -> updateContent { it.copy(snackbar = null) }
         }
     }
 
-    fun consumeUiEvent() {
-        uiEvent = null
-    }
-
     private fun openWorldCreator() {
-        navigation.navigateToRoot(Screen.WORLDS)
+        navigateToRoot(Screen.WORLDS)
         worldsViewModel.onInteraction(WorldsInteraction.NewWorldSelected)
     }
 
     private fun openOneShotWizard() {
         oneShotWizardViewModel.onInteraction(OneShotWizardInteraction.ScreenStarted)
-        navigation.navigateTo(Screen.ONE_SHOT_WIZARD)
+        navigateTo(Screen.ONE_SHOT_WIZARD)
     }
 
     private fun openSearchHit(effect: SearchViewEffect.RecordOpened) {
@@ -450,42 +442,42 @@ internal class AppViewModel(
             when (hit.kind) {
                 SearchKind.World -> {
                     setActiveWorld(hit.id)
-                    navigation.navigateToRoot(Screen.WORLDS)
+                    navigateToRoot(Screen.WORLDS)
                     worldsViewModel.onInteraction(WorldsInteraction.WorldSelected(hit.id))
                 }
                 SearchKind.Campaign -> {
                     setActiveCampaign(hit.id)
-                    navigation.navigateToRoot(Screen.CAMPAIGNS)
+                    navigateToRoot(Screen.CAMPAIGNS)
                     campaignsViewModel.onInteraction(CampaignsInteraction.CampaignOpened(hit.id))
                 }
                 SearchKind.Location -> {
                     hit.worldId?.let { setActiveWorld(it) }
-                    navigation.navigateToRoot(Screen.LOCATIONS)
+                    navigateToRoot(Screen.LOCATIONS)
                     locationsViewModel.onInteraction(LocationsInteraction.LocationOpened(hit.id))
                 }
                 SearchKind.Lore -> {
                     hit.worldId?.let { setActiveWorld(it) }
-                    navigation.navigateToRoot(Screen.LORE)
+                    navigateToRoot(Screen.LORE)
                     loreViewModel.onInteraction(LoreInteraction.LoreOpened(hit.id))
                 }
                 SearchKind.Observance -> {
                     hit.worldId?.let { setActiveWorld(it) }
-                    navigation.navigateToRoot(Screen.CALENDAR)
+                    navigateToRoot(Screen.CALENDAR)
                     calendarViewModel.onInteraction(CalendarInteraction.ObservanceOpened(hit.id))
                 }
                 SearchKind.CelestialBody -> {
                     hit.worldId?.let { setActiveWorld(it) }
-                    navigation.navigateToRoot(Screen.CALENDAR)
+                    navigateToRoot(Screen.CALENDAR)
                     calendarViewModel.onInteraction(CalendarInteraction.CelestialBodyOpened(hit.id))
                 }
                 SearchKind.Faction -> {
                     hit.worldId?.let { setActiveWorld(it) }
-                    navigation.navigateToRoot(Screen.FACTIONS)
+                    navigateToRoot(Screen.FACTIONS)
                     factionsViewModel.onInteraction(FactionsInteraction.FactionOpened(hit.id))
                 }
                 SearchKind.WorldPerson -> {
                     hit.worldId?.let { setActiveWorld(it) }
-                    navigation.navigateToRoot(Screen.CHARACTERS)
+                    navigateToRoot(Screen.CHARACTERS)
                     charactersViewModel.onInteraction(
                         CharactersInteraction.PersonOpened(
                             CharactersViewState.PersonKey(
@@ -497,7 +489,7 @@ internal class AppViewModel(
                 }
                 SearchKind.CampaignPerson -> {
                     hit.campaignId?.let { setActiveCampaign(it) }
-                    navigation.navigateToRoot(Screen.CHARACTERS)
+                    navigateToRoot(Screen.CHARACTERS)
                     charactersViewModel.onInteraction(
                         CharactersInteraction.PersonOpened(
                             CharactersViewState.PersonKey(
@@ -509,12 +501,12 @@ internal class AppViewModel(
                 }
                 SearchKind.Quest -> {
                     hit.campaignId?.let { setActiveCampaign(it) }
-                    navigation.navigateToRoot(Screen.QUESTS)
+                    navigateToRoot(Screen.QUESTS)
                     questsViewModel.onInteraction(QuestsInteraction.QuestOpened(hit.id))
                 }
                 SearchKind.Session -> {
                     hit.campaignId?.let { setActiveCampaign(it) }
-                    navigation.navigateToRoot(Screen.SESSIONS)
+                    navigateToRoot(Screen.SESSIONS)
                     sessionsViewModel.onInteraction(SessionsInteraction.SessionOpened(hit.id))
                 }
             }
@@ -561,21 +553,97 @@ internal class AppViewModel(
     }
 
     private fun applyShellSettings(settings: ShellSettings) {
-        themeMode = settings.themeMode
-        themeSkin = settings.themeSkin
-        navExpanded = settings.navExpanded
-        localUser = settings.toLocalUser()
+        updateContent { content ->
+            content.copy(
+                themeMode = settings.themeMode,
+                themeSkin = settings.themeSkin,
+                navExpanded = settings.navExpanded,
+                localUser = localUserFrom(settings),
+            )
+        }
+    }
+
+    private fun localUserFrom(settings: ShellSettings): LocalUser {
+        return LocalUser(
+            displayName = settings.displayName,
+            email = settings.email,
+        )
     }
 
     private fun cycleThemeMode() {
-        shellSettingsStore.setThemeMode(themeMode.next())
+        val current = content()
+        shellSettingsStore.setThemeMode(current.themeMode.next())
     }
 
     private fun toggleNavDensity() {
-        shellSettingsStore.setNavExpanded(!navExpanded)
+        val current = content()
+        shellSettingsStore.setNavExpanded(!current.navExpanded)
     }
 
     private fun emitUiEvent(event: UiEvent) {
-        uiEvent = event
+        updateContent { it.copy(snackbar = event) }
+    }
+
+    private fun openRecording(path: String) {
+        val file = java.io.File(path)
+        if (!file.isFile) {
+            emitUiEvent(UiEvent.Error("That recording is no longer available."))
+            return
+        }
+        val opened = runCatching {
+            java.awt.Desktop.getDesktop().open(file)
+            true
+        }.getOrDefault(false)
+        if (!opened) {
+            emitUiEvent(UiEvent.Error("Could not open the recording."))
+        }
+    }
+
+    private fun navigateToRoot(screen: Screen) {
+        navigation.navigateToRoot(screen)
+        publishNavigation()
+    }
+
+    private fun navigateTo(screen: Screen) {
+        navigation.navigateTo(screen)
+        publishNavigation()
+    }
+
+    private fun goBack() {
+        navigation.goBack()
+        publishNavigation()
+    }
+
+    private fun publishNavigation() {
+        updateContent { it.copy(currentScreen = navigation.currentScreen) }
+    }
+
+    private fun content(): AppViewState.Content {
+        return _state.value as AppViewState.Content
+    }
+
+    private fun updateContent(
+        transform: (AppViewState.Content) -> AppViewState.Content,
+    ) {
+        _state.update { current ->
+            when (current) {
+                is AppViewState.Content -> transform(current)
+            }
+        }
+    }
+
+    private fun initialContent(): AppViewState.Content {
+        val settings = shellSettingsStore.settings.value
+        return AppViewState.Content(
+            currentScreen = Screen.HOME,
+            themeMode = settings.themeMode,
+            themeSkin = settings.themeSkin,
+            navExpanded = settings.navExpanded,
+            localUser = localUserFrom(settings),
+            activeWorldName = null,
+            activeCampaignName = null,
+            snackbar = null,
+            exitRequested = false,
+        )
     }
 }

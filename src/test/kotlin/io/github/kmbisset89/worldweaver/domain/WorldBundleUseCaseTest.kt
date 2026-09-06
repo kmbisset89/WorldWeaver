@@ -66,6 +66,12 @@ internal class WorldBundleUseCaseTest {
         val overlay = harness.overlays.getByCampaign(campaign.id).single()
         assertEquals(city.id, overlay.locationId)
         val session = harness.sessions.getByCampaign(campaign.id).single()
+        assertEquals("Party stalled at the inn", session.scratchNotes)
+        val clock = harness.sessionClocks.getBySession(session.id).single()
+        assertEquals("The watch arrives", clock.label)
+        assertEquals(6, clock.segmentCount)
+        assertEquals(2, clock.filledCount)
+        assertNotEquals("clock-1", clock.id)
         assertEquals(campaignPerson.id, session.marchOrder.single().person.id)
         val calendar = harness.calendars.getByWorld(newWorld.id)!!
         assertEquals("DR", calendar.eraSuffix)
@@ -325,6 +331,7 @@ internal class WorldBundleUseCaseTest {
         val overlays = FakeLocationOverlayRepository()
         val quests = FakeQuestRepository()
         val sessions = FakeSessionRepository()
+        val sessionClocks = FakeSessionClockRepository()
         val plotThreads = FakePlotThreadRepository()
         val referenceDocs = FakeReferenceDocRepository()
         val battleMaps = FakeBattleMapRepository()
@@ -357,6 +364,7 @@ internal class WorldBundleUseCaseTest {
             locationOverlayRepository = overlays,
             questRepository = quests,
             sessionRepository = sessions,
+            sessionClockRepository = sessionClocks,
             plotThreadRepository = plotThreads,
             referenceDocRepository = referenceDocs,
             battleMapRepository = battleMaps,
@@ -392,6 +400,7 @@ internal class WorldBundleUseCaseTest {
             locationOverlayRepository = overlays,
             questRepository = quests,
             sessionRepository = sessions,
+            sessionClockRepository = sessionClocks,
             plotThreadRepository = plotThreads,
             referenceDocRepository = referenceDocs,
             battleMapRepository = battleMaps,
@@ -554,6 +563,7 @@ internal class WorldBundleUseCaseTest {
                 campaignId = campaign.id,
                 name = "Session 1",
                 notes = "",
+                scratchNotes = "Party stalled at the inn",
                 inWorldDate = WorldDate(year = 1492, monthId = "m-hammer", day = 12),
                 scenes = listOf(SessionScene(id = "scene-1", title = "Tavern", notes = "")),
                 marchOrder = listOf(
@@ -567,6 +577,16 @@ internal class WorldBundleUseCaseTest {
                 updatedAt = now,
             )
             sessions.insert(session)
+            sessionClocks.insert(
+                SessionClock(
+                    id = "clock-1",
+                    sessionId = session.id,
+                    label = "The watch arrives",
+                    segmentCount = 6,
+                    filledCount = 2,
+                    sortIndex = 0,
+                )
+            )
             quests.insert(
                 Quest(
                     id = "quest-1",

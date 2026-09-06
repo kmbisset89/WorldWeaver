@@ -1,4 +1,4 @@
-package io.github.kmbisset89.worldweaver.ui.theme
+package io.github.kmbisset89.worldweaver.domain
 
 internal enum class ThemeMode {
     LIGHT,

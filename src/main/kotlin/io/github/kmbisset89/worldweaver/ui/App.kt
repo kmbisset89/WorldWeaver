@@ -69,9 +69,11 @@ import io.github.kmbisset89.worldweaver.ui.worlds.WorldsScreen
 internal fun App(
     viewModel: AppViewModel,
 ) {
+    val appState by viewModel.state.collectAsState()
+    val shell = appState as AppViewState.Content
     WorldWeaverTheme(
-        themeMode = viewModel.themeMode,
-        themeSkin = viewModel.themeSkin,
+        themeMode = shell.themeMode,
+        themeSkin = shell.themeSkin,
     ) {
         val mapsState by viewModel.mapsViewModel.state.collectAsState()
         val encountersState by viewModel.encountersViewModel.state.collectAsState()
@@ -107,8 +109,8 @@ internal fun App(
                 state = sheetWindowState,
             ) {
                 WorldWeaverTheme(
-                    themeMode = viewModel.themeMode,
-                    themeSkin = viewModel.themeSkin,
+                    themeMode = shell.themeMode,
+                    themeSkin = shell.themeSkin,
                 ) {
                     CharacterSheetScreen(
                         viewState = sheetState,
@@ -136,8 +138,8 @@ internal fun App(
                 state = playerWindowState,
             ) {
                 WorldWeaverTheme(
-                    themeMode = viewModel.themeMode,
-                    themeSkin = viewModel.themeSkin,
+                    themeMode = shell.themeMode,
+                    themeSkin = shell.themeSkin,
                 ) {
                     BattleMapViewerComposeWidget(
                         mapState = playerMapState,
@@ -200,8 +202,8 @@ internal fun App(
                 state = diceWindowState,
             ) {
                 WorldWeaverTheme(
-                    themeMode = viewModel.themeMode,
-                    themeSkin = viewModel.themeSkin,
+                    themeMode = shell.themeMode,
+                    themeSkin = shell.themeSkin,
                 ) {
                     DiceFloatingWindow(
                         viewState = diceState,
@@ -225,8 +227,8 @@ internal fun App(
                 state = atmosphereWindowState,
             ) {
                 WorldWeaverTheme(
-                    themeMode = viewModel.themeMode,
-                    themeSkin = viewModel.themeSkin,
+                    themeMode = shell.themeMode,
+                    themeSkin = shell.themeSkin,
                 ) {
                     AtmosphereFloatingWindow(
                         viewState = atmosphereState,
@@ -237,19 +239,19 @@ internal fun App(
         }
         val snackbarHostState = remember { SnackbarHostState() }
 
-        LaunchedEffect(viewModel.uiEvent) {
-            val event = viewModel.uiEvent ?: return@LaunchedEffect
+        LaunchedEffect(shell.snackbar) {
+            val event = shell.snackbar ?: return@LaunchedEffect
             snackbarHostState.showSnackbar(
                 message = event.message,
                 withDismissAction = true
             )
-            viewModel.consumeUiEvent()
+            viewModel.onInteraction(AppInteraction.SnackbarConsumed)
         }
 
         Scaffold(
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->
-                    val event = viewModel.uiEvent
+                    val event = shell.snackbar
                     val containerColor = when (event) {
                         is UiEvent.Error -> ErrorRed
                         is UiEvent.Success -> SuccessGreen
@@ -270,12 +272,12 @@ internal fun App(
                     .background(MaterialTheme.colorScheme.background)
             ) {
                 Sidebar(
-                    currentUser = viewModel.localUser,
-                    currentScreen = viewModel.navigation.currentScreen,
-                    activeWorldName = viewModel.activeWorldName,
-                    activeCampaignName = viewModel.activeCampaignName,
-                    themeMode = viewModel.themeMode,
-                    expanded = viewModel.navExpanded,
+                    currentUser = shell.localUser,
+                    currentScreen = shell.currentScreen,
+                    activeWorldName = shell.activeWorldName,
+                    activeCampaignName = shell.activeCampaignName,
+                    themeMode = shell.themeMode,
+                    expanded = shell.navExpanded,
                     onCycleThemeMode = {
                         viewModel.onInteraction(AppInteraction.ThemeModeCycled)
                     },
@@ -301,7 +303,7 @@ internal fun App(
                         onInteraction = viewModel.searchViewModel::onInteraction,
                     )
                     Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                    when (viewModel.navigation.currentScreen) {
+                    when (shell.currentScreen) {
                     Screen.HOME -> {
                         val homeState by viewModel.homeViewModel.state.collectAsState()
                         HomeScreen(
@@ -427,7 +429,10 @@ internal fun App(
                         val runState by viewModel.runViewModel.state.collectAsState()
                         RunScreen(
                             viewState = runState,
-                            onInteraction = viewModel.runViewModel::onInteraction
+                            atmosphereState = atmosphereState as? AtmosphereViewState.Content,
+                            cameraPreview = viewModel.runViewModel.cameraPreview,
+                            onInteraction = viewModel.runViewModel::onInteraction,
+                            onAtmosphereInteraction = viewModel.atmosphereViewModel::onInteraction,
                         )
                     }
 

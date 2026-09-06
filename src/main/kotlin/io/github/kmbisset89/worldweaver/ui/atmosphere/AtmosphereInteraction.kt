@@ -1,5 +1,8 @@
 package io.github.kmbisset89.worldweaver.ui.atmosphere
 
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingEffect
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingLoop
+
 internal sealed interface AtmosphereInteraction {
     data object ScreenStarted : AtmosphereInteraction
     data class BaseUrlChanged(val value: String) : AtmosphereInteraction
@@ -24,6 +27,9 @@ internal sealed interface AtmosphereInteraction {
     data class LookBrightnessChanged(val value: String) : AtmosphereInteraction
     data class LookColorHexChanged(val value: String) : AtmosphereInteraction
     data class LookPresetSelected(val colorHex: String, val brightness: Int, val powerOn: Boolean) : AtmosphereInteraction
+    data class LookTransitionChanged(val durationMs: Int) : AtmosphereInteraction
+    data class LightingEffectSelected(val effect: AtmosphereLightingEffect) : AtmosphereInteraction
+    data class LightingLoopSelected(val loop: AtmosphereLightingLoop) : AtmosphereInteraction
     data class LookMoodNameChanged(val value: String) : AtmosphereInteraction
     data object LookMoodSaveSelected : AtmosphereInteraction
     data class LookMoodDeleteSelected(val moodId: String) : AtmosphereInteraction

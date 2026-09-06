@@ -15,6 +15,7 @@ internal class WorldBundleSnapshotFactory(
     private val locationOverlayRepository: LocationOverlayRepository,
     private val questRepository: QuestRepository,
     private val sessionRepository: SessionRepository,
+    private val sessionClockRepository: SessionClockRepository,
     private val plotThreadRepository: PlotThreadRepository,
     private val referenceDocRepository: ReferenceDocRepository,
     private val battleMapRepository: BattleMapRepository,
@@ -39,6 +40,7 @@ internal class WorldBundleSnapshotFactory(
         val battleMaps = campaignIds.flatMap { battleMapRepository.getByCampaign(it) }
         val worldMaps = worldMapRepository.getByWorld(worldId)
         val locations = locationRepository.getByWorld(worldId)
+        val sessions = campaignIds.flatMap { sessionRepository.getByCampaign(it) }
         return WorldBundle(
             formatVersion = WorldBundle.FORMAT_VERSION,
             exportedAt = instantProvider.now(),
@@ -57,7 +59,8 @@ internal class WorldBundleSnapshotFactory(
             campaignPeople = campaignPeople,
             locationOverlays = campaignIds.flatMap { locationOverlayRepository.getByCampaign(it) },
             quests = campaignIds.flatMap { questRepository.getByCampaign(it) },
-            sessions = campaignIds.flatMap { sessionRepository.getByCampaign(it) },
+            sessions = sessions,
+            sessionClocks = sessions.flatMap { sessionClockRepository.getBySession(it.id) },
             plotThreads = campaignIds.flatMap { plotThreadRepository.getByCampaign(it) },
             referenceDocs = campaignIds.flatMap { referenceDocRepository.getByCampaign(it) },
             battleMaps = battleMaps,

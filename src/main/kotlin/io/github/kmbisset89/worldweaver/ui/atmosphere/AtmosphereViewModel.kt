@@ -10,6 +10,8 @@ import kotlinx.coroutines.launch
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.ActivateAtmosphereSceneUseCase
 import io.github.kmbisset89.worldweaver.domain.ApplyAtmosphereLookUseCase
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingEffect
+import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingLoop
 import io.github.kmbisset89.worldweaver.domain.AtmosphereSettings
 import io.github.kmbisset89.worldweaver.domain.AtmosphereSettingsStore
 import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereMoodUseCase
@@ -19,10 +21,14 @@ import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereSceneUseCase
 import io.github.kmbisset89.worldweaver.domain.DiscoverHueBridgesUseCase
 import io.github.kmbisset89.worldweaver.domain.GoveeColorHexParser
 import io.github.kmbisset89.worldweaver.domain.GoveeLightingPreset
+import io.github.kmbisset89.worldweaver.domain.LightingLook
+import io.github.kmbisset89.worldweaver.domain.LightingTransitionCalculator
 import io.github.kmbisset89.worldweaver.domain.ListHomeAssistantScenesUseCase
 import io.github.kmbisset89.worldweaver.domain.ListHueLightsUseCase
 import io.github.kmbisset89.worldweaver.domain.ListHueScenesUseCase
 import io.github.kmbisset89.worldweaver.domain.PairHueBridgeUseCase
+import io.github.kmbisset89.worldweaver.domain.PlayAtmosphereLightingEffectUseCase
+import io.github.kmbisset89.worldweaver.domain.PlayAtmosphereLightingLoopUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHomeAssistantConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHueConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.ScanGoveeDevicesUseCase
@@ -47,12 +53,16 @@ internal class AtmosphereViewModel(
     private val deleteMood: DeleteAtmosphereMoodUseCase,
     private val activateScene: ActivateAtmosphereSceneUseCase,
     private val applyLook: ApplyAtmosphereLookUseCase,
+    private val playEffect: PlayAtmosphereLightingEffectUseCase,
+    private val playLoop: PlayAtmosphereLightingLoopUseCase,
     private val appScope: AppCoroutineScope,
 ) {
     private val _state = MutableStateFlow<AtmosphereViewState>(contentFrom(store.settings.value))
     val state: StateFlow<AtmosphereViewState> = _state.asStateFlow()
     private val colorParser = GoveeColorHexParser()
     private var previewLookJob: Job? = null
+    private var effectJob: Job? = null
+    private var lastAppliedLook: LightingLook? = null
 
     init {
         appScope.scope.launch {
@@ -103,6 +113,9 @@ internal class AtmosphereViewModel(
                 colorHex = interaction.value,
             )
             is AtmosphereInteraction.LookPresetSelected -> selectLook(interaction)
+            is AtmosphereInteraction.LookTransitionChanged -> updateTransition(interaction.durationMs)
+            is AtmosphereInteraction.LightingEffectSelected -> playLightingEffect(interaction.effect)
+            is AtmosphereInteraction.LightingLoopSelected -> playLightingLoop(interaction.loop)
             is AtmosphereInteraction.LookMoodNameChanged -> updateContent { current ->
                 current.copy(draftMoodName = interaction.value, moodError = null)
             }
@@ -442,6 +455,7 @@ internal class AtmosphereViewModel(
 
     private fun selectLook(interaction: AtmosphereInteraction.LookPresetSelected) {
         previewLookJob?.cancel()
+        effectJob?.cancel()
         updateContent { current ->
             current.copy(
                 draftLookPowerOn = interaction.powerOn,
@@ -449,9 +463,145 @@ internal class AtmosphereViewModel(
                 draftLookColorHex = interaction.colorHex,
                 selectedHueSceneId = null,
                 lookError = null,
+                playingEffect = null,
+                playingLoop = null,
             )
         }
         previewLook()
+    }
+
+    private fun updateTransition(durationMs: Int) {
+        val duration = durationMs.coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS)
+        store.setLookTransitionMs(duration)
+        updateContent { current ->
+            current.copy(draftLookTransitionMs = duration)
+        }
+    }
+
+    private fun playLightingEffect(effect: AtmosphereLightingEffect) {
+        val content = currentContent() ?: return
+        if (!content.hasSelectedLookLights) {
+            updateContent { current ->
+                current.copy(lookError = "Select Hue or Govee lights above to apply this look.")
+            }
+            return
+        }
+        val look = lastAppliedLook ?: lookFromDraft(content) ?: return
+        previewLookJob?.cancel()
+        effectJob?.cancel()
+        updateContent { current ->
+            current.copy(playingEffect = effect, playingLoop = null, lookError = null)
+        }
+        val hueLightIds = content.selectedHueLightIds
+        val goveeDeviceIds = content.selectedGoveeDeviceIds
+        effectJob = appScope.scope.launch {
+            try {
+                when (
+                    val result = playEffect(
+                        effect = effect,
+                        currentLook = look,
+                        hueLightIds = hueLightIds,
+                        goveeDeviceIds = goveeDeviceIds,
+                    )
+                ) {
+                    PlayAtmosphereLightingEffectUseCase.Result.Played,
+                    PlayAtmosphereLightingEffectUseCase.Result.NoTargets,
+                    -> updateContent { current ->
+                        current.copy(lookError = null)
+                    }
+                    is PlayAtmosphereLightingEffectUseCase.Result.Partial -> updateContent { current ->
+                        current.copy(lookError = result.message)
+                    }
+                    is PlayAtmosphereLightingEffectUseCase.Result.Failed -> updateContent { current ->
+                        current.copy(lookError = result.message)
+                    }
+                }
+            } finally {
+                updateContent { current ->
+                    if (current.playingEffect == effect) {
+                        current.copy(playingEffect = null)
+                    } else {
+                        current
+                    }
+                }
+            }
+        }
+    }
+
+    private fun playLightingLoop(loop: AtmosphereLightingLoop) {
+        val content = currentContent() ?: return
+        if (content.playingLoop == loop) {
+            stopLightingLoop()
+            return
+        }
+        if (!content.hasSelectedLookLights) {
+            updateContent { current ->
+                current.copy(lookError = "Select Hue or Govee lights above to apply this look.")
+            }
+            return
+        }
+        previewLookJob?.cancel()
+        effectJob?.cancel()
+        updateContent { current ->
+            current.copy(playingLoop = loop, playingEffect = null, lookError = null)
+        }
+        val hueLightIds = content.selectedHueLightIds
+        val goveeDeviceIds = content.selectedGoveeDeviceIds
+        val from = lastAppliedLook ?: lookFromDraft(content)
+        effectJob = appScope.scope.launch {
+            try {
+                when (
+                    val result = playLoop(
+                        loop = loop,
+                        hueLightIds = hueLightIds,
+                        goveeDeviceIds = goveeDeviceIds,
+                        from = from,
+                    )
+                ) {
+                    PlayAtmosphereLightingLoopUseCase.Result.NoTargets -> updateContent { current ->
+                        current.copy(lookError = "Select Hue or Govee lights above to apply this look.")
+                    }
+                    is PlayAtmosphereLightingLoopUseCase.Result.Failed -> updateContent { current ->
+                        current.copy(lookError = result.message)
+                    }
+                }
+            } finally {
+                updateContent { current ->
+                    if (current.playingLoop == loop) {
+                        current.copy(playingLoop = null)
+                    } else {
+                        current
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopLightingLoop() {
+        effectJob?.cancel()
+        updateContent { current ->
+            current.copy(playingLoop = null)
+        }
+        restoreTableLook()
+    }
+
+    private fun restoreTableLook() {
+        val content = currentContent() ?: return
+        if (!content.hasSelectedLookLights) {
+            return
+        }
+        val look = lastAppliedLook ?: lookFromDraft(content) ?: return
+        appScope.scope.launch {
+            applyLook(
+                hueLightIds = content.selectedHueLightIds,
+                goveeDeviceIds = content.selectedGoveeDeviceIds,
+                powerOn = look.powerOn,
+                brightness = look.brightness,
+                colorHex = look.toColorHex(),
+                transitionDurationMs = content.draftLookTransitionMs,
+                from = null,
+            )
+        }
     }
 
     private fun saveMood() {
@@ -495,27 +645,30 @@ internal class AtmosphereViewModel(
         previewLookJob?.cancel()
         previewLookJob = appScope.scope.launch {
             delay(LOOK_PREVIEW_DEBOUNCE_MS)
-            previewLook()
+            val content = currentContent() ?: return@launch
+            previewLook(content.draftLookTransitionMs.coerceAtMost(LightingTransitionCalculator.PREVIEW_CAP_MS))
         }
     }
 
-    private fun previewLook() {
+    private fun previewLook(transitionMs: Int? = null) {
         val content = currentContent() ?: return
         if (!content.hasSelectedLookLights) {
             return
         }
-        if (content.draftLookPowerOn && colorParser.parse(content.draftLookColorHex) == null) {
-            return
-        }
-        val brightness = content.draftLookBrightness.toIntOrNull()?.coerceIn(1, 100) ?: 80
+        val to = lookFromDraft(content) ?: return
+        val duration = (transitionMs ?: content.draftLookTransitionMs)
+            .coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS)
+        effectJob?.cancel()
         appScope.scope.launch {
             when (
                 val result = applyLook(
                     hueLightIds = content.selectedHueLightIds,
                     goveeDeviceIds = content.selectedGoveeDeviceIds,
-                    powerOn = content.draftLookPowerOn,
-                    brightness = brightness,
-                    colorHex = content.draftLookColorHex,
+                    powerOn = to.powerOn,
+                    brightness = to.brightness,
+                    colorHex = to.toColorHex(),
+                    transitionDurationMs = duration,
+                    from = lastAppliedLook,
                 )
             ) {
                 ApplyAtmosphereLookUseCase.Result.Applied,
@@ -530,7 +683,24 @@ internal class AtmosphereViewModel(
                     current.copy(lookError = result.message)
                 }
             }
+            lastAppliedLook = to
         }
+    }
+
+    private fun lookFromDraft(content: AtmosphereViewState.Content): LightingLook? {
+        val rgb = if (content.draftLookPowerOn) {
+            colorParser.parse(content.draftLookColorHex) ?: return null
+        } else {
+            GoveeColorHexParser.Rgb(0, 0, 0)
+        }
+        val brightness = content.draftLookBrightness.toIntOrNull()?.coerceIn(1, 100) ?: 80
+        return LightingLook(
+            powerOn = content.draftLookPowerOn,
+            brightness = brightness,
+            red = rgb.red,
+            green = rgb.green,
+            blue = rgb.blue,
+        )
     }
 
     private fun selectHueScene(sceneId: String) {
@@ -668,30 +838,46 @@ internal class AtmosphereViewModel(
         if (content.isActivating) {
             return
         }
+        previewLookJob?.cancel()
+        effectJob?.cancel()
         updateContent { current ->
             current.copy(
                 isActivating = true,
                 activatingSceneId = sceneId,
                 activationError = null,
+                playingEffect = null,
+                playingLoop = null,
             )
         }
         appScope.scope.launch {
-            when (val result = activateScene(sceneId)) {
-                ActivateAtmosphereSceneUseCase.Result.Activated -> updateContent { current ->
-                    current.copy(
-                        isActivating = false,
-                        activatingSceneId = null,
-                        lastActivatedSceneId = sceneId,
-                        activationError = null,
-                    )
+            when (
+                val result = activateScene(
+                    sceneId = sceneId,
+                    transitionDurationMs = content.draftLookTransitionMs,
+                    fromLook = lastAppliedLook,
+                )
+            ) {
+                ActivateAtmosphereSceneUseCase.Result.Activated -> {
+                    rememberSceneLook(sceneId)
+                    updateContent { current ->
+                        current.copy(
+                            isActivating = false,
+                            activatingSceneId = null,
+                            lastActivatedSceneId = sceneId,
+                            activationError = null,
+                        )
+                    }
                 }
-                is ActivateAtmosphereSceneUseCase.Result.Partial -> updateContent { current ->
-                    current.copy(
-                        isActivating = false,
-                        activatingSceneId = null,
-                        lastActivatedSceneId = sceneId,
-                        activationError = result.message,
-                    )
+                is ActivateAtmosphereSceneUseCase.Result.Partial -> {
+                    rememberSceneLook(sceneId)
+                    updateContent { current ->
+                        current.copy(
+                            isActivating = false,
+                            activatingSceneId = null,
+                            lastActivatedSceneId = sceneId,
+                            activationError = result.message,
+                        )
+                    }
                 }
                 ActivateAtmosphereSceneUseCase.Result.NotFound -> finishActivation("That scene is no longer mapped")
                 ActivateAtmosphereSceneUseCase.Result.NoTargets -> finishActivation(
@@ -700,6 +886,26 @@ internal class AtmosphereViewModel(
                 is ActivateAtmosphereSceneUseCase.Result.Failed -> finishActivation(result.message)
             }
         }
+    }
+
+    private fun rememberSceneLook(sceneId: String) {
+        val scene = store.settings.value.scenes.firstOrNull { it.id == sceneId } ?: return
+        val appliesLook = scene.hasGovee || (scene.hueLightIds.isNotEmpty() && scene.hueSceneId.isBlank())
+        if (!appliesLook) {
+            return
+        }
+        val rgb = if (scene.goveePowerOn) {
+            colorParser.parse(scene.goveeColorHex) ?: return
+        } else {
+            GoveeColorHexParser.Rgb(0, 0, 0)
+        }
+        lastAppliedLook = LightingLook(
+            powerOn = scene.goveePowerOn,
+            brightness = scene.goveeBrightness,
+            red = rgb.red,
+            green = rgb.green,
+            blue = rgb.blue,
+        )
     }
 
     private fun finishActivation(message: String) {
@@ -776,6 +982,7 @@ internal class AtmosphereViewModel(
                     settings.goveeDevices.any { it.deviceId == id }
                 },
                 isAlwaysOnTop = settings.isAlwaysOnTop,
+                draftLookTransitionMs = settings.lookTransitionMs,
             )
         }
     }
@@ -832,6 +1039,9 @@ internal class AtmosphereViewModel(
                 draftLookPowerOn = warm.powerOn,
                 draftLookBrightness = warm.brightness.toString(),
                 draftLookColorHex = warm.colorHex,
+                draftLookTransitionMs = settings.lookTransitionMs,
+                playingEffect = null,
+                playingLoop = null,
                 connectionCheck = AtmosphereViewState.ConnectionCheck.Idle,
                 hueCheck = AtmosphereViewState.ConnectionCheck.Idle,
                 goveeMessage = null,

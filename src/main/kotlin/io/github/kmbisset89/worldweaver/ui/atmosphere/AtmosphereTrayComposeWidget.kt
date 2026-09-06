@@ -74,6 +74,18 @@ internal fun AtmosphereTrayComposeWidget(
         if (state.isActivating) {
             Text(text = "Activating…", fontSize = 13.sp, color = TextSecondary)
         }
+        if (!showLook && state.hasSelectedLookLights) {
+            AtmosphereLightingEffectsComposeWidget(
+                playingEffect = state.playingEffect,
+                hasSelectedLights = true,
+                onInteraction = onInteraction,
+            )
+            AtmosphereLightingLoopsComposeWidget(
+                playingLoop = state.playingLoop,
+                hasSelectedLights = true,
+                onInteraction = onInteraction,
+            )
+        }
         if (showLook && state.hasLookLights) {
             if (state.hueLights.isNotEmpty()) {
                 Text(text = "Hue lights", fontSize = 13.sp, color = TextSecondary)
@@ -103,6 +115,9 @@ internal fun AtmosphereTrayComposeWidget(
                 colorHex = state.draftLookColorHex,
                 brightness = state.draftLookBrightness,
                 powerOn = state.draftLookPowerOn,
+                transitionMs = state.draftLookTransitionMs,
+                playingEffect = state.playingEffect,
+                playingLoop = state.playingLoop,
                 moods = state.moods,
                 draftMoodName = state.draftMoodName,
                 lookError = state.lookError,

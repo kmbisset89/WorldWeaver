@@ -29,6 +29,7 @@ internal interface HueClient {
         red: Int,
         green: Int,
         blue: Int,
+        transitionDurationMs: Int = 0,
     ): ActivateResult
 
     sealed interface DiscoverResult {

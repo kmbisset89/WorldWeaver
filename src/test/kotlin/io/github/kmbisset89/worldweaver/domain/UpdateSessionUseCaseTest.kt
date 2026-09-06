@@ -1,10 +1,12 @@
 package io.github.kmbisset89.worldweaver.domain
 
 import kotlinx.coroutines.test.runTest
+import java.nio.file.Files
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 internal class UpdateSessionUseCaseTest {
     @Test
@@ -82,6 +84,24 @@ internal class UpdateSessionUseCaseTest {
         assertEquals(emptyList(), harness.sessions.all())
     }
 
+    @Test
+    fun deleteSessionRemovesRecordings() = runTest {
+        val harness = Harness()
+        val session = harness.insertSession()
+        val file = harness.recordings.createFile(
+            session.id,
+            SessionRecordingKind.Audio,
+            Instant.parse("2026-09-06T15:00:00Z"),
+        )
+        file.writeBytes(ByteArray(8))
+
+        val result = harness.deleteSession(session.id)
+
+        assertIs<DeleteSessionUseCase.Result.Deleted>(result)
+        assertTrue(harness.recordings.list(session.id).isEmpty())
+        assertTrue(!file.exists())
+    }
+
     private class Harness {
         val sessions = FakeSessionRepository()
         val quests = FakeQuestRepository()
@@ -91,8 +111,14 @@ internal class UpdateSessionUseCaseTest {
         private val ids = EntityIdFactory { "session-update-${++nextId}" }
         val campaigns = FakeCampaignRepository()
         val calendars = FakeWorldCalendarRepository()
+        val recordings = SessionRecordingFileStore(Files.createTempDirectory("ww-recordings").toFile())
         val updateSession = UpdateSessionUseCase(sessions, campaigns, calendars, ids, instant)
-        val deleteSession = DeleteSessionUseCase(sessions, quests, FakeActiveContextRepository())
+        val deleteSession = DeleteSessionUseCase(
+            sessions,
+            quests,
+            recordings,
+            FakeActiveContextRepository(),
+        )
 
         suspend fun insertSession(): Session {
             val now = Instant.parse("2026-08-29T12:00:00Z")

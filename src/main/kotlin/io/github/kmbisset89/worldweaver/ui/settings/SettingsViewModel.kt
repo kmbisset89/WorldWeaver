@@ -14,9 +14,11 @@ import io.github.kmbisset89.worldweaver.domain.ExportAppBackupUseCase
 import io.github.kmbisset89.worldweaver.domain.ImportSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.RestoreAppBackupUseCase
+import io.github.kmbisset89.worldweaver.domain.ShellSettings
+import io.github.kmbisset89.worldweaver.domain.ShellSettingsStore
 import io.github.kmbisset89.worldweaver.domain.SrdCatalog
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeSkin
+import io.github.kmbisset89.worldweaver.domain.ThemeMode
+import io.github.kmbisset89.worldweaver.domain.ThemeSkin
 import java.io.File
 
 internal class SettingsViewModel(

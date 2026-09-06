@@ -14,7 +14,11 @@ internal class ActivateAtmosphereSceneUseCase(
         data class Failed(val message: String) : Result
     }
 
-    suspend operator fun invoke(sceneId: String): Result {
+    suspend operator fun invoke(
+        sceneId: String,
+        transitionDurationMs: Int = 0,
+        fromLook: LightingLook? = null,
+    ): Result {
         val settings = store.settings.value
         val scene = settings.scenes.firstOrNull { it.id == sceneId } ?: return Result.NotFound
         if (!scene.hasAnyTarget) {
@@ -43,6 +47,8 @@ internal class ActivateAtmosphereSceneUseCase(
                     powerOn = scene.goveePowerOn,
                     brightness = scene.goveeBrightness,
                     colorHex = scene.goveeColorHex,
+                    transitionDurationMs = transitionDurationMs,
+                    from = fromLook,
                 )
             ) {
                 ApplyAtmosphereLookUseCase.Result.Applied -> anySuccess = true

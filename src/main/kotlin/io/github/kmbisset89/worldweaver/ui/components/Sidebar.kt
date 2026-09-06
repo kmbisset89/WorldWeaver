@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Security
@@ -59,7 +60,7 @@ import io.github.kmbisset89.worldweaver.ui.appWindowIcon
 import io.github.kmbisset89.worldweaver.ui.navigation.Screen
 import io.github.kmbisset89.worldweaver.ui.session.LocalUser
 import io.github.kmbisset89.worldweaver.ui.theme.DarkNavy
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
+import io.github.kmbisset89.worldweaver.domain.ThemeMode
 
 @Composable
 internal fun Sidebar(
@@ -141,8 +142,7 @@ internal fun Sidebar(
                     label = destination.label,
                     contentDescription = destination.contentDescription,
                     isSelected = currentScreen == destination.screen ||
-                        (destination.screen == Screen.HOME &&
-                            (currentScreen == Screen.RUN || currentScreen == Screen.ONE_SHOT_WIZARD)),
+                        (destination.screen == Screen.HOME && currentScreen == Screen.ONE_SHOT_WIZARD),
                     expanded = expanded,
                     onClick = { onNavigate(destination.screen) }
                 )
@@ -255,6 +255,7 @@ private enum class NavDestination(
     Characters(Screen.CHARACTERS, Icons.Default.Groups, "Characters", "Navigate to Characters"),
     Quests(Screen.QUESTS, Icons.AutoMirrored.Filled.Assignment, "Quests", "Navigate to Quests"),
     Sessions(Screen.SESSIONS, Icons.Default.Event, "Sessions", "Navigate to Sessions"),
+    Tonight(Screen.RUN, Icons.Default.NightsStay, "Tonight", "Navigate to Tonight"),
     Encounters(Screen.ENCOUNTERS, Icons.Default.Security, "Encounters", "Navigate to Encounters"),
     Maps(Screen.MAPS, Icons.Default.Map, "Maps", "Navigate to Maps"),
     Dice(Screen.DICE, Icons.Default.Casino, "Dice", "Navigate to Dice"),

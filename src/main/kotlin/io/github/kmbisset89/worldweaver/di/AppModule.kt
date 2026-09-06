@@ -40,6 +40,8 @@ import io.github.kmbisset89.worldweaver.data.QuestRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.RoomTransactionRunner
 import io.github.kmbisset89.worldweaver.data.ReferenceDocEntityConverter
 import io.github.kmbisset89.worldweaver.data.ReferenceDocRepositoryImpl
+import io.github.kmbisset89.worldweaver.data.SessionClockEntityConverter
+import io.github.kmbisset89.worldweaver.data.SessionClockRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.SessionEntityConverter
 import io.github.kmbisset89.worldweaver.data.SessionRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldCalendarEntityConverter
@@ -74,6 +76,8 @@ import io.github.kmbisset89.worldweaver.domain.ListHomeAssistantScenesUseCase
 import io.github.kmbisset89.worldweaver.domain.ListHueLightsUseCase
 import io.github.kmbisset89.worldweaver.domain.ListHueScenesUseCase
 import io.github.kmbisset89.worldweaver.domain.PairHueBridgeUseCase
+import io.github.kmbisset89.worldweaver.domain.PlayAtmosphereLightingEffectUseCase
+import io.github.kmbisset89.worldweaver.domain.PlayAtmosphereLightingLoopUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHomeAssistantConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHueConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.ScanGoveeDevicesUseCase
@@ -121,6 +125,7 @@ import io.github.kmbisset89.worldweaver.domain.CreatePersonRelationshipUseCase
 import io.github.kmbisset89.worldweaver.domain.CreatePlotThreadUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateQuestUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateReferenceDocUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateSessionClockUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateWorldPersonUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateWorldUseCase
@@ -141,10 +146,13 @@ import io.github.kmbisset89.worldweaver.domain.DeletePersonRelationshipUseCase
 import io.github.kmbisset89.worldweaver.domain.DeletePlotThreadUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteQuestUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteReferenceDocUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteSessionClockUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteSessionRecordingUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteWorldPersonUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteWorldMapUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.DiceColorStyleStore
 import io.github.kmbisset89.worldweaver.domain.EncounterRepository
 import io.github.kmbisset89.worldweaver.domain.EndEncounterUseCase
 import io.github.kmbisset89.worldweaver.domain.EntityIdFactory
@@ -159,6 +167,7 @@ import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalogResolver
 import io.github.kmbisset89.worldweaver.domain.ImportBundledBattleMapUseCase
 import io.github.kmbisset89.worldweaver.domain.ImportSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.ImportWorldBundleUseCase
+import io.github.kmbisset89.worldweaver.domain.LoadSessionReferencePeekUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveFifthEditionPickerCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.RestoreAppBackupUseCase
@@ -175,6 +184,7 @@ import io.github.kmbisset89.worldweaver.domain.LocationRepository
 import io.github.kmbisset89.worldweaver.domain.LoreRepository
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextUseCase
+import io.github.kmbisset89.worldweaver.domain.GetActiveContextUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveCampaignsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveBattleMapSituationsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveBattleMapsForActiveCampaignUseCase
@@ -194,8 +204,10 @@ import io.github.kmbisset89.worldweaver.domain.ObservePlotThreadsForActiveCampai
 import io.github.kmbisset89.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveReferenceDocsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveSessionClocksForActiveSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveDashboardCountsUseCase
 import io.github.kmbisset89.worldweaver.domain.SearchRecordsUseCase
+import io.github.kmbisset89.worldweaver.domain.SearchSessionReferencesUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarObservancesForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCelestialBodiesForActiveWorldUseCase
@@ -220,6 +232,14 @@ import io.github.kmbisset89.worldweaver.domain.PlaceEncounterTokenUseCase
 import io.github.kmbisset89.worldweaver.domain.SetPersonAvatarUseCase
 import io.github.kmbisset89.worldweaver.domain.SetVoiceClipUseCase
 import io.github.kmbisset89.worldweaver.domain.VoiceClipFileStore
+import io.github.kmbisset89.worldweaver.domain.SessionCaptureDeviceProbe
+import io.github.kmbisset89.worldweaver.domain.SessionCameraPermissionSettingsOpener
+import io.github.kmbisset89.worldweaver.domain.SessionRecordingCapture
+import io.github.kmbisset89.worldweaver.domain.SessionRecordingCaptureService
+import io.github.kmbisset89.worldweaver.domain.SessionRecordingFileStore
+import io.github.kmbisset89.worldweaver.domain.SessionFfmpegCameraFrameSource
+import io.github.kmbisset89.worldweaver.domain.SessionFfmpegVideoEncoder
+import io.github.kmbisset89.worldweaver.domain.SessionJavaSoundMicrophoneLine
 import io.github.kmbisset89.worldweaver.domain.VoiceClipPlayer
 import io.github.kmbisset89.worldweaver.domain.VoiceClipRecorder
 import io.github.kmbisset89.worldweaver.domain.PersonRelationshipRepository
@@ -229,6 +249,7 @@ import io.github.kmbisset89.worldweaver.domain.ReferenceDocRepository
 import io.github.kmbisset89.worldweaver.domain.RollAllEncounterInitiativeUseCase
 import io.github.kmbisset89.worldweaver.domain.RollEncounterInitiativeUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveSessionNpcDraftUseCase
+import io.github.kmbisset89.worldweaver.domain.SessionClockRepository
 import io.github.kmbisset89.worldweaver.domain.SessionRepository
 import io.github.kmbisset89.worldweaver.domain.SetActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.SetActiveSessionUseCase
@@ -254,6 +275,8 @@ import io.github.kmbisset89.worldweaver.domain.UpdateLoreUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdatePlotThreadUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateQuestUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateReferenceDocUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateSessionClockUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateSessionRunnerNotesUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldPersonUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldUseCase
@@ -292,7 +315,7 @@ import io.github.kmbisset89.worldweaver.ui.quests.QuestsViewModel
 import io.github.kmbisset89.worldweaver.ui.run.RunViewModel
 import io.github.kmbisset89.worldweaver.ui.sessions.SessionsViewModel
 import io.github.kmbisset89.worldweaver.ui.settings.SettingsViewModel
-import io.github.kmbisset89.worldweaver.ui.settings.ShellSettingsStore
+import io.github.kmbisset89.worldweaver.domain.ShellSettingsStore
 import io.github.kmbisset89.worldweaver.ui.worlds.WorldsViewModel
 import org.koin.dsl.module
 import java.util.prefs.Preferences
@@ -324,6 +347,7 @@ internal fun appModule() = module {
     single { PersonCompanionEntityConverter() }
     single { QuestEntityConverter() }
     single { SessionEntityConverter() }
+    single { SessionClockEntityConverter() }
     single { PlotThreadEntityConverter() }
     single { ReferenceDocEntityConverter() }
     single { EncounterEntityConverter() }
@@ -339,6 +363,18 @@ internal fun appModule() = module {
     single { WorldMapFileStore(get<WorldWeaverDataDirectory>().worldMapsDir) }
     single { PersonAvatarFileStore(get<WorldWeaverDataDirectory>().avatarsDir) }
     single { VoiceClipFileStore(get<WorldWeaverDataDirectory>().voicesDir) }
+    single { SessionRecordingFileStore(get<WorldWeaverDataDirectory>().recordingsDir) }
+    single { SessionCaptureDeviceProbe() }
+    single { SessionCameraPermissionSettingsOpener() }
+    single<SessionRecordingCapture> {
+        SessionRecordingCaptureService(
+            fileStore = get(),
+            instantProvider = get(),
+            microphoneFactory = SessionJavaSoundMicrophoneLine,
+            cameraFactory = SessionFfmpegCameraFrameSource,
+            videoEncoderFactory = SessionFfmpegVideoEncoder,
+        )
+    }
     single { SrdCatalogJsonConverter() }
     single { BundledSrdCatalogLoader(get()) }
     single { FifthEditionPickerCatalogResolver() }
@@ -377,6 +413,7 @@ internal fun appModule() = module {
     single { get<WorldWeaverDatabase>().sessionDao() }
     single { get<WorldWeaverDatabase>().sessionSceneDao() }
     single { get<WorldWeaverDatabase>().sessionMarchEntryDao() }
+    single { get<WorldWeaverDatabase>().sessionClockDao() }
     single { get<WorldWeaverDatabase>().plotThreadDao() }
     single { get<WorldWeaverDatabase>().referenceDocDao() }
     single { get<WorldWeaverDatabase>().encounterDao() }
@@ -404,6 +441,7 @@ internal fun appModule() = module {
     single<PersonCompanionRepository> { PersonCompanionRepositoryImpl(get(), get()) }
     single<QuestRepository> { QuestRepositoryImpl(get(), get(), get(), get()) }
     single<SessionRepository> { SessionRepositoryImpl(get(), get(), get(), get()) }
+    single<SessionClockRepository> { SessionClockRepositoryImpl(get(), get()) }
     single<PlotThreadRepository> { PlotThreadRepositoryImpl(get(), get()) }
     single<ReferenceDocRepository> { ReferenceDocRepositoryImpl(get(), get()) }
     single<EncounterRepository> { EncounterRepositoryImpl(get(), get(), get()) }
@@ -431,6 +469,7 @@ internal fun appModule() = module {
             locationOverlayRepository = get(),
             questRepository = get(),
             sessionRepository = get(),
+            sessionClockRepository = get(),
             plotThreadRepository = get(),
             referenceDocRepository = get(),
             battleMapRepository = get(),
@@ -469,6 +508,7 @@ internal fun appModule() = module {
             shellSettingsStore = get(),
             atmosphereSettingsStore = get(),
             instantProvider = get(),
+            diceColorStyleStore = get(),
         )
     }
     factory {
@@ -479,6 +519,7 @@ internal fun appModule() = module {
             activeContextRepository = get(),
             shellSettingsStore = get(),
             atmosphereSettingsStore = get(),
+            diceColorStyleStore = get(),
         )
     }
     factory {
@@ -501,6 +542,7 @@ internal fun appModule() = module {
             locationOverlayRepository = get(),
             questRepository = get(),
             sessionRepository = get(),
+            sessionClockRepository = get(),
             plotThreadRepository = get(),
             referenceDocRepository = get(),
             battleMapRepository = get(),
@@ -522,7 +564,7 @@ internal fun appModule() = module {
     factory { CreateCampaignUseCase(get(), get(), get(), get(), get()) }
     factory { UpdateCampaignUseCase(get(), get()) }
     factory { SetCampaignStatusUseCase(get(), get()) }
-    factory { DeleteCampaignUseCase(get(), get()) }
+    factory { DeleteCampaignUseCase(get(), get(), get(), get()) }
     factory { ObserveCampaignsForActiveWorldUseCase(get(), get()) }
     factory { CreateLocationUseCase(get(), get(), get(), get()) }
     factory { UpdateLocationUseCase(get(), get()) }
@@ -588,8 +630,16 @@ internal fun appModule() = module {
     factory { ObserveQuestsForActiveCampaignUseCase(get(), get()) }
     factory { CreateSessionUseCase(get(), get(), get(), get(), get(), get(), get()) }
     factory { UpdateSessionUseCase(get(), get(), get(), get(), get(), get()) }
-    factory { DeleteSessionUseCase(get(), get(), get()) }
+    factory { DeleteSessionUseCase(get(), get(), get(), get()) }
     factory { ObserveSessionsForActiveCampaignUseCase(get(), get()) }
+    factory { UpdateSessionRunnerNotesUseCase(get(), get()) }
+    factory { CreateSessionClockUseCase(get(), get(), get(), get()) }
+    factory { UpdateSessionClockUseCase(get()) }
+    factory { DeleteSessionClockUseCase(get()) }
+    factory { DeleteSessionRecordingUseCase(get()) }
+    factory { ObserveSessionClocksForActiveSessionUseCase(get(), get()) }
+    factory { SearchSessionReferencesUseCase(get()) }
+    factory { LoadSessionReferencePeekUseCase(get(), get(), get(), get(), get()) }
     factory { CreatePlotThreadUseCase(get(), get(), get(), get(), get()) }
     factory { UpdatePlotThreadUseCase(get(), get(), get()) }
     factory { DeletePlotThreadUseCase(get()) }
@@ -636,25 +686,23 @@ internal fun appModule() = module {
     factory { UpdateCampaignPersonDeathSavesUseCase(get(), get()) }
     factory {
         BattleMapBoardSession(
-            appScope = get(),
             mapStateFactory = get(),
             movementOverlay = get(),
-            measureOverlay = get(),
             tokenOverlay = get(),
             itemOverlay = get(),
-            calculateReachableCells = get(),
-            calculateGridDistance = get(),
-            placeEncounterToken = get(),
-            updateBattleMapFog = get(),
-            updateBattleMapTerrain = get(),
-            placeBattleMapItem = get(),
-            deleteBattleMapItem = get(),
+            measureOverlay = get(),
             avatarFileStore = get(),
         )
     }
     factory { ObserveActiveContextUseCase(get()) }
+    factory { GetActiveContextUseCase(get()) }
     factory { ObserveActiveContextDetailsUseCase(get(), get(), get()) }
 
+    single {
+        DiceColorStyleStore(
+            preferences = Preferences.userRoot(),
+        )
+    }
     single {
         ShellSettingsStore(
             preferences = Preferences.userRoot().node(ShellSettingsStore.PREF_NODE),
@@ -682,6 +730,8 @@ internal fun appModule() = module {
     factory { ListHueLightsUseCase(get(), get()) }
     factory { ScanGoveeDevicesUseCase(get(), get()) }
     factory { ApplyAtmosphereLookUseCase(get(), get(), get()) }
+    factory { PlayAtmosphereLightingEffectUseCase(get()) }
+    factory { PlayAtmosphereLightingLoopUseCase(get()) }
     factory { CreateAtmosphereSceneUseCase(get(), get()) }
     factory { DeleteAtmosphereSceneUseCase(get()) }
     factory { CreateAtmosphereMoodUseCase(get(), get()) }
@@ -924,6 +974,13 @@ internal fun appModule() = module {
             rollEncounterInitiative = get(),
             rollAllInitiative = get(),
             updateDeathSaves = get(),
+            calculateReachableCells = get(),
+            calculateGridDistance = get(),
+            placeEncounterToken = get(),
+            updateBattleMapFog = get(),
+            updateBattleMapTerrain = get(),
+            placeBattleMapItem = get(),
+            deleteBattleMapItem = get(),
             boardSession = get(),
         )
     }
@@ -987,15 +1044,28 @@ internal fun appModule() = module {
             observeObservances = get(),
             observeOverlays = get(),
             observeLocations = get(),
+            observeClocks = get(),
+            updateRunnerNotes = get(),
+            createClock = get(),
+            updateClock = get(),
+            deleteClock = get(),
+            searchReferences = get(),
+            loadPeek = get(),
             closeSession = get(),
             awardPartyLevel = get(),
             awardPartyExperience = get(),
+            recordingCapture = get(),
+            recordingFileStore = get(),
+            captureDeviceProbe = get(),
+            cameraPermissionSettingsOpener = get(),
+            deleteRecording = get(),
         )
     }
     single {
         DiceViewModel(
             diceRoller = get(),
-            activeContextRepository = get(),
+            observeActiveContext = get(),
+            getActiveContext = get(),
             appScope = get(),
         )
     }
@@ -1018,6 +1088,8 @@ internal fun appModule() = module {
             deleteMood = get(),
             activateScene = get(),
             applyLook = get(),
+            playEffect = get(),
+            playLoop = get(),
             appScope = get(),
         )
     }

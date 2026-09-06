@@ -64,6 +64,12 @@ internal class AtmosphereSettingsStore(
         _settings.value = _settings.value.copy(isAlwaysOnTop = alwaysOnTop)
     }
 
+    fun setLookTransitionMs(durationMs: Int) {
+        val duration = durationMs.coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS)
+        preferences.putInt(KEY_LOOK_TRANSITION_MS, duration)
+        _settings.value = _settings.value.copy(lookTransitionMs = duration)
+    }
+
     fun replaceAll(settings: AtmosphereSettings) {
         preferences.put(KEY_BASE_URL, settings.connection.baseUrl)
         preferences.put(KEY_TOKEN, settings.connection.token)
@@ -76,6 +82,10 @@ internal class AtmosphereSettingsStore(
         preferences.put(KEY_SELECTED_HUE_LIGHTS, json.encodeToString(ListSerializer(String.serializer()), settings.selectedHueLightIds))
         preferences.put(KEY_SELECTED_GOVEE_DEVICES, json.encodeToString(ListSerializer(String.serializer()), settings.selectedGoveeDeviceIds))
         preferences.putBoolean(KEY_ALWAYS_ON_TOP, settings.isAlwaysOnTop)
+        preferences.putInt(
+            KEY_LOOK_TRANSITION_MS,
+            settings.lookTransitionMs.coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS),
+        )
         _settings.value = settings
     }
 
@@ -96,6 +106,10 @@ internal class AtmosphereSettingsStore(
             selectedHueLightIds = readStringIds(KEY_SELECTED_HUE_LIGHTS),
             selectedGoveeDeviceIds = readStringIds(KEY_SELECTED_GOVEE_DEVICES),
             isAlwaysOnTop = preferences.getBoolean(KEY_ALWAYS_ON_TOP, false),
+            lookTransitionMs = preferences.getInt(
+                KEY_LOOK_TRANSITION_MS,
+                LightingTransitionCalculator.DEFAULT_DURATION_MS,
+            ).coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS),
         )
     }
 
@@ -159,6 +173,7 @@ internal class AtmosphereSettingsStore(
         private const val KEY_SELECTED_HUE_LIGHTS = "selected_hue_light_ids"
         private const val KEY_SELECTED_GOVEE_DEVICES = "selected_govee_device_ids"
         private const val KEY_ALWAYS_ON_TOP = "atmosphere_always_on_top"
+        private const val KEY_LOOK_TRANSITION_MS = "atmosphere_look_transition_ms"
 
         private val json = Json {
             ignoreUnknownKeys = true

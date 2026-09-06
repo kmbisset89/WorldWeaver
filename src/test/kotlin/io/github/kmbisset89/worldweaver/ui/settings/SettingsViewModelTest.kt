@@ -13,6 +13,7 @@ import io.github.kmbisset89.worldweaver.domain.AtmosphereSettingsStore
 import io.github.kmbisset89.worldweaver.domain.BundledSrdCatalogLoader
 import io.github.kmbisset89.worldweaver.domain.ClearSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.DatabaseSnapshotExporter
+import io.github.kmbisset89.worldweaver.domain.DiceColorStyleStore
 import io.github.kmbisset89.worldweaver.domain.ExportAppBackupUseCase
 import io.github.kmbisset89.worldweaver.domain.FakeActiveContextRepository
 import io.github.kmbisset89.worldweaver.domain.FakeSrdCatalogRepository
@@ -20,10 +21,12 @@ import io.github.kmbisset89.worldweaver.domain.ImportSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.InstantProvider
 import io.github.kmbisset89.worldweaver.domain.ObserveSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.RestoreAppBackupUseCase
+import io.github.kmbisset89.worldweaver.domain.ShellSettings
+import io.github.kmbisset89.worldweaver.domain.ShellSettingsStore
 import io.github.kmbisset89.worldweaver.domain.SrdCatalogJsonConverter
+import io.github.kmbisset89.worldweaver.domain.ThemeMode
+import io.github.kmbisset89.worldweaver.domain.ThemeSkin
 import io.github.kmbisset89.worldweaver.domain.WorldWeaverDataDirectory
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeSkin
 import java.io.File
 import java.nio.file.Files
 import java.time.Instant
@@ -171,7 +174,7 @@ internal class SettingsViewModelTest {
                 shellSettingsStore = store,
                 atmosphereSettingsStore = atmosphereStore,
                 instantProvider = instantProvider,
-                dicePreferences = dicePreferences,
+                diceColorStyleStore = DiceColorStyleStore(dicePreferences),
             ),
             restoreAppBackup = RestoreAppBackupUseCase(
                 dataDirectory = dataDirectory,
@@ -180,7 +183,7 @@ internal class SettingsViewModelTest {
                 activeContextRepository = context,
                 shellSettingsStore = store,
                 atmosphereSettingsStore = atmosphereStore,
-                dicePreferences = dicePreferences,
+                diceColorStyleStore = DiceColorStyleStore(dicePreferences),
             ),
             observeSrdCatalog = ObserveSrdCatalogUseCase(catalogs),
             importSrdCatalog = ImportSrdCatalogUseCase(

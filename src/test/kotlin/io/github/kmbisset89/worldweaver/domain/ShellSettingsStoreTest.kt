@@ -1,7 +1,5 @@
-package io.github.kmbisset89.worldweaver.ui.settings
+package io.github.kmbisset89.worldweaver.domain
 
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeMode
-import io.github.kmbisset89.worldweaver.ui.theme.ThemeSkin
 import java.util.prefs.Preferences
 import kotlin.test.AfterTest
 import kotlin.test.Test

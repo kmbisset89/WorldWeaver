@@ -1,6 +1,7 @@
 package io.github.kmbisset89.worldweaver.ui.run
 
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -10,17 +11,23 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.ActiveContext
 import io.github.kmbisset89.worldweaver.domain.ActiveContextDetails
-import io.github.kmbisset89.worldweaver.domain.CampaignPerson
 import io.github.kmbisset89.worldweaver.domain.AwardPartyExperienceUseCase
 import io.github.kmbisset89.worldweaver.domain.AwardPartyLevelUseCase
+import io.github.kmbisset89.worldweaver.domain.CampaignPerson
 import io.github.kmbisset89.worldweaver.domain.CloseSessionUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateSessionClockUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteSessionClockUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteSessionRecordingUseCase
 import io.github.kmbisset89.worldweaver.domain.Encounter
 import io.github.kmbisset89.worldweaver.domain.EncounterStatus
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSheet
 import io.github.kmbisset89.worldweaver.domain.LevelingMode
+import io.github.kmbisset89.worldweaver.domain.LoadSessionReferencePeekUseCase
 import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.LocationOverlay
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
@@ -30,20 +37,36 @@ import io.github.kmbisset89.worldweaver.domain.ObserveLocationOverlaysForActiveC
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObservePeopleForActiveContextUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveSessionClocksForActiveSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarObservancesForActiveWorldUseCase
-import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservance
 import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
 import io.github.kmbisset89.worldweaver.domain.PersonKind
 import io.github.kmbisset89.worldweaver.domain.Quest
-import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
+import io.github.kmbisset89.worldweaver.domain.SearchHit
+import io.github.kmbisset89.worldweaver.domain.SearchSessionReferencesUseCase
 import io.github.kmbisset89.worldweaver.domain.Session
+import io.github.kmbisset89.worldweaver.domain.SessionCaptureDeviceProbe
+import io.github.kmbisset89.worldweaver.domain.SessionCameraPermissionSettingsOpener
+import io.github.kmbisset89.worldweaver.domain.SessionClock
+import io.github.kmbisset89.worldweaver.domain.SessionMicrophoneDevice
+import io.github.kmbisset89.worldweaver.domain.SessionRecording
+import io.github.kmbisset89.worldweaver.domain.SessionRecordingCapture
+import io.github.kmbisset89.worldweaver.domain.SessionRecordingFileStore
+import io.github.kmbisset89.worldweaver.domain.SessionRecordingKind
+import io.github.kmbisset89.worldweaver.domain.SessionReferencePeek
+import io.github.kmbisset89.worldweaver.domain.UpdateSessionClockUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateSessionRunnerNotesUseCase
 import io.github.kmbisset89.worldweaver.domain.WorldCalendar
+import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservance
 import io.github.kmbisset89.worldweaver.domain.WorldDateFormatter
 import io.github.kmbisset89.worldweaver.ui.advancement.AdvancementPrompt
 import io.github.kmbisset89.worldweaver.ui.characters.PersonMembership
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 internal class RunViewModel(
     private val appScope: AppCoroutineScope,
@@ -57,9 +80,21 @@ internal class RunViewModel(
     private val observeObservances: ObserveWorldCalendarObservancesForActiveWorldUseCase,
     private val observeOverlays: ObserveLocationOverlaysForActiveCampaignUseCase,
     private val observeLocations: ObserveLocationsForActiveWorldUseCase,
+    private val observeClocks: ObserveSessionClocksForActiveSessionUseCase,
+    private val updateRunnerNotes: UpdateSessionRunnerNotesUseCase,
+    private val createClock: CreateSessionClockUseCase,
+    private val updateClock: UpdateSessionClockUseCase,
+    private val deleteClock: DeleteSessionClockUseCase,
+    private val searchReferences: SearchSessionReferencesUseCase,
+    private val loadPeek: LoadSessionReferencePeekUseCase,
     private val closeSession: CloseSessionUseCase,
     private val awardPartyLevel: AwardPartyLevelUseCase,
     private val awardPartyExperience: AwardPartyExperienceUseCase,
+    private val recordingCapture: SessionRecordingCapture,
+    private val recordingFileStore: SessionRecordingFileStore,
+    private val captureDeviceProbe: SessionCaptureDeviceProbe,
+    private val cameraPermissionSettingsOpener: SessionCameraPermissionSettingsOpener,
+    private val deleteRecording: DeleteSessionRecordingUseCase,
     private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
 ) {
     private val _state = MutableStateFlow<RunViewState>(RunViewState.Loading)
@@ -68,22 +103,63 @@ internal class RunViewModel(
     private val _effects = MutableSharedFlow<RunViewEffect>(extraBufferCapacity = 1)
     val effects: SharedFlow<RunViewEffect> = _effects.asSharedFlow()
 
+    private val _cameraPreview = MutableStateFlow<ImageBitmap?>(null)
+    val cameraPreview: StateFlow<ImageBitmap?> = _cameraPreview.asStateFlow()
+
     private var observeJob: Job? = null
+    private var notesSaveJob: Job? = null
+    private var lookupJob: Job? = null
+    private var timerJob: Job? = null
     private var whyItMatters: String = ""
     private var isClosing: Boolean = false
     private var closeError: String? = null
     private var latestSessionId: String? = null
     private var latestCampaignId: String? = null
+    private var latestWorldId: String? = null
     private var latestLevelingMode = LevelingMode.Milestone
     private var advancementPrompt: AdvancementPrompt? = null
+    private var draftNotes: String? = null
+    private var draftScratchNotes: String? = null
+    private var clockLabel: String = ""
+    private var clockSegmentCount: Int = SessionClock.DEFAULT_SEGMENT_COUNT
+    private var clockError: String? = null
+    private var timerMinutesText: String = "5"
+    private var timerRemainingSeconds: Int = 5 * 60
+    private var timerRunning: Boolean = false
+    private var timerFinished: Boolean = false
+    private var lookupQuery: String = ""
+    private var lookupResults: List<SearchHit> = emptyList()
+    private var lookupPeek: SessionReferencePeek? = null
+    private var latestClocks: List<SessionClock> = emptyList()
+    private var hasMicrophone: Boolean = false
+    private var hasCamera: Boolean = false
+    private var microphones: List<SessionMicrophoneDevice> = emptyList()
+    private var selectedMicrophoneId: String? = null
+    private var cameraNeedsPermission: Boolean = false
+    private var recordingMode: SessionRecordingKind = SessionRecordingKind.Audio
+    private var isRecording: Boolean = false
+    private var recordingElapsedSeconds: Int = 0
+    private var recordings: List<RunViewState.RecordingLine> = emptyList()
+    private var recordingError: String? = null
+    private var recordingElapsedJob: Job? = null
 
     init {
+        refreshCaptureDevices()
         observe()
+        appScope.scope.launch {
+            recordingCapture.previewImages.collect { image ->
+                _cameraPreview.value = image?.toComposeImageBitmap()
+            }
+        }
     }
 
     fun onInteraction(interaction: RunInteraction) {
         when (interaction) {
-            RunInteraction.ScreenStarted -> Unit
+            RunInteraction.ScreenStarted -> {
+                probeDevices()
+                loadRecordings()
+            }
+            RunInteraction.ScreenStopped -> recordingCapture.stopPreview()
             RunInteraction.RetrySelected -> observe()
             RunInteraction.CreateWorldSelected -> emitEffect(RunViewEffect.OpenWorlds)
             RunInteraction.CreateCampaignSelected -> emitEffect(RunViewEffect.OpenCampaigns)
@@ -99,6 +175,48 @@ internal class RunViewModel(
                     personId = interaction.personId,
                 )
             )
+            is RunInteraction.SessionNotesChanged -> {
+                draftNotes = interaction.value
+                refreshContentFields()
+                scheduleNotesSave()
+            }
+            is RunInteraction.ScratchNotesChanged -> {
+                draftScratchNotes = interaction.value
+                refreshContentFields()
+                scheduleNotesSave()
+            }
+            is RunInteraction.LookupQueryChanged -> changeLookupQuery(interaction.query)
+            is RunInteraction.LookupResultSelected -> selectLookupResult(interaction.hit)
+            RunInteraction.LookupPeekDismissed -> {
+                lookupPeek = null
+                refreshContentFields()
+            }
+            RunInteraction.LookupOpened -> lookupPeek?.hit?.let { hit ->
+                emitEffect(RunViewEffect.OpenSearchHit(hit))
+            }
+            is RunInteraction.ClockLabelChanged -> {
+                clockLabel = interaction.value
+                clockError = null
+                refreshContentFields()
+            }
+            is RunInteraction.ClockSegmentCountSelected -> {
+                clockSegmentCount = interaction.count.coerceIn(
+                    SessionClock.MIN_SEGMENT_COUNT,
+                    SessionClock.MAX_SEGMENT_COUNT,
+                )
+                refreshContentFields()
+            }
+            RunInteraction.ClockCreateSelected -> createProgressClock()
+            is RunInteraction.ClockFilledSelected -> fillClock(interaction.clockId, interaction.filledCount)
+            is RunInteraction.ClockDeleteSelected -> removeClock(interaction.clockId)
+            is RunInteraction.TimerMinutesChanged -> {
+                timerMinutesText = interaction.value
+                refreshContentFields()
+            }
+            is RunInteraction.TimerPresetSelected -> applyTimerPreset(interaction.minutes)
+            RunInteraction.TimerStartSelected -> startTimer()
+            RunInteraction.TimerPauseSelected -> pauseTimer()
+            RunInteraction.TimerResetSelected -> resetTimer()
             is RunInteraction.WhyItMattersChanged -> {
                 whyItMatters = interaction.value
                 refreshContentFields()
@@ -117,6 +235,12 @@ internal class RunViewModel(
                 }
             }
             RunInteraction.AwardExperienceConfirmed -> confirmAwardExperience()
+            is RunInteraction.RecordingModeSelected -> selectRecordingMode(interaction.kind)
+            is RunInteraction.MicrophoneSelected -> selectMicrophone(interaction.deviceId)
+            RunInteraction.RecordToggled -> toggleRecording()
+            RunInteraction.CameraPermissionRequested -> requestCameraPermission()
+            is RunInteraction.RecordingOpened -> emitEffect(RunViewEffect.OpenRecording(interaction.path))
+            is RunInteraction.RecordingDeleteSelected -> removeRecording(interaction.recordingId)
         }
     }
 
@@ -143,8 +267,9 @@ internal class RunViewModel(
                 ) { encounters, calendar, observances, overlays, locations ->
                     SupportBundle(encounters, calendar, observances, overlays, locations)
                 },
-            ) { primary, support ->
-                LoadedSnapshot(primary, support)
+                observeClocks(),
+            ) { primary, support, clocks ->
+                LoadedSnapshot(primary, support, clocks)
             }
                 .catch { error ->
                     _state.value = RunViewState.Error(
@@ -163,15 +288,19 @@ internal class RunViewModel(
         if (world == null) {
             latestSessionId = null
             latestCampaignId = null
+            latestWorldId = null
             advancementPrompt = null
+            stopCaptureForInactiveSession()
             _state.value = RunViewState.NoActiveWorld
             return
         }
+        latestWorldId = world.id
         val campaign = snapshot.primary.details.campaign
         if (campaign == null) {
             latestSessionId = null
             latestCampaignId = null
             advancementPrompt = null
+            stopCaptureForInactiveSession()
             _state.value = RunViewState.NoActiveCampaign
             return
         }
@@ -182,6 +311,7 @@ internal class RunViewModel(
         if (session == null) {
             latestSessionId = null
             advancementPrompt = null
+            stopCaptureForInactiveSession()
             _state.value = RunViewState.NoActiveSession(
                 worldName = world.name,
                 campaignName = campaign.name,
@@ -189,11 +319,21 @@ internal class RunViewModel(
             return
         }
         if (latestSessionId != session.id) {
+            finalizeRecording()
             whyItMatters = ""
             closeError = null
             advancementPrompt = null
+            draftNotes = null
+            draftScratchNotes = null
+            clockLabel = ""
+            clockError = null
+            lookupQuery = ""
+            lookupResults = emptyList()
+            lookupPeek = null
+            recordings = recordingFileStore.list(session.id).map { recording -> recordingLine(recording) }
         }
         latestSessionId = session.id
+        latestClocks = snapshot.clocks
         _state.value = contentState(
             worldName = world.name,
             campaignName = campaign.name,
@@ -205,6 +345,7 @@ internal class RunViewModel(
             observances = snapshot.support.observances,
             overlays = snapshot.support.overlays,
             locations = snapshot.support.locations,
+            clocks = snapshot.clocks,
         )
     }
 
@@ -219,6 +360,7 @@ internal class RunViewModel(
         observances: List<WorldCalendarObservance>,
         overlays: List<LocationOverlay>,
         locations: List<Location>,
+        clocks: List<SessionClock>,
     ): RunViewState.Content {
         val inWorldDateLabel = if (calendar != null && session.inWorldDate != null) {
             dateFormatter.format(calendar, session.inWorldDate)
@@ -240,7 +382,8 @@ internal class RunViewModel(
             campaignName = campaignName,
             sessionId = session.id,
             sessionName = session.name,
-            sessionNotes = session.notes,
+            sessionNotes = draftNotes ?: session.notes,
+            scratchNotes = draftScratchNotes ?: session.scratchNotes,
             recap = session.recap,
             inWorldDateLabel = inWorldDateLabel,
             calendarTodayLabel = calendarTodayLabel,
@@ -262,6 +405,17 @@ internal class RunViewModel(
             scenes = session.scenes.map { scene ->
                 RunViewState.SceneLine(title = scene.title, notes = scene.notes)
             },
+            clocks = clocks.map { RunViewState.ClockLine(it) },
+            clockLabel = clockLabel,
+            clockSegmentCount = clockSegmentCount,
+            clockError = clockError,
+            timerMinutesText = timerMinutesText,
+            timerRemainingSeconds = timerRemainingSeconds,
+            timerRunning = timerRunning,
+            timerFinished = timerFinished,
+            lookupQuery = lookupQuery,
+            lookupResults = lookupResults,
+            lookupPeek = lookupPeek,
             activeEncounter = activeEncounter?.let { encounter ->
                 RunViewState.EncounterLine(
                     name = encounter.name,
@@ -281,6 +435,16 @@ internal class RunViewModel(
             isClosing = isClosing,
             closeError = closeError,
             advancementPrompt = advancementPrompt,
+            hasMicrophone = hasMicrophone,
+            hasCamera = hasCamera,
+            microphones = microphones,
+            selectedMicrophoneId = selectedMicrophoneId,
+            recordingMode = recordingMode,
+            isRecording = isRecording,
+            recordingElapsedLabel = elapsedLabel(recordingElapsedSeconds),
+            recordings = recordings,
+            recordingError = recordingError,
+            cameraNeedsPermission = cameraNeedsPermission,
         )
     }
 
@@ -310,12 +474,174 @@ internal class RunViewModel(
         val current = _state.value
         if (current is RunViewState.Content) {
             _state.value = current.copy(
+                sessionNotes = draftNotes ?: current.sessionNotes,
+                scratchNotes = draftScratchNotes ?: current.scratchNotes,
+                clocks = latestClocks.map { RunViewState.ClockLine(it) },
+                clockLabel = clockLabel,
+                clockSegmentCount = clockSegmentCount,
+                clockError = clockError,
+                timerMinutesText = timerMinutesText,
+                timerRemainingSeconds = timerRemainingSeconds,
+                timerRunning = timerRunning,
+                timerFinished = timerFinished,
+                lookupQuery = lookupQuery,
+                lookupResults = lookupResults,
+                lookupPeek = lookupPeek,
                 whyItMatters = whyItMatters,
                 isClosing = isClosing,
                 closeError = closeError,
                 advancementPrompt = advancementPrompt,
+                hasMicrophone = hasMicrophone,
+                hasCamera = hasCamera,
+                microphones = microphones,
+                selectedMicrophoneId = selectedMicrophoneId,
+                recordingMode = recordingMode,
+                isRecording = isRecording,
+                recordingElapsedLabel = elapsedLabel(recordingElapsedSeconds),
+                recordings = recordings,
+                recordingError = recordingError,
+                cameraNeedsPermission = cameraNeedsPermission,
             )
         }
+    }
+
+    private fun scheduleNotesSave() {
+        val sessionId = latestSessionId ?: return
+        notesSaveJob?.cancel()
+        notesSaveJob = appScope.scope.launch {
+            delay(NOTES_SAVE_DELAY_MS)
+            val notes = draftNotes
+            val scratch = draftScratchNotes
+            if (notes == null && scratch == null) {
+                return@launch
+            }
+            val current = (_state.value as? RunViewState.Content) ?: return@launch
+            updateRunnerNotes(
+                sessionId = sessionId,
+                notes = notes ?: current.sessionNotes,
+                scratchNotes = scratch ?: current.scratchNotes,
+            )
+        }
+    }
+
+    private fun changeLookupQuery(query: String) {
+        lookupQuery = query
+        lookupPeek = null
+        if (query.trim().length < 2) {
+            lookupJob?.cancel()
+            lookupResults = emptyList()
+            refreshContentFields()
+            return
+        }
+        refreshContentFields()
+        val worldId = latestWorldId ?: return
+        val campaignId = latestCampaignId ?: return
+        lookupJob?.cancel()
+        lookupJob = appScope.scope.launch {
+            lookupResults = searchReferences(query, worldId, campaignId)
+            refreshContentFields()
+        }
+    }
+
+    private fun selectLookupResult(hit: SearchHit) {
+        val campaignId = latestCampaignId ?: return
+        appScope.scope.launch {
+            lookupPeek = loadPeek(hit, campaignId)
+            refreshContentFields()
+        }
+    }
+
+    private fun createProgressClock() {
+        clockError = null
+        appScope.scope.launch {
+            when (val result = createClock(clockLabel, clockSegmentCount)) {
+                is CreateSessionClockUseCase.Result.Created -> {
+                    clockLabel = ""
+                    clockError = null
+                    refreshContentFields()
+                }
+                CreateSessionClockUseCase.Result.InvalidLabel -> {
+                    clockError = "Enter a label"
+                    refreshContentFields()
+                }
+                CreateSessionClockUseCase.Result.InvalidSegmentCount -> {
+                    clockError = "Choose 2 to 12 segments"
+                    refreshContentFields()
+                }
+                CreateSessionClockUseCase.Result.NoActiveSession -> {
+                    clockError = "No active session"
+                    refreshContentFields()
+                }
+            }
+        }
+    }
+
+    private fun fillClock(clockId: String, filledCount: Int) {
+        appScope.scope.launch {
+            updateClock(clockId, filledCount)
+        }
+    }
+
+    private fun removeClock(clockId: String) {
+        appScope.scope.launch {
+            deleteClock(clockId)
+        }
+    }
+
+    private fun applyTimerPreset(minutes: Int) {
+        pauseTimer()
+        timerMinutesText = minutes.toString()
+        timerRemainingSeconds = minutes * 60
+        timerFinished = false
+        refreshContentFields()
+    }
+
+    private fun startTimer() {
+        if (timerRunning) {
+            return
+        }
+        val minutes = timerMinutesText.toIntOrNull()?.coerceIn(1, MAX_TIMER_MINUTES)
+        if (minutes == null) {
+            return
+        }
+        if (timerRemainingSeconds <= 0 || timerFinished) {
+            timerRemainingSeconds = minutes * 60
+        }
+        timerFinished = false
+        timerRunning = true
+        refreshContentFields()
+        timerJob?.cancel()
+        timerJob = appScope.scope.launch {
+            while (timerRemainingSeconds > 0 && timerRunning) {
+                delay(TIMER_TICK_MS)
+                if (!timerRunning) {
+                    break
+                }
+                timerRemainingSeconds -= 1
+                if (timerRemainingSeconds <= 0) {
+                    timerRemainingSeconds = 0
+                    timerRunning = false
+                    timerFinished = true
+                }
+                refreshContentFields()
+            }
+        }
+    }
+
+    private fun pauseTimer() {
+        timerRunning = false
+        timerJob?.cancel()
+        timerJob = null
+        refreshContentFields()
+    }
+
+    private fun resetTimer() {
+        pauseTimer()
+        val minutes = timerMinutesText.toIntOrNull()?.coerceIn(1, MAX_TIMER_MINUTES) ?: 5
+        timerMinutesText = minutes.toString()
+        timerRemainingSeconds = minutes * 60
+        timerFinished = false
+        refreshContentFields()
     }
 
     private fun closeActiveSession() {
@@ -323,6 +649,7 @@ internal class RunViewModel(
         if (isClosing) {
             return
         }
+        finalizeRecording()
         isClosing = true
         closeError = null
         refreshContentFields()
@@ -392,6 +719,209 @@ internal class RunViewModel(
         _effects.tryEmit(effect)
     }
 
+    private fun probeDevices() {
+        refreshCaptureDevices()
+        refreshContentFields()
+    }
+
+    private fun refreshCaptureDevices() {
+        microphones = captureDeviceProbe.microphones()
+        hasMicrophone = microphones.isNotEmpty()
+        hasCamera = captureDeviceProbe.hasCamera()
+        if (selectedMicrophoneId == null || microphones.none { device -> device.id == selectedMicrophoneId }) {
+            selectedMicrophoneId = microphones.firstOrNull()?.id
+        }
+    }
+
+    private fun loadRecordings() {
+        val sessionId = latestSessionId ?: return
+        recordings = recordingFileStore.list(sessionId).map { recording -> recordingLine(recording) }
+        refreshContentFields()
+    }
+
+    private fun selectRecordingMode(kind: SessionRecordingKind) {
+        if (isRecording) {
+            return
+        }
+        recordingMode = kind
+        recordingError = null
+        if (kind == SessionRecordingKind.Video) {
+            if (recordingCapture.startPreview()) {
+                cameraNeedsPermission = false
+            } else {
+                cameraNeedsPermission = true
+                recordingError = "Could not open the camera. Tap Allow camera to grant access."
+            }
+        } else {
+            recordingCapture.stopPreview()
+            cameraNeedsPermission = false
+        }
+        refreshContentFields()
+    }
+
+    private fun selectMicrophone(deviceId: String) {
+        if (isRecording) {
+            return
+        }
+        if (microphones.none { device -> device.id == deviceId }) {
+            return
+        }
+        selectedMicrophoneId = deviceId
+        recordingError = null
+        refreshContentFields()
+    }
+
+    private fun requestCameraPermission() {
+        if (isRecording) {
+            return
+        }
+        recordingError = null
+        recordingMode = SessionRecordingKind.Video
+        if (recordingCapture.startPreview()) {
+            cameraNeedsPermission = false
+            hasCamera = true
+            refreshContentFields()
+            return
+        }
+        cameraNeedsPermission = true
+        val openedSettings = cameraPermissionSettingsOpener.open()
+        recordingError = if (openedSettings) {
+            "Allow World Weaver under Camera in system privacy settings, then tap Allow camera again."
+        } else {
+            "Could not open the camera. Allow camera access in system settings, then tap Allow camera again."
+        }
+        refreshContentFields()
+    }
+
+    private fun toggleRecording() {
+        if (isRecording) {
+            finalizeRecording()
+            refreshContentFields()
+            return
+        }
+        val sessionId = latestSessionId ?: return
+        val canRecord = when (recordingMode) {
+            SessionRecordingKind.Audio -> hasMicrophone
+            SessionRecordingKind.Video -> hasCamera
+        }
+        if (!canRecord) {
+            recordingError = when (recordingMode) {
+                SessionRecordingKind.Audio -> "No microphone available. Allow microphone access or plug one in."
+                SessionRecordingKind.Video -> "No camera available. Allow camera access or plug one in."
+            }
+            refreshContentFields()
+            return
+        }
+        recordingError = null
+        if (!recordingCapture.start(sessionId, recordingMode, selectedMicrophoneId)) {
+            recordingError = when (recordingMode) {
+                SessionRecordingKind.Audio -> "Could not start the microphone."
+                SessionRecordingKind.Video -> "Could not start the camera or microphone."
+            }
+            if (recordingMode == SessionRecordingKind.Video) {
+                cameraNeedsPermission = true
+            }
+            refreshContentFields()
+            return
+        }
+        if (recordingMode == SessionRecordingKind.Video) {
+            cameraNeedsPermission = false
+        }
+        isRecording = true
+        recordingElapsedSeconds = 0
+        startRecordingElapsed()
+        refreshContentFields()
+    }
+
+    private fun startRecordingElapsed() {
+        recordingElapsedJob?.cancel()
+        recordingElapsedJob = appScope.scope.launch {
+            while (isRecording) {
+                delay(TIMER_TICK_MS)
+                if (!isRecording) {
+                    break
+                }
+                recordingElapsedSeconds += 1
+                refreshContentFields()
+            }
+        }
+    }
+
+    private fun finalizeRecording() {
+        recordingElapsedJob?.cancel()
+        recordingElapsedJob = null
+        isRecording = false
+        recordingElapsedSeconds = 0
+        recordingCapture.stop()
+        val sessionId = latestSessionId
+        if (sessionId != null) {
+            recordings = recordingFileStore.list(sessionId).map { recording -> recordingLine(recording) }
+        }
+        if (recordingMode == SessionRecordingKind.Video) {
+            if (recordingCapture.startPreview()) {
+                cameraNeedsPermission = false
+            } else {
+                cameraNeedsPermission = true
+            }
+        }
+    }
+
+    private fun stopCaptureForInactiveSession() {
+        recordingElapsedJob?.cancel()
+        recordingElapsedJob = null
+        isRecording = false
+        recordingElapsedSeconds = 0
+        recordings = emptyList()
+        recordingCapture.shutdown()
+        refreshContentFields()
+    }
+
+    private fun removeRecording(recordingId: String) {
+        val sessionId = latestSessionId ?: return
+        appScope.scope.launch {
+            deleteRecording(sessionId, recordingId)
+            recordings = recordingFileStore.list(sessionId).map { recording -> recordingLine(recording) }
+            refreshContentFields()
+        }
+    }
+
+    private fun recordingLine(recording: SessionRecording): RunViewState.RecordingLine {
+        return RunViewState.RecordingLine(
+            id = recording.id,
+            kindLabel = when (recording.kind) {
+                SessionRecordingKind.Audio -> "Mic"
+                SessionRecordingKind.Video -> "Camera"
+            },
+            startedLabel = STARTED_LABEL.format(recording.startedAt),
+            sizeLabel = sizeLabel(recording.byteSize),
+            path = recording.path,
+        )
+    }
+
+    private fun elapsedLabel(seconds: Int): String {
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        val remainder = seconds % 60
+        return if (hours > 0) {
+            "$hours:${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}"
+        } else {
+            "${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}"
+        }
+    }
+
+    private fun sizeLabel(bytes: Long): String {
+        if (bytes < 1024) {
+            return "$bytes B"
+        }
+        if (bytes < 1024 * 1024) {
+            return "${bytes / 1024} KB"
+        }
+        val tenths = (bytes * 10) / (1024 * 1024)
+        val whole = tenths / 10
+        val fraction = tenths % 10
+        return "$whole.$fraction MB"
+    }
+
     private data class PrimaryBundle(
         val context: ActiveContext,
         val details: ActiveContextDetails,
@@ -411,5 +941,14 @@ internal class RunViewModel(
     private data class LoadedSnapshot(
         val primary: PrimaryBundle,
         val support: SupportBundle,
+        val clocks: List<SessionClock>,
     )
+
+    private companion object {
+        const val NOTES_SAVE_DELAY_MS = 400L
+        const val TIMER_TICK_MS = 1_000L
+        const val MAX_TIMER_MINUTES = 180
+        val STARTED_LABEL: DateTimeFormatter =
+            DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
+    }
 }

@@ -24,4 +24,5 @@ internal data class AppBackupPrefs(
     val atmosphereMoods: List<AtmosphereMood> = emptyList(),
     val atmosphereSelectedHueLightIds: List<String> = emptyList(),
     val atmosphereSelectedGoveeDeviceIds: List<String> = emptyList(),
+    val atmosphereLookTransitionMs: Int = LightingTransitionCalculator.DEFAULT_DURATION_MS,
 )
