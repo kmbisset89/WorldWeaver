@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -23,6 +26,8 @@ import io.github.kmbisset89.worldweaver.domain.Quest
 import io.github.kmbisset89.worldweaver.domain.QuestLinkKind
 import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -90,12 +95,17 @@ internal fun QuestDetailPane(
                     Text("Reopen")
                 }
             }
-            TextButton(onClick = { onInteraction(QuestsInteraction.EditQuestSelected(quest.id)) }) {
-                Text("Edit")
-            }
-            TextButton(onClick = { onInteraction(QuestsInteraction.DeleteQuestSelected(quest.id)) }) {
-                Text("Delete")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Edit,
+                tooltip = "Edit",
+                onClick = { onInteraction(QuestsInteraction.EditQuestSelected(quest.id)) },
+            )
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Delete,
+                tooltip = "Delete",
+                tint = ErrorRed,
+                onClick = { onInteraction(QuestsInteraction.DeleteQuestSelected(quest.id)) },
+            )
         }
     }
 }

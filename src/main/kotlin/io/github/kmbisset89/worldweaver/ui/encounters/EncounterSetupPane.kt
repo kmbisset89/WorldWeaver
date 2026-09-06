@@ -7,6 +7,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
@@ -21,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.EncounterDifficulty
 import io.github.kmbisset89.worldweaver.domain.EncounterParticipantSource
 import io.github.kmbisset89.worldweaver.domain.EncounterStatus
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
@@ -213,22 +220,23 @@ internal fun EncounterSetupPane(
                     singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(
+                ActionIconButtonComposeWidget(
+                    icon = Icons.Default.Close,
+                    tooltip = "Remove",
+                    tint = ErrorRed,
                     onClick = {
                         onInteraction(EncountersInteraction.EditorParticipantRemoved(index))
-                    }
-                ) {
-                    Text("Remove")
-                }
+                    },
+                )
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
+            ActionIconButtonComposeWidget(
+                icon = if (isCreate) Icons.Default.Check else Icons.Default.Save,
+                tooltip = if (isCreate) "Create" else "Save",
+                filled = true,
                 onClick = { onInteraction(EncountersInteraction.EditorSaved) },
-                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-            ) {
-                Text(if (isCreate) "Create" else "Save")
-            }
+            )
             if (isCreate) {
                 TextButton(onClick = { onInteraction(EncountersInteraction.EditorDismissed) }) {
                     Text("Cancel")
@@ -257,15 +265,16 @@ internal fun EncounterSetupPane(
                 }
             }
             if (setup.encounterId != null) {
-                TextButton(
+                ActionIconButtonComposeWidget(
+                    icon = Icons.Default.Delete,
+                    tooltip = "Delete",
+                    tint = ErrorRed,
                     onClick = {
                         onInteraction(
                             EncountersInteraction.DeleteEncounterSelected(setup.encounterId)
                         )
-                    }
-                ) {
-                    Text("Delete")
-                }
+                    },
+                )
             }
         }
         if (startWarning != null) {

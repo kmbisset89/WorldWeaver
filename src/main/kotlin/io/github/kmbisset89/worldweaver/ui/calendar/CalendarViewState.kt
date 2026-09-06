@@ -1,5 +1,6 @@
 package io.github.kmbisset89.worldweaver.ui.calendar
 
+import io.github.kmbisset89.worldweaver.domain.CelestialBodyKind
 import io.github.kmbisset89.worldweaver.domain.Lore
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservanceKind
 
@@ -24,15 +25,20 @@ internal sealed class CalendarViewState {
         val currentDay: String,
         val preview: String?,
         val todayObservances: List<ObservanceLine>,
+        val todaySky: List<SkyLine>,
         val observances: List<ObservanceLine>,
+        val celestialBodies: List<CelestialBodyLine>,
         val selectedObservanceId: String?,
+        val selectedCelestialBodyId: String?,
         val referencedMonthIds: Set<String>,
         val monthsError: String?,
         val weekdaysError: String?,
         val currentDateError: String?,
         val saveError: String?,
         val editor: ObservanceEditorState?,
+        val bodyEditor: CelestialBodyEditorState?,
         val pendingDelete: PendingDelete?,
+        val pendingBodyDelete: PendingBodyDelete?,
     ) : CalendarViewState()
 
     data class MonthEditor(
@@ -60,6 +66,22 @@ internal sealed class CalendarViewState {
         val title: String,
     )
 
+    data class SkyLine(
+        val id: String,
+        val name: String,
+        val kindLabel: String,
+        val appearanceLabel: String,
+    )
+
+    data class CelestialBodyLine(
+        val id: String,
+        val name: String,
+        val kindLabel: String,
+        val cycleLabel: String,
+        val notes: String,
+        val appearanceLabel: String?,
+    )
+
     data class ObservanceEditorState(
         val observanceId: String?,
         val name: String,
@@ -75,8 +97,25 @@ internal sealed class CalendarViewState {
         val saveError: String?,
     )
 
+    data class CelestialBodyEditorState(
+        val bodyId: String?,
+        val name: String,
+        val notes: String,
+        val kind: CelestialBodyKind,
+        val periodDaysText: String,
+        val epochOffsetDaysText: String,
+        val nameError: String?,
+        val periodError: String?,
+        val saveError: String?,
+    )
+
     data class PendingDelete(
         val observanceId: String,
+        val name: String,
+    )
+
+    data class PendingBodyDelete(
+        val bodyId: String,
         val name: String,
     )
 }

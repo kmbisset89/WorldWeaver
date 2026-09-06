@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Place
@@ -257,6 +258,7 @@ private enum class NavDestination(
     Encounters(Screen.ENCOUNTERS, Icons.Default.Security, "Encounters", "Navigate to Encounters"),
     Maps(Screen.MAPS, Icons.Default.Map, "Maps", "Navigate to Maps"),
     Dice(Screen.DICE, Icons.Default.Casino, "Dice", "Navigate to Dice"),
+    Atmosphere(Screen.ATMOSPHERE, Icons.Default.Lightbulb, "Atmosphere", "Navigate to Atmosphere"),
     Settings(Screen.SETTINGS, Icons.Default.Settings, "Settings", "Navigate to Settings"),
 }
 

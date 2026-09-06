@@ -3,6 +3,8 @@ package io.github.kmbisset89.worldweaver.ui.sessions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -10,6 +12,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 
 @Composable
 internal fun SessionEditorDialog(
@@ -84,9 +87,11 @@ internal fun SessionEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onInteraction(SessionsInteraction.EditorSaved) }) {
-                Text("Save")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save",
+                onClick = { onInteraction(SessionsInteraction.EditorSaved) },
+            )
         },
         dismissButton = {
             TextButton(onClick = { onInteraction(SessionsInteraction.EditorDismissed) }) {

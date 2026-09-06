@@ -6,10 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -24,7 +24,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material3.Button
@@ -34,7 +33,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,9 +54,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.BattleMap
 import io.github.kmbisset89.worldweaver.domain.BattleMapImageScaler
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailBreakpoint
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveScreenHeaderComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
+import io.github.kmbisset89.worldweaver.ui.components.rememberAdaptiveListOpen
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -148,13 +150,33 @@ internal fun MapsScreen(
                 )
             }
             is MapsViewState.Content -> {
-                MapsHeader(
-                    subtitle = "${viewState.campaignName} · ${viewState.worldName}",
-                    showImport = true,
-                    showStarterCatalog = viewState.starterCatalogAvailable,
-                    onInteraction = onInteraction,
-                )
-                MapsContent(state = viewState, mapState = mapState, onInteraction = onInteraction)
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val compact = maxWidth < AdaptiveListDetailBreakpoint
+                    var listOpen by rememberAdaptiveListOpen(compact)
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        MapsHeader(
+                            subtitle = "${viewState.campaignName} · ${viewState.worldName}",
+                            showImport = true,
+                            showStarterCatalog = viewState.starterCatalogAvailable,
+                            compact = compact,
+                            selectedName = viewState.selectedMap?.name,
+                            onListToggle = { listOpen = !listOpen },
+                            onInteraction = onInteraction,
+                        )
+                        MapsContent(
+                            state = viewState,
+                            mapState = mapState,
+                            compact = compact,
+                            listOpen = listOpen,
+                            onListDismissed = { listOpen = false },
+                            onInteraction = onInteraction,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
+                    }
+                }
             }
             is MapsViewState.Maker -> {
                 MapsHeader(
@@ -182,39 +204,31 @@ private fun MapsHeader(
     showImport: Boolean,
     showStarterCatalog: Boolean = false,
     onInteraction: (MapsInteraction) -> Unit,
+    compact: Boolean = false,
+    selectedName: String? = null,
+    onListToggle: () -> Unit = {},
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    AdaptiveScreenHeaderComposeWidget(
+        title = "Maps",
+        subtitle = subtitle,
+        compact = compact,
+        switcherName = selectedName,
+        listLabel = "maps list",
+        onListToggle = onListToggle,
     ) {
-        Column {
-            Text(
-                text = "Maps",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(text = subtitle, fontSize = 13.sp, color = TextSecondary)
-        }
         if (showImport) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            if (showStarterCatalog) {
+                TextButton(onClick = { onInteraction(MapsInteraction.StarterCatalogSelected) }) {
+                    Text("Starter maps")
+                }
+            }
+            Button(
+                onClick = { onInteraction(MapsInteraction.ImportSelected) },
+                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
             ) {
-                if (showStarterCatalog) {
-                    TextButton(onClick = { onInteraction(MapsInteraction.StarterCatalogSelected) }) {
-                        Text("Starter maps")
-                    }
-                }
-                Button(
-                    onClick = { onInteraction(MapsInteraction.ImportSelected) },
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-                ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("New map")
-                }
+                Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("New map")
             }
         }
     }
@@ -296,96 +310,67 @@ private fun StarterCatalogPane(
 private fun MapsContent(
     state: MapsViewState.Content,
     mapState: MapState?,
+    compact: Boolean,
+    listOpen: Boolean,
+    onListDismissed: () -> Unit,
     onInteraction: (MapsInteraction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .width(260.dp)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(state.maps, key = { it.id }) { battleMap ->
-                MapListRow(
-                    battleMap = battleMap,
-                    selected = battleMap.id == state.selectedMap?.id,
-                    onClick = { onInteraction(MapsInteraction.MapSelected(battleMap.id)) },
-                )
+    AdaptiveListDetailComposeWidget(
+        compact = compact,
+        listOpen = listOpen,
+        hasSelection = state.selectedMap != null,
+        listPane = { listModifier ->
+            LazyColumn(
+                modifier = listModifier,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(state.maps, key = { it.id }) { battleMap ->
+                    MapListRow(
+                        battleMap = battleMap,
+                        selected = battleMap.id == state.selectedMap?.id,
+                        onClick = {
+                            onListDismissed()
+                            onInteraction(MapsInteraction.MapSelected(battleMap.id))
+                        },
+                    )
+                }
             }
-        }
+        },
+        detailPane = { detailModifier ->
         Column(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+            modifier = detailModifier,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val selected = state.selectedMap
-            if (selected != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = selected.name,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "${selected.originalWidth}×${selected.originalHeight} · " +
-                                "${selected.columns}×${selected.rows} · " +
-                                "${formatUnits(selected.unitsPerTile)} ${selected.unitName}",
-                            fontSize = 13.sp,
-                            color = TextSecondary
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TextButton(
-                            onClick = {
-                                chooseUniversalVttPath(selected.name)?.let { path ->
-                                    onInteraction(
-                                        MapsInteraction.UniversalVttExportPathChosen(selected.id, path)
-                                    )
-                                }
+            if (selected != null && mapState != null) {
+                val hudState = BattleMapBoardHudState.fromMaps(state)
+                if (hudState != null) {
+                    BattleMapBoardHudComposeWidget(
+                        state = hudState,
+                        mapState = mapState,
+                        onInteraction = { interaction ->
+                            dispatchMapsHud(
+                                interaction = interaction,
+                                mapId = selected.id,
+                                mapName = selected.name,
+                                onInteraction = onInteraction,
+                            )
+                        },
+                        onMapTapped = { x, y ->
+                            onInteraction(MapsInteraction.MapCellSelected(x, y))
+                        },
+                        onMarkerClicked = { markerId ->
+                            BattleMapTokenOverlay.participantIdFrom(markerId)?.let { participantId ->
+                                onInteraction(MapsInteraction.TokenSelected(participantId))
                             }
-                        ) {
-                            Text("Export VTT")
-                        }
-                        TextButton(
-                            onClick = { onInteraction(MapsInteraction.PlayerViewSelected) }
-                        ) {
-                            Text(if (state.playerViewOpen) "Player view open" else "Player view")
-                        }
-                        TextButton(
-                            onClick = { onInteraction(MapsInteraction.DeleteMapSelected(selected.id)) }
-                        ) {
-                            Text("Delete")
-                        }
-                    }
+                            BattleMapItemOverlay.itemIdFrom(markerId)?.let { itemId ->
+                                onInteraction(MapsInteraction.ItemSelected(itemId))
+                            }
+                        },
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    )
                 }
-                MovementRangeRow(state = state, onInteraction = onInteraction)
-                FogPaintRow(state = state, onInteraction = onInteraction)
-                SituationLayerRow(state = state, onInteraction = onInteraction)
-            }
-            if (mapState != null) {
-                BattleMapViewerComposeWidget(
-                    mapState = mapState,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    onMapTapped = { x, y ->
-                        onInteraction(MapsInteraction.MapCellSelected(x, y))
-                    },
-                    onMarkerClicked = { markerId ->
-                        BattleMapTokenOverlay.participantIdFrom(markerId)?.let { participantId ->
-                            onInteraction(MapsInteraction.TokenSelected(participantId))
-                        }
-                        BattleMapItemOverlay.itemIdFrom(markerId)?.let { itemId ->
-                            onInteraction(MapsInteraction.ItemSelected(itemId))
-                        }
-                    },
-                )
             } else {
                 Text(
                     text = "Select a map to open the viewer.",
@@ -394,7 +379,12 @@ private fun MapsContent(
                 )
             }
         }
-    }
+        },
+        onListDismissed = onListDismissed,
+        dismissListLabel = "Dismiss maps list",
+        listWidth = 260.dp,
+        modifier = modifier,
+    )
     state.pendingDelete?.let { pending ->
         ConfirmDestructiveDialog(
             title = "Delete battle map?",
@@ -406,216 +396,63 @@ private fun MapsContent(
     }
 }
 
-@Composable
-private fun MovementRangeRow(
-    state: MapsViewState.Content,
+private fun dispatchMapsHud(
+    interaction: BattleMapBoardHudInteraction,
+    mapId: String,
+    mapName: String,
     onInteraction: (MapsInteraction) -> Unit,
 ) {
-    val selected = state.selectedMap ?: return
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedTextField(
-            value = state.movementSpeedText,
-            onValueChange = { onInteraction(MapsInteraction.MovementSpeedChanged(it)) },
-            label = { Text("Speed") },
-            singleLine = true,
-            modifier = Modifier.width(100.dp),
-        )
-        val tokenLabel = when {
-            state.selectedTokenName != null && state.unplacedTokenCount > 0 -> {
-                "Place ${state.selectedTokenName} · ${state.unplacedTokenCount} unplaced"
-            }
-            state.selectedTokenName != null -> "Move ${state.selectedTokenName}"
-            state.tokens.isNotEmpty() -> "${state.tokens.size} on the board"
-            else -> null
-        }
-        if (tokenLabel != null) {
-            Text(text = tokenLabel, fontSize = 13.sp, color = TextSecondary)
-        }
-        val rangeLabel = when {
-            state.measureEnabled && state.measureDistance != null -> {
-                val distance = state.measureDistance
-                "${distance.squares} squares · ${distance.unitsLabel()} ${selected.unitName}"
-            }
-            state.measureEnabled && state.measureOrigin != null -> "Click a second cell to measure"
-            state.measureEnabled -> "Click a cell to start measuring"
-            state.movementOrigin == null -> "Click a cell to show range"
-            else -> {
-                val squares = if (selected.unitsPerTile > 0.0) {
-                    (state.movementSpeedText.toIntOrNull() ?: 0) / selected.unitsPerTile
-                } else {
-                    0.0
-                }
-                val squareCount = kotlin.math.floor(squares).toInt()
-                "${state.reachableCells.size} cells · $squareCount squares · ${state.movementSpeedText} ${selected.unitName}"
-            }
-        }
-        Text(text = rangeLabel, fontSize = 13.sp, color = TextSecondary)
-        FilterChip(
-            selected = state.measureEnabled,
-            onClick = { onInteraction(MapsInteraction.MeasureToggled) },
-            label = { Text("Measure") },
-        )
-        if (state.measureOrigin != null) {
-            TextButton(onClick = { onInteraction(MapsInteraction.MeasureCleared) }) {
-                Text("Clear measure")
+    when (interaction) {
+        BattleMapBoardHudInteraction.MoveToolSelected ->
+            onInteraction(MapsInteraction.BoardToolCleared)
+        BattleMapBoardHudInteraction.MeasureToolSelected ->
+            onInteraction(MapsInteraction.MeasureToggled)
+        BattleMapBoardHudInteraction.FogToolSelected ->
+            onInteraction(MapsInteraction.FogToggled)
+        BattleMapBoardHudInteraction.TerrainToolSelected ->
+            onInteraction(MapsInteraction.TerrainPaintSelected(TerrainPaintKind.Blocked))
+        BattleMapBoardHudInteraction.ItemToolSelected ->
+            onInteraction(MapsInteraction.ItemDropToggled)
+        BattleMapBoardHudInteraction.LayersToolSelected ->
+            onInteraction(MapsInteraction.LayersToggled)
+        is BattleMapBoardHudInteraction.MovementSpeedChanged ->
+            onInteraction(MapsInteraction.MovementSpeedChanged(interaction.speed))
+        BattleMapBoardHudInteraction.MovementCleared ->
+            onInteraction(MapsInteraction.MovementCleared)
+        BattleMapBoardHudInteraction.MeasureCleared ->
+            onInteraction(MapsInteraction.MeasureCleared)
+        BattleMapBoardHudInteraction.FogHideBrushSelected ->
+            onInteraction(MapsInteraction.FogHideBrushSelected)
+        BattleMapBoardHudInteraction.FogRevealBrushSelected ->
+            onInteraction(MapsInteraction.FogRevealBrushSelected)
+        BattleMapBoardHudInteraction.FogHideAllSelected ->
+            onInteraction(MapsInteraction.FogHideAllSelected)
+        BattleMapBoardHudInteraction.FogRevealAllSelected ->
+            onInteraction(MapsInteraction.FogRevealAllSelected)
+        is BattleMapBoardHudInteraction.TerrainPaintSelected ->
+            onInteraction(MapsInteraction.TerrainPaintSelected(interaction.kind))
+        is BattleMapBoardHudInteraction.ItemNameChanged ->
+            onInteraction(MapsInteraction.ItemNameChanged(interaction.name))
+        BattleMapBoardHudInteraction.ItemRemoved ->
+            onInteraction(MapsInteraction.ItemRemoved)
+        is BattleMapBoardHudInteraction.SituationToggled ->
+            onInteraction(MapsInteraction.SituationToggled(interaction.situationId))
+        is BattleMapBoardHudInteraction.SituationDeleteSelected ->
+            onInteraction(MapsInteraction.SituationDeleteSelected(interaction.situationId))
+        BattleMapBoardHudInteraction.AddLayerSelected -> {
+            choosePngPath("Add situation layer")?.let { path ->
+                onInteraction(MapsInteraction.SituationImageChosen(path))
             }
         }
-        if (state.movementOrigin != null) {
-            TextButton(onClick = { onInteraction(MapsInteraction.MovementCleared) }) {
-                Text("Clear range")
+        BattleMapBoardHudInteraction.PlayerViewSelected ->
+            onInteraction(MapsInteraction.PlayerViewSelected)
+        BattleMapBoardHudInteraction.ExportSelected -> {
+            chooseUniversalVttPath(mapName)?.let { path ->
+                onInteraction(MapsInteraction.UniversalVttExportPathChosen(mapId, path))
             }
         }
-    }
-}
-
-@Composable
-private fun FogPaintRow(
-    state: MapsViewState.Content,
-    onInteraction: (MapsInteraction) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        FilterChip(
-            selected = state.fogPaintEnabled,
-            onClick = { onInteraction(MapsInteraction.FogToggled) },
-            label = { Text("Fog") },
-        )
-        if (state.fogPaintEnabled) {
-            FilterChip(
-                selected = !state.fogRevealBrush,
-                onClick = { onInteraction(MapsInteraction.FogHideBrushSelected) },
-                label = { Text("Hide") },
-            )
-            FilterChip(
-                selected = state.fogRevealBrush,
-                onClick = { onInteraction(MapsInteraction.FogRevealBrushSelected) },
-                label = { Text("Reveal") },
-            )
-            TextButton(onClick = { onInteraction(MapsInteraction.FogHideAllSelected) }) {
-                Text("Hide all")
-            }
-            TextButton(onClick = { onInteraction(MapsInteraction.FogRevealAllSelected) }) {
-                Text("Reveal all")
-            }
-            Text(
-                text = if (state.fogRevealBrush) {
-                    "Click cells to reveal them on Player View"
-                } else {
-                    "Click cells to hide them from Player View"
-                },
-                fontSize = 13.sp,
-                color = TextSecondary,
-            )
-        }
-        FilterChip(
-            selected = state.terrainPaint == TerrainPaintKind.Blocked,
-            onClick = { onInteraction(MapsInteraction.TerrainPaintSelected(TerrainPaintKind.Blocked)) },
-            label = { Text("Blocked") },
-        )
-        FilterChip(
-            selected = state.terrainPaint == TerrainPaintKind.Difficult,
-            onClick = { onInteraction(MapsInteraction.TerrainPaintSelected(TerrainPaintKind.Difficult)) },
-            label = { Text("Difficult") },
-        )
-        FilterChip(
-            selected = state.terrainPaint == TerrainPaintKind.Clear,
-            onClick = { onInteraction(MapsInteraction.TerrainPaintSelected(TerrainPaintKind.Clear)) },
-            label = { Text("Clear terrain") },
-        )
-        if (state.terrainPaint != null) {
-            Text(
-                text = "Click cells to paint ${state.terrainPaint.name.lowercase()} terrain",
-                fontSize = 13.sp,
-                color = TextSecondary,
-            )
-        }
-        FilterChip(
-            selected = state.itemDropEnabled,
-            onClick = { onInteraction(MapsInteraction.ItemDropToggled) },
-            label = { Text("Item") },
-        )
-        if (state.itemDropEnabled) {
-            OutlinedTextField(
-                value = state.itemNameText,
-                onValueChange = { onInteraction(MapsInteraction.ItemNameChanged(it)) },
-                label = { Text("Item name") },
-                singleLine = true,
-                modifier = Modifier.width(160.dp),
-            )
-            Text(
-                text = if (state.itemNameText.isBlank()) {
-                    "Name the item, then click a cell"
-                } else {
-                    "Click a cell to drop ${state.itemNameText.trim()}"
-                },
-                fontSize = 13.sp,
-                color = TextSecondary,
-            )
-        }
-        if (state.selectedItemName != null) {
-            Text(text = state.selectedItemName, fontSize = 13.sp, color = TextSecondary)
-            TextButton(onClick = { onInteraction(MapsInteraction.ItemRemoved) }) {
-                Text("Remove")
-            }
-        }
-    }
-}
-
-@Composable
-private fun SituationLayerRow(
-    state: MapsViewState.Content,
-    onInteraction: (MapsInteraction) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Situations",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextSecondary
-            )
-            state.situations.forEach { situation ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    FilterChip(
-                        selected = situation.visible,
-                        onClick = { onInteraction(MapsInteraction.SituationToggled(situation.id)) },
-                        label = { Text(if (situation.visible) situation.name else "${situation.name} (off)") },
-                    )
-                    IconButton(
-                        onClick = { onInteraction(MapsInteraction.SituationDeleteSelected(situation.id)) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Remove ${situation.name}",
-                        )
-                    }
-                }
-            }
-            TextButton(
-                onClick = {
-                    choosePngPath("Add situation layer")?.let { path ->
-                        onInteraction(MapsInteraction.SituationImageChosen(path))
-                    }
-                },
-                enabled = !state.isSavingSituation,
-            ) {
-                Text(if (state.isSavingSituation) "Adding…" else "Add layer")
-            }
-        }
-        if (state.situationError != null) {
-            Text(text = state.situationError, fontSize = 13.sp, color = TextSecondary)
-        }
+        BattleMapBoardHudInteraction.DeleteSelected ->
+            onInteraction(MapsInteraction.DeleteMapSelected(mapId))
     }
 }
 

@@ -51,6 +51,7 @@ internal sealed class MapsViewState {
         val selectedTokenName: String?,
         val unplacedTokenCount: Int,
         val starterCatalogAvailable: Boolean,
+        val layersPanelOpen: Boolean,
     ) : MapsViewState()
 
     data class StarterCatalog(

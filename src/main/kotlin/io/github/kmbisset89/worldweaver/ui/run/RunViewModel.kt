@@ -92,6 +92,7 @@ internal class RunViewModel(
             RunInteraction.OpenMapsSelected -> emitEffect(RunViewEffect.OpenMaps)
             RunInteraction.PlayerViewSelected -> emitEffect(RunViewEffect.OpenPlayerView)
             RunInteraction.DiceTraySelected -> emitEffect(RunViewEffect.OpenDiceTray)
+            RunInteraction.AtmosphereTraySelected -> emitEffect(RunViewEffect.OpenAtmosphereTray)
             is RunInteraction.PersonPeeked -> emitEffect(
                 RunViewEffect.OpenPersonSheet(
                     membership = interaction.membership,

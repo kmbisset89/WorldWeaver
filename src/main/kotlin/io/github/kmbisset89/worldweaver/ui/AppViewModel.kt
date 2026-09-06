@@ -25,6 +25,8 @@ import io.github.kmbisset89.worldweaver.ui.sheet.CharacterSheetViewEffect
 import io.github.kmbisset89.worldweaver.ui.sheet.CharacterSheetViewModel
 import io.github.kmbisset89.worldweaver.ui.sheet.CharacterSheetViewState
 import io.github.kmbisset89.worldweaver.ui.dice.DiceViewModel
+import io.github.kmbisset89.worldweaver.ui.atmosphere.AtmosphereInteraction
+import io.github.kmbisset89.worldweaver.ui.atmosphere.AtmosphereViewModel
 import io.github.kmbisset89.worldweaver.ui.factions.FactionsInteraction
 import io.github.kmbisset89.worldweaver.ui.factions.FactionsViewEffect
 import io.github.kmbisset89.worldweaver.ui.factions.FactionsViewModel
@@ -91,6 +93,7 @@ internal class AppViewModel(
     val worldMapViewModel: WorldMapViewModel,
     val runViewModel: RunViewModel,
     val diceViewModel: DiceViewModel,
+    val atmosphereViewModel: AtmosphereViewModel,
     val searchViewModel: SearchViewModel,
     val settingsViewModel: SettingsViewModel,
     private val shellSettingsStore: ShellSettingsStore,
@@ -366,6 +369,9 @@ internal class AppViewModel(
                     RunViewEffect.OpenDiceTray -> {
                         diceViewModel.onInteraction(DiceInteraction.FloatingOpened)
                     }
+                    RunViewEffect.OpenAtmosphereTray -> {
+                        atmosphereViewModel.onInteraction(AtmosphereInteraction.FloatingOpened)
+                    }
                     is RunViewEffect.OpenPersonSheet -> {
                         characterSheetViewModel.onInteraction(
                             CharacterSheetInteraction.SheetOpened(
@@ -466,6 +472,11 @@ internal class AppViewModel(
                     hit.worldId?.let { setActiveWorld(it) }
                     navigation.navigateToRoot(Screen.CALENDAR)
                     calendarViewModel.onInteraction(CalendarInteraction.ObservanceOpened(hit.id))
+                }
+                SearchKind.CelestialBody -> {
+                    hit.worldId?.let { setActiveWorld(it) }
+                    navigation.navigateToRoot(Screen.CALENDAR)
+                    calendarViewModel.onInteraction(CalendarInteraction.CelestialBodyOpened(hit.id))
                 }
                 SearchKind.Faction -> {
                     hit.worldId?.let { setActiveWorld(it) }

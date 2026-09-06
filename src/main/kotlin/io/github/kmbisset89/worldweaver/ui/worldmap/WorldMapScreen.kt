@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material3.Button
@@ -29,15 +31,23 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailBreakpoint
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListSwitcherComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
+import io.github.kmbisset89.worldweaver.ui.components.rememberAdaptiveListOpen
 import io.github.kmbisset89.worldweaver.ui.maps.BattleMapViewerComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -106,12 +116,36 @@ internal fun WorldMapScreen(
                 )
             }
             is WorldMapViewState.Content -> {
-                WorldMapHeader(subtitle = viewState.title, onInteraction = onInteraction)
-                WorldMapContent(
-                    state = viewState,
-                    mapState = mapState,
-                    onInteraction = onInteraction,
-                )
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val compact = maxWidth < AdaptiveListDetailBreakpoint
+                    var listOpen by rememberAdaptiveListOpen(compact)
+                    LaunchedEffect(viewState.placingLocationId, viewState.selectedLocationId, compact) {
+                        if (compact && (viewState.placingLocationId != null || viewState.selectedLocationId != null)) {
+                            listOpen = true
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        WorldMapHeader(
+                            subtitle = viewState.title,
+                            compact = compact,
+                            switcherName = viewState.selectedLocationName ?: "Pins",
+                            onListToggle = { listOpen = !listOpen },
+                            onInteraction = onInteraction,
+                        )
+                        WorldMapContent(
+                            state = viewState,
+                            mapState = mapState,
+                            compact = compact,
+                            listOpen = listOpen,
+                            onListDismissed = { listOpen = false },
+                            onInteraction = onInteraction,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }
@@ -121,25 +155,40 @@ internal fun WorldMapScreen(
 private fun WorldMapHeader(
     subtitle: String,
     onInteraction: (WorldMapInteraction) -> Unit,
+    compact: Boolean = false,
+    switcherName: String? = null,
+    onListToggle: () -> Unit = {},
 ) {
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column {
-            Text(
-                text = "World map",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(text = subtitle, fontSize = 14.sp, color = TextSecondary)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "World map",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(text = subtitle, fontSize = 14.sp, color = TextSecondary)
+            }
+            TextButton(onClick = { onInteraction(WorldMapInteraction.BackToLocationsSelected) }) {
+                Icon(Icons.Default.ArrowBack, contentDescription = null)
+                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                Text("Locations")
+            }
         }
-        TextButton(onClick = { onInteraction(WorldMapInteraction.BackToLocationsSelected) }) {
-            Icon(Icons.Default.ArrowBack, contentDescription = null)
-            Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-            Text("Locations")
+        if (compact && switcherName != null) {
+            AdaptiveListSwitcherComposeWidget(
+                selectedName = switcherName,
+                listLabel = "map pins",
+                onClick = onListToggle,
+            )
         }
     }
 }
@@ -148,8 +197,13 @@ private fun WorldMapHeader(
 private fun WorldMapContent(
     state: WorldMapViewState.Content,
     mapState: MapState?,
+    compact: Boolean,
+    listOpen: Boolean,
+    onListDismissed: () -> Unit,
     onInteraction: (WorldMapInteraction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    Column(modifier = modifier.fillMaxSize()) {
     if (state.importError != null) {
         Text(state.importError, color = TextSecondary, fontSize = 13.sp)
     }
@@ -183,36 +237,49 @@ private fun WorldMapContent(
         ) {
             Text("Replace PNG")
         }
-        TextButton(onClick = { onInteraction(WorldMapInteraction.DeleteMapSelected) }) {
-            Text("Delete map")
-        }
-    }
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            if (mapState != null) {
-                BattleMapViewerComposeWidget(
-                    mapState = mapState,
-                    onMapTapped = { x, y ->
-                        onInteraction(WorldMapInteraction.MapTapped(x, y))
-                    },
-                    onMarkerClicked = { id ->
-                        WorldMapPinOverlay.locationIdFrom(id)?.let { locationId ->
-                            onInteraction(WorldMapInteraction.PinSelected(locationId))
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
-        WorldMapSidePane(
-            state = state,
-            onInteraction = onInteraction,
-            modifier = Modifier.width(280.dp).fillMaxHeight(),
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Delete,
+            tooltip = "Delete map",
+            tint = ErrorRed,
+            onClick = { onInteraction(WorldMapInteraction.DeleteMapSelected) },
         )
     }
+    AdaptiveListDetailComposeWidget(
+        compact = compact,
+        listOpen = listOpen,
+        hasSelection = true,
+        listPane = { listModifier ->
+            WorldMapSidePane(
+                state = state,
+                onInteraction = onInteraction,
+                modifier = listModifier,
+            )
+        },
+        detailPane = { detailModifier ->
+            Box(modifier = detailModifier) {
+                if (mapState != null) {
+                    BattleMapViewerComposeWidget(
+                        mapState = mapState,
+                        onMapTapped = { x, y ->
+                            onInteraction(WorldMapInteraction.MapTapped(x, y))
+                        },
+                        onMarkerClicked = { id ->
+                            WorldMapPinOverlay.locationIdFrom(id)?.let { locationId ->
+                                onInteraction(WorldMapInteraction.PinSelected(locationId))
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+        },
+        onListDismissed = onListDismissed,
+        dismissListLabel = "Dismiss map pins",
+        listWidth = 280.dp,
+        listAtEnd = true,
+        keepDetailWhenCompact = true,
+        modifier = Modifier.weight(1f).fillMaxWidth(),
+    )
     state.pendingDelete?.let { pending ->
         ConfirmDestructiveDialog(
             title = "Delete map?",
@@ -221,6 +288,7 @@ private fun WorldMapContent(
             onConfirm = { onInteraction(WorldMapInteraction.DeleteConfirmed) },
             onDismiss = { onInteraction(WorldMapInteraction.DeleteCancelled) },
         )
+    }
     }
 }
 

@@ -160,6 +160,9 @@ private fun RunContent(
                 OutlinedButton(onClick = { onInteraction(RunInteraction.DiceTraySelected) }) {
                     Text("Dice tray")
                 }
+                OutlinedButton(onClick = { onInteraction(RunInteraction.AtmosphereTraySelected) }) {
+                    Text("Atmosphere")
+                }
                 OutlinedButton(onClick = { onInteraction(RunInteraction.OpenEncountersSelected) }) {
                     Text("Encounters")
                 }

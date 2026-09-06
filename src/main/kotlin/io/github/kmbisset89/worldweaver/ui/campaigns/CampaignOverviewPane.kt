@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
@@ -20,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.Campaign
 import io.github.kmbisset89.worldweaver.domain.CampaignStatus
 import io.github.kmbisset89.worldweaver.domain.GameSystem
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
@@ -62,9 +67,11 @@ internal fun CampaignOverviewPane(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = { onInteraction(CampaignsInteraction.EditCampaignSelected(campaign.id)) }) {
-                Text("Edit")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Edit,
+                tooltip = "Edit",
+                onClick = { onInteraction(CampaignsInteraction.EditCampaignSelected(campaign.id)) },
+            )
             TextButton(
                 onClick = {
                     onInteraction(
@@ -94,9 +101,12 @@ internal fun CampaignOverviewPane(
                     Text("Reopen")
                 }
             }
-            TextButton(onClick = { onInteraction(CampaignsInteraction.DeleteCampaignSelected(campaign.id)) }) {
-                Text("Delete")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Delete,
+                tooltip = "Delete",
+                tint = ErrorRed,
+                onClick = { onInteraction(CampaignsInteraction.DeleteCampaignSelected(campaign.id)) },
+            )
         }
 
         PartySection(partyMembers = partyMembers, onInteraction = onInteraction)

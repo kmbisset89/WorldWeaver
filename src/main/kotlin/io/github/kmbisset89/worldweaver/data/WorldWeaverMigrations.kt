@@ -1068,6 +1068,35 @@ internal object WorldWeaverMigrations {
         }
     }
 
+    val MIGRATION_23_24 = object : Migration(23, 24) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `world_celestial_bodies` (
+                    `id` TEXT NOT NULL,
+                    `worldId` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `notes` TEXT NOT NULL,
+                    `kind` TEXT NOT NULL,
+                    `periodDays` INTEGER NOT NULL,
+                    `epochOffsetDays` INTEGER NOT NULL,
+                    `sortIndex` INTEGER NOT NULL,
+                    `createdAtEpochMillis` INTEGER NOT NULL,
+                    `updatedAtEpochMillis` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`worldId`) REFERENCES `worlds`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_world_celestial_bodies_worldId` ON `world_celestial_bodies` (`worldId`)"
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_world_celestial_bodies_sortIndex` ON `world_celestial_bodies` (`sortIndex`)"
+            )
+        }
+    }
+
     private val DEFAULT_MONTHS = listOf(
         "January" to 31,
         "February" to 28,

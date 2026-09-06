@@ -9,6 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -26,6 +31,8 @@ import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalog
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSheet
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESheet
 import io.github.kmbisset89.worldweaver.domain.RelationshipType
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.voice.VoiceClipComposeWidget
 import io.github.kmbisset89.worldweaver.ui.voice.chooseWavPath
@@ -75,11 +82,12 @@ internal fun CharacterDetailPane(
                         Text("Set avatar")
                     }
                     if (selected.avatarPath != null) {
-                        TextButton(
-                            onClick = { onInteraction(CharactersInteraction.AvatarRemoved) }
-                        ) {
-                            Text("Remove")
-                        }
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.Close,
+                            tooltip = "Remove",
+                            tint = ErrorRed,
+                            onClick = { onInteraction(CharactersInteraction.AvatarRemoved) },
+                        )
                     }
                 }
             }
@@ -171,11 +179,11 @@ internal fun CharacterDetailPane(
             ) {
                 Text("Open sheet")
             }
-            TextButton(
-                onClick = { onInteraction(CharactersInteraction.EditPersonSelected(selected.key)) }
-            ) {
-                Text("Edit")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Edit,
+                tooltip = "Edit",
+                onClick = { onInteraction(CharactersInteraction.EditPersonSelected(selected.key)) },
+            )
             if (selected.canAddToCampaign) {
                 TextButton(
                     onClick = {
@@ -185,11 +193,12 @@ internal fun CharacterDetailPane(
                     Text("Add to campaign")
                 }
             }
-            TextButton(
-                onClick = { onInteraction(CharactersInteraction.DeletePersonSelected(selected.key)) }
-            ) {
-                Text("Delete")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Delete,
+                tooltip = "Delete",
+                tint = ErrorRed,
+                onClick = { onInteraction(CharactersInteraction.DeletePersonSelected(selected.key)) },
+            )
         }
     }
 }
@@ -389,9 +398,11 @@ private fun OverlaySection(
                 minLines = 2,
                 modifier = Modifier.fillMaxWidth()
             )
-            TextButton(onClick = { onInteraction(CharactersInteraction.OverlaySaved) }) {
-                Text("Save overlay")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save overlay",
+                onClick = { onInteraction(CharactersInteraction.OverlaySaved) },
+            )
         }
     }
 }
@@ -445,13 +456,14 @@ private fun CompanionSection(
                                 color = TextSecondary
                             )
                         }
-                        TextButton(
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.Close,
+                            tooltip = "Remove",
+                            tint = ErrorRed,
                             onClick = {
                                 onInteraction(CharactersInteraction.CompanionDeleted(companion.id))
-                            }
-                        ) {
-                            Text("Remove")
-                        }
+                            },
+                        )
                     }
                 }
             }
@@ -537,9 +549,11 @@ private fun CompanionSection(
                     Text(editor.error, fontSize = 12.sp, color = TextSecondary)
                 }
                 Row {
-                    TextButton(onClick = { onInteraction(CharactersInteraction.CompanionSaved) }) {
-                        Text("Save companion")
-                    }
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Save,
+                        tooltip = "Save companion",
+                        onClick = { onInteraction(CharactersInteraction.CompanionSaved) },
+                    )
                     TextButton(
                         onClick = { onInteraction(CharactersInteraction.CompanionEditorDismissed) }
                     ) {
@@ -599,13 +613,14 @@ private fun MembershipSection(
                                 )
                             }
                         }
-                        TextButton(
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.Close,
+                            tooltip = "Remove",
+                            tint = ErrorRed,
                             onClick = {
                                 onInteraction(CharactersInteraction.MembershipDeleted(membership.id))
-                            }
-                        ) {
-                            Text("Remove")
-                        }
+                            },
+                        )
                     }
                 }
             }
@@ -637,9 +652,11 @@ private fun MembershipSection(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row {
-                    TextButton(onClick = { onInteraction(CharactersInteraction.MembershipSaved) }) {
-                        Text("Save membership")
-                    }
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Save,
+                        tooltip = "Save membership",
+                        onClick = { onInteraction(CharactersInteraction.MembershipSaved) },
+                    )
                     TextButton(
                         onClick = { onInteraction(CharactersInteraction.MembershipEditorDismissed) }
                     ) {
@@ -702,13 +719,14 @@ private fun RelationshipSection(
                                 )
                             }
                         }
-                        TextButton(
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.Close,
+                            tooltip = "Remove",
+                            tint = ErrorRed,
                             onClick = {
                                 onInteraction(CharactersInteraction.RelationshipDeleted(relationship.id))
-                            }
-                        ) {
-                            Text("Remove")
-                        }
+                            },
+                        )
                     }
                 }
             }
@@ -770,9 +788,11 @@ private fun RelationshipSection(
                     }
                 }
                 Row {
-                    TextButton(onClick = { onInteraction(CharactersInteraction.RelationshipSaved) }) {
-                        Text("Save relationship")
-                    }
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Save,
+                        tooltip = "Save relationship",
+                        onClick = { onInteraction(CharactersInteraction.RelationshipSaved) },
+                    )
                     TextButton(onClick = { onInteraction(CharactersInteraction.RelationshipEditorDismissed) }) {
                         Text("Cancel")
                     }

@@ -3,14 +3,16 @@ package io.github.kmbisset89.worldweaver.ui.locations
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +31,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -36,9 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.LocationType
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailBreakpoint
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveScreenHeaderComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
+import io.github.kmbisset89.worldweaver.ui.components.rememberAdaptiveListOpen
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -99,13 +107,32 @@ internal fun LocationsScreen(
                 }
             }
             is LocationsViewState.Content -> {
-                LocationsHeader(
-                    subtitle = viewState.worldName,
-                    showCreate = true,
-                    hasWorldRootMap = viewState.hasWorldRootMap,
-                    onInteraction = onInteraction,
-                )
-                LocationsContent(state = viewState, onInteraction = onInteraction)
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val compact = maxWidth < AdaptiveListDetailBreakpoint
+                    var listOpen by rememberAdaptiveListOpen(compact)
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        LocationsHeader(
+                            subtitle = viewState.worldName,
+                            showCreate = true,
+                            hasWorldRootMap = viewState.hasWorldRootMap,
+                            compact = compact,
+                            selectedName = viewState.selectedLocation?.name,
+                            onListToggle = { listOpen = !listOpen },
+                            onInteraction = onInteraction,
+                        )
+                        LocationsContent(
+                            state = viewState,
+                            compact = compact,
+                            listOpen = listOpen,
+                            onListDismissed = { listOpen = false },
+                            onInteraction = onInteraction,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }
@@ -117,142 +144,156 @@ private fun LocationsHeader(
     showCreate: Boolean,
     onInteraction: (LocationsInteraction) -> Unit,
     hasWorldRootMap: Boolean = false,
+    compact: Boolean = false,
+    selectedName: String? = null,
+    onListToggle: () -> Unit = {},
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    AdaptiveScreenHeaderComposeWidget(
+        title = "Locations",
+        subtitle = subtitle,
+        compact = compact,
+        switcherName = selectedName,
+        listLabel = "locations list",
+        onListToggle = onListToggle,
     ) {
-        Column {
-            Text(
-                text = "Locations",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(
-                text = subtitle,
-                fontSize = 14.sp,
-                color = TextSecondary
-            )
-        }
         if (showCreate) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { onInteraction(LocationsInteraction.OpenWorldMapSelected) },
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-                ) {
-                    Text(if (hasWorldRootMap) "Open world map" else "Add world map")
-                }
-                Button(
-                    onClick = { onInteraction(LocationsInteraction.NewLocationSelected) },
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                    Text("New location")
-                }
+            Button(
+                onClick = { onInteraction(LocationsInteraction.OpenWorldMapSelected) },
+                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+            ) {
+                Text(if (hasWorldRootMap) "Open world map" else "Add world map")
+            }
+            Button(
+                onClick = { onInteraction(LocationsInteraction.NewLocationSelected) },
+                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                Text("New location")
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LocationsContent(
     state: LocationsViewState.Content,
+    compact: Boolean,
+    listOpen: Boolean,
+    onListDismissed: () -> Unit,
     onInteraction: (LocationsInteraction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    if (state.blockDeleteReason != null) {
-        Card(
-            modifier = Modifier.fillMaxWidth().clickable {
-                onInteraction(LocationsInteraction.BlockReasonDismissed)
-            },
-            colors = CardDefaults.cardColors(containerColor = SurfaceCard)
-        ) {
-            Text(
-                text = state.blockDeleteReason,
-                modifier = Modifier.padding(16.dp),
-                color = TextPrimary,
-                fontSize = 13.sp
-            )
+    val listInteraction: (LocationsInteraction) -> Unit = { interaction ->
+        if (interaction is LocationsInteraction.LocationSelected) {
+            onListDismissed()
         }
+        onInteraction(interaction)
     }
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = state.searchQuery,
-            onValueChange = { onInteraction(LocationsInteraction.SearchQueryChanged(it)) },
-            label = { Text("Search locations") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = state.typeFilter == null,
-                onClick = { onInteraction(LocationsInteraction.TypeFilterSelected(null)) },
-                label = { Text("All types") },
-            )
-            LocationType.entries.forEach { type ->
-                FilterChip(
-                    selected = state.typeFilter == type,
-                    onClick = { onInteraction(LocationsInteraction.TypeFilterSelected(type)) },
-                    label = { Text(type.displayName) },
+    Column(modifier = modifier.fillMaxSize()) {
+        if (state.blockDeleteReason != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable {
+                    onInteraction(LocationsInteraction.BlockReasonDismissed)
+                },
+                colors = CardDefaults.cardColors(containerColor = SurfaceCard)
+            ) {
+                Text(
+                    text = state.blockDeleteReason,
+                    modifier = Modifier.padding(16.dp),
+                    color = TextPrimary,
+                    fontSize = 13.sp
                 )
             }
         }
-
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            LazyColumn(
-                modifier = Modifier.width(320.dp).fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (state.visibleTree.isEmpty()) {
-                    item {
-                        Text(
-                            text = "No locations match this search.",
-                            fontSize = 13.sp,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(8.dp)
+        AdaptiveListDetailComposeWidget(
+            compact = compact,
+            listOpen = listOpen,
+            hasSelection = state.selectedLocation != null,
+            listPane = { listModifier ->
+                Column(
+                    modifier = listModifier,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = state.searchQuery,
+                        onValueChange = { onInteraction(LocationsInteraction.SearchQueryChanged(it)) },
+                        label = { Text("Search locations") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        FilterChip(
+                            selected = state.typeFilter == null,
+                            onClick = { onInteraction(LocationsInteraction.TypeFilterSelected(null)) },
+                            label = { Text("All types") },
                         )
+                        LocationType.entries.forEach { type ->
+                            FilterChip(
+                                selected = state.typeFilter == type,
+                                onClick = { onInteraction(LocationsInteraction.TypeFilterSelected(type)) },
+                                label = { Text(type.displayName) },
+                            )
+                        }
                     }
-                } else {
-                    items(flattenTree(state.visibleTree), key = { it.location.id }) { row ->
-                        LocationTreeRow(
-                            location = row.location,
-                            depth = row.depth,
-                            isSelected = row.location.id == state.selectedLocation?.id,
-                            onInteraction = onInteraction,
-                        )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (state.visibleTree.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No locations match this search.",
+                                    fontSize = 13.sp,
+                                    color = TextSecondary,
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
+                        } else {
+                            items(flattenTree(state.visibleTree), key = { it.location.id }) { row ->
+                                LocationTreeRow(
+                                    location = row.location,
+                                    depth = row.depth,
+                                    isSelected = row.location.id == state.selectedLocation?.id,
+                                    onInteraction = listInteraction,
+                                )
+                            }
+                        }
                     }
                 }
-            }
-
-            if (state.selectedLocation != null) {
-                LocationDetailPane(
-                    location = state.selectedLocation,
-                    breadcrumbs = state.breadcrumbs,
-                    overlay = state.overlay,
-                    campaignName = state.campaignName,
-                    attachedLore = state.attachedLore,
-                    attachedQuests = state.attachedQuests,
-                    voiceClipPath = state.voiceClipPath,
-                    isRecordingVoice = state.isRecordingVoice,
-                    isPlayingVoice = state.isPlayingVoice,
-                    selectedLocationHasMap = state.selectedLocationHasMap,
-                    onInteraction = onInteraction,
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                )
-            } else {
-                Text(
-                    text = "Select a location to see its details.",
-                    color = TextSecondary,
-                    modifier = Modifier.weight(1f).padding(16.dp)
-                )
-            }
-        }
+            },
+            detailPane = { detailModifier ->
+                if (state.selectedLocation != null) {
+                    LocationDetailPane(
+                        location = state.selectedLocation,
+                        breadcrumbs = state.breadcrumbs,
+                        overlay = state.overlay,
+                        campaignName = state.campaignName,
+                        attachedLore = state.attachedLore,
+                        attachedQuests = state.attachedQuests,
+                        voiceClipPath = state.voiceClipPath,
+                        isRecordingVoice = state.isRecordingVoice,
+                        isPlayingVoice = state.isPlayingVoice,
+                        selectedLocationHasMap = state.selectedLocationHasMap,
+                        onInteraction = onInteraction,
+                        modifier = detailModifier,
+                    )
+                } else {
+                    Text(
+                        text = "Select a location to see its details.",
+                        color = TextSecondary,
+                        modifier = detailModifier.padding(16.dp)
+                    )
+                }
+            },
+            onListDismissed = onListDismissed,
+            dismissListLabel = "Dismiss locations list",
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        )
     }
 
     state.editor?.let { editor ->

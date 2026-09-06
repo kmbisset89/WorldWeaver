@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -174,12 +177,13 @@ private fun SettingsContent(
                     singleLine = true,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { onInteraction(SettingsInteraction.ProfileSaved) },
+                ActionIconButtonComposeWidget(
+                    icon = Icons.Default.Save,
+                    tooltip = "Save profile",
+                    filled = true,
                     enabled = state.isProfileDirty,
-                ) {
-                    Text("Save profile")
-                }
+                    onClick = { onInteraction(SettingsInteraction.ProfileSaved) },
+                )
             }
         }
 

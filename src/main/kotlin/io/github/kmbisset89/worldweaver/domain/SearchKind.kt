@@ -8,6 +8,7 @@ internal enum class SearchKind(
     Location("Locations"),
     Lore("Lore"),
     Observance("Holidays"),
+    CelestialBody("Sky"),
     Faction("Factions"),
     WorldPerson("People"),
     CampaignPerson("People"),

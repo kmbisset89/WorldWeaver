@@ -12,6 +12,7 @@ internal data class WorldBundle(
     val locations: List<Location>,
     val loreEntries: List<Lore>,
     val observances: List<WorldCalendarObservance> = emptyList(),
+    val celestialBodies: List<WorldCelestialBody> = emptyList(),
     val factions: List<Faction> = emptyList(),
     val memberships: List<FactionMembership> = emptyList(),
     val worldPeople: List<WorldPerson>,
@@ -70,6 +71,7 @@ internal data class WorldBundle(
             locations = locations.map(LocationRecord::from),
             loreEntries = loreEntries.map(LoreRecord::from),
             observances = observances.map(WorldCalendarObservanceRecord::from),
+            celestialBodies = celestialBodies.map(WorldCelestialBodyRecord::from),
             factions = factions.map(FactionRecord::from),
             memberships = memberships.map(FactionMembershipRecord::from),
             worldPeople = worldPeople.map(WorldPersonRecord::from),
@@ -112,6 +114,7 @@ internal data class WorldBundle(
                 locations = payload.locations.map { it.toDomain() },
                 loreEntries = payload.loreEntries.map { it.toDomain() },
                 observances = payload.observances.map { it.toDomain() },
+                celestialBodies = payload.celestialBodies.map { it.toDomain() },
                 factions = factions,
                 memberships = payload.memberships.map { it.toDomain() },
                 worldPeople = payload.worldPeople.map { it.toDomain() },
@@ -191,6 +194,7 @@ internal data class WorldBundle(
         val locations: List<LocationRecord>,
         val loreEntries: List<LoreRecord>,
         val observances: List<WorldCalendarObservanceRecord> = emptyList(),
+        val celestialBodies: List<WorldCelestialBodyRecord> = emptyList(),
         val factions: List<FactionRecord> = emptyList(),
         val memberships: List<FactionMembershipRecord> = emptyList(),
         val worldPeople: List<WorldPersonRecord>,
@@ -480,6 +484,52 @@ internal data class WorldBundle(
                     loreIds = observance.loreIds,
                     createdAtEpochMillis = observance.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = observance.updatedAt.toEpochMilli(),
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class WorldCelestialBodyRecord(
+        val id: String,
+        val worldId: String,
+        val name: String,
+        val notes: String,
+        val kind: String,
+        val periodDays: Int,
+        val epochOffsetDays: Int,
+        val sortIndex: Int,
+        val createdAtEpochMillis: Long,
+        val updatedAtEpochMillis: Long,
+    ) {
+        fun toDomain(): WorldCelestialBody {
+            return WorldCelestialBody(
+                id = id,
+                worldId = worldId,
+                name = name,
+                notes = notes,
+                kind = CelestialBodyKind.fromStorage(kind),
+                periodDays = periodDays,
+                epochOffsetDays = epochOffsetDays,
+                sortIndex = sortIndex,
+                createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+                updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+            )
+        }
+
+        companion object {
+            fun from(body: WorldCelestialBody): WorldCelestialBodyRecord {
+                return WorldCelestialBodyRecord(
+                    id = body.id,
+                    worldId = body.worldId,
+                    name = body.name,
+                    notes = body.notes,
+                    kind = body.kind.name,
+                    periodDays = body.periodDays,
+                    epochOffsetDays = body.epochOffsetDays,
+                    sortIndex = body.sortIndex,
+                    createdAtEpochMillis = body.createdAt.toEpochMilli(),
+                    updatedAtEpochMillis = body.updatedAt.toEpochMilli(),
                 )
             }
         }

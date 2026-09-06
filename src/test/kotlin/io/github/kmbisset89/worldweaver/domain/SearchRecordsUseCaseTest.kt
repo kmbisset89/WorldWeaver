@@ -71,6 +71,32 @@ internal class SearchRecordsUseCaseTest {
     }
 
     @Test
+    fun matchesCelestialBodyName() = runTest {
+        val harness = Harness()
+        val now = Instant.parse("2026-08-29T12:00:00Z")
+        harness.celestialBodies.insert(
+            WorldCelestialBody(
+                id = "body-1",
+                worldId = "world-1",
+                name = "The Drowned Moon",
+                notes = "Pulls the harbor twice a night",
+                kind = CelestialBodyKind.Moon,
+                periodDays = 29,
+                epochOffsetDays = 4,
+                sortIndex = 0,
+                createdAt = now,
+                updatedAt = now,
+            )
+        )
+
+        val hits = harness.search("Drowned")
+        assertEquals(1, hits.size)
+        assertEquals(SearchKind.CelestialBody, hits.single().kind)
+        assertEquals("body-1", hits.single().id)
+        assertEquals("world-1", hits.single().worldId)
+    }
+
+    @Test
     fun matchesWorldName() = runTest {
         val harness = Harness()
         val now = Instant.parse("2026-08-29T12:00:00Z")
@@ -90,6 +116,7 @@ internal class SearchRecordsUseCaseTest {
         val locations = FakeLocationRepository()
         val lore = FakeLoreRepository()
         val observances = FakeWorldCalendarObservanceRepository()
+        val celestialBodies = FakeWorldCelestialBodyRepository()
         val factions = FakeFactionRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
@@ -101,6 +128,7 @@ internal class SearchRecordsUseCaseTest {
             locations,
             lore,
             observances,
+            celestialBodies,
             factions,
             worldPeople,
             campaignPeople,

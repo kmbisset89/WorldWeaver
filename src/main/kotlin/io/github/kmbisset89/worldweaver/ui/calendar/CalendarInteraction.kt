@@ -1,5 +1,6 @@
 package io.github.kmbisset89.worldweaver.ui.calendar
 
+import io.github.kmbisset89.worldweaver.domain.CelestialBodyKind
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservanceKind
 
 internal sealed interface CalendarInteraction {
@@ -38,4 +39,19 @@ internal sealed interface CalendarInteraction {
     data class EditorLoreToggled(val loreId: String) : CalendarInteraction
     data object EditorSaved : CalendarInteraction
     data object EditorDismissed : CalendarInteraction
+    data object NewCelestialBodySelected : CalendarInteraction
+    data class CelestialBodySelected(val bodyId: String) : CalendarInteraction
+    data class CelestialBodyOpened(val bodyId: String) : CalendarInteraction
+    data class EditCelestialBodySelected(val bodyId: String) : CalendarInteraction
+    data class DeleteCelestialBodySelected(val bodyId: String) : CalendarInteraction
+    data object DeleteCelestialBodyConfirmed : CalendarInteraction
+    data object DeleteCelestialBodyCancelled : CalendarInteraction
+    data class CelestialBodyMoved(val bodyId: String, val delta: Int) : CalendarInteraction
+    data class BodyEditorNameChanged(val name: String) : CalendarInteraction
+    data class BodyEditorNotesChanged(val notes: String) : CalendarInteraction
+    data class BodyEditorKindSelected(val kind: CelestialBodyKind) : CalendarInteraction
+    data class BodyEditorPeriodChanged(val periodDays: String) : CalendarInteraction
+    data class BodyEditorOffsetChanged(val epochOffsetDays: String) : CalendarInteraction
+    data object BodyEditorSaved : CalendarInteraction
+    data object BodyEditorDismissed : CalendarInteraction
 }

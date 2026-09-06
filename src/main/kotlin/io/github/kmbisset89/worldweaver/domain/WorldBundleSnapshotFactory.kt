@@ -4,6 +4,7 @@ internal class WorldBundleSnapshotFactory(
     private val worldRepository: WorldRepository,
     private val worldCalendarRepository: WorldCalendarRepository,
     private val observanceRepository: WorldCalendarObservanceRepository,
+    private val celestialBodyRepository: WorldCelestialBodyRepository,
     private val campaignRepository: CampaignRepository,
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
@@ -47,6 +48,7 @@ internal class WorldBundleSnapshotFactory(
             locations = locations,
             loreEntries = loreRepository.getByWorld(worldId),
             observances = observanceRepository.getByWorld(worldId),
+            celestialBodies = celestialBodyRepository.getByWorld(worldId),
             factions = factionRepository.getByWorld(worldId),
             memberships = factionMembershipRepository.getAll().filter { membership ->
                 containsPerson(membership.person, personIds)

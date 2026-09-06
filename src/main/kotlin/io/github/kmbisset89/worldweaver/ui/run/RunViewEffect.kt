@@ -10,6 +10,7 @@ internal sealed interface RunViewEffect {
     data object OpenMaps : RunViewEffect
     data object OpenPlayerView : RunViewEffect
     data object OpenDiceTray : RunViewEffect
+    data object OpenAtmosphereTray : RunViewEffect
     data class OpenPersonSheet(
         val membership: PersonMembership,
         val personId: String,

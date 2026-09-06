@@ -12,6 +12,7 @@ internal sealed interface RunInteraction {
     data object OpenMapsSelected : RunInteraction
     data object PlayerViewSelected : RunInteraction
     data object DiceTraySelected : RunInteraction
+    data object AtmosphereTraySelected : RunInteraction
     data class PersonPeeked(
         val membership: PersonMembership,
         val personId: String,

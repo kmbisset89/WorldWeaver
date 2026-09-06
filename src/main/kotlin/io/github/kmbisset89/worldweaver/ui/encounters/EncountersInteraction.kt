@@ -135,6 +135,7 @@ internal sealed interface EncountersInteraction {
     data class TokenSelected(val participantId: String) : EncountersInteraction
     data class MovementSpeedChanged(val speed: String) : EncountersInteraction
     data object MovementCleared : EncountersInteraction
+    data object BoardToolCleared : EncountersInteraction
     data object MeasureToggled : EncountersInteraction
     data object MeasureCleared : EncountersInteraction
     data object FogToggled : EncountersInteraction

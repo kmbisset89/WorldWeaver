@@ -18,5 +18,6 @@ internal enum class Screen {
     MAPS,
     RUN,
     DICE,
+    ATMOSPHERE,
     SETTINGS,
 }

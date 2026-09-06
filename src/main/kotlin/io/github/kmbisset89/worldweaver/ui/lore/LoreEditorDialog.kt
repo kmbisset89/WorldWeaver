@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -16,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.LoreCategory
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 
 @Composable
 internal fun LoreEditorDialog(
@@ -133,9 +138,11 @@ internal fun LoreEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onInteraction(LoreInteraction.EditorSaved) }) {
-                Text("Save")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save",
+                onClick = { onInteraction(LoreInteraction.EditorSaved) },
+            )
         },
         dismissButton = {
             TextButton(onClick = { onInteraction(LoreInteraction.EditorDismissed) }) {
@@ -181,21 +188,25 @@ private fun SecretEditor(
                 label = { Text("Hint") },
                 modifier = Modifier.fillMaxWidth()
             )
-            TextButton(
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Close,
+                tooltip = "Remove hint",
+                tint = ErrorRed,
                 onClick = {
                     onInteraction(LoreInteraction.EditorHintRemoved(index, hintIndex))
-                }
-            ) {
-                Text("Remove hint")
-            }
+                },
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { onInteraction(LoreInteraction.EditorHintAdded(index)) }) {
                 Text("Add hint")
             }
-            TextButton(onClick = { onInteraction(LoreInteraction.EditorSecretRemoved(index)) }) {
-                Text("Remove secret")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Close,
+                tooltip = "Remove secret",
+                tint = ErrorRed,
+                onClick = { onInteraction(LoreInteraction.EditorSecretRemoved(index)) },
+            )
         }
     }
 }

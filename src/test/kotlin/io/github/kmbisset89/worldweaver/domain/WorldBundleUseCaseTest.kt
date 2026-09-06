@@ -317,6 +317,7 @@ internal class WorldBundleUseCaseTest {
         val locations = FakeLocationRepository()
         val lore = FakeLoreRepository()
         val observances = FakeWorldCalendarObservanceRepository()
+        val celestialBodies = FakeWorldCelestialBodyRepository()
         val factions = FakeFactionRepository()
         val memberships = FakeFactionMembershipRepository()
         val worldPeople = FakeWorldPersonRepository()
@@ -345,6 +346,7 @@ internal class WorldBundleUseCaseTest {
             worldRepository = worlds,
             worldCalendarRepository = calendars,
             observanceRepository = observances,
+            celestialBodyRepository = celestialBodies,
             campaignRepository = campaigns,
             locationRepository = locations,
             loreRepository = lore,
@@ -379,6 +381,7 @@ internal class WorldBundleUseCaseTest {
             worldCalendarRepository = calendars,
             defaultCalendarFactory = DefaultWorldCalendarFactory(ids),
             observanceRepository = observances,
+            celestialBodyRepository = celestialBodies,
             campaignRepository = campaigns,
             locationRepository = locations,
             loreRepository = lore,

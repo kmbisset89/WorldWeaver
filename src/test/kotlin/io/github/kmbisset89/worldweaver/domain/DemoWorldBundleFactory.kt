@@ -38,6 +38,7 @@ internal class DemoWorldBundleFactory(
             locations = locations,
             loreEntries = loreEntries,
             observances = observances(world.id, loreEntries),
+            celestialBodies = celestialBodies(world.id),
             factions = factions(world.id),
             memberships = memberships(worldPeople, campaignPeople),
             worldPeople = worldPeople,
@@ -547,6 +548,35 @@ internal class DemoWorldBundleFactory(
                 day = 12,
                 year = 812,
                 loreIds = listOf(sundering.id),
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+    }
+
+    private fun celestialBodies(worldId: String): List<WorldCelestialBody> {
+        return listOf(
+            WorldCelestialBody(
+                id = BODY_SALT_SUN,
+                worldId = worldId,
+                name = "The Salt Sun",
+                notes = "A pale disc that barely burns the fog. Harbor clocks still count a 393-day year from it.",
+                kind = CelestialBodyKind.Sun,
+                periodDays = 393,
+                epochOffsetDays = 0,
+                sortIndex = 0,
+                createdAt = now,
+                updatedAt = now,
+            ),
+            WorldCelestialBody(
+                id = BODY_DROWNED_MOON,
+                worldId = worldId,
+                name = "The Drowned Moon",
+                notes = "A 29-day pull. Dockworkers swear the drowned streets show when it is full.",
+                kind = CelestialBodyKind.Moon,
+                periodDays = 29,
+                epochOffsetDays = 0,
+                sortIndex = 1,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -1621,6 +1651,8 @@ internal class DemoWorldBundleFactory(
         const val SIT_FLOOD = "sit-vault-flood"
         const val OBS_TIDEFEAST = "obs-tidefeast"
         const val OBS_SUNDERING = "obs-sundering"
+        const val BODY_SALT_SUN = "body-salt-sun"
+        const val BODY_DROWNED_MOON = "body-drowned-moon"
         const val LORE_SUNDERING = "lore-sundering"
         const val LORE_SALT_LAW = "lore-salt-law"
         const val LORE_BELL = "lore-bell"

@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
@@ -20,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2EReference
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESkillRank
 import io.github.kmbisset89.worldweaver.domain.PersonKind
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 
 @Composable
 internal fun PathfinderCharacterEditorDialog(
@@ -95,9 +100,11 @@ internal fun PathfinderCharacterEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onInteraction(CharactersInteraction.EditorSaved) }) {
-                Text("Save")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save",
+                onClick = { onInteraction(CharactersInteraction.EditorSaved) },
+            )
         },
         dismissButton = {
             TextButton(onClick = { onInteraction(CharactersInteraction.EditorDismissed) }) {
@@ -244,9 +251,12 @@ private fun PathfinderSheetEditor(
             minLines = 2,
             modifier = Modifier.fillMaxWidth()
         )
-        TextButton(onClick = { onInteraction(CharactersInteraction.PathfinderFeatRemoved(index)) }) {
-            Text("Remove feat")
-        }
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Close,
+            tooltip = "Remove feat",
+            tint = ErrorRed,
+            onClick = { onInteraction(CharactersInteraction.PathfinderFeatRemoved(index)) },
+        )
     }
     TextButton(onClick = { onInteraction(CharactersInteraction.PathfinderFeatAdded) }) {
         Text("Add feat")
@@ -286,9 +296,12 @@ private fun PathfinderSheetEditor(
             )
             Text("Prepared")
         }
-        TextButton(onClick = { onInteraction(CharactersInteraction.PathfinderSpellRemoved(index)) }) {
-            Text("Remove spell")
-        }
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Close,
+            tooltip = "Remove spell",
+            tint = ErrorRed,
+            onClick = { onInteraction(CharactersInteraction.PathfinderSpellRemoved(index)) },
+        )
     }
     TextButton(onClick = { onInteraction(CharactersInteraction.PathfinderSpellAdded) }) {
         Text("Add spell")
@@ -425,9 +438,12 @@ internal fun PathfinderSkillRow(
             )
         }
     }
-    TextButton(onClick = { onInteraction(CharactersInteraction.PathfinderSkillRemoved(index)) }) {
-        Text("Remove skill")
-    }
+    ActionIconButtonComposeWidget(
+        icon = Icons.Default.Close,
+        tooltip = "Remove skill",
+        tint = ErrorRed,
+        onClick = { onInteraction(CharactersInteraction.PathfinderSkillRemoved(index)) },
+    )
 }
 
 @Composable
