@@ -25,6 +25,7 @@ internal class ShatteredAccordWorldBundleFactory(
             locations = locations,
             loreEntries = loreEntries,
             observances = observances(world.id, loreEntries),
+            celestialBodies = celestialBodies(world.id),
             factions = factions(world.id),
             memberships = memberships(worldPeople, campaignPeople),
             worldPeople = worldPeople,
@@ -1213,6 +1214,47 @@ internal class ShatteredAccordWorldBundleFactory(
         )
     }
 
+    private fun celestialBodies(worldId: String): List<WorldCelestialBody> {
+        return listOf(
+            WorldCelestialBody(
+                id = BODY_GRIAN,
+                worldId = worldId,
+                name = "Grian",
+                notes = "The day-star of the Accord year. Riders time long flights to its 363-day circuit.",
+                kind = CelestialBodyKind.Sun,
+                periodDays = 363,
+                epochOffsetDays = 0,
+                sortIndex = 0,
+                createdAt = now,
+                updatedAt = now,
+            ),
+            WorldCelestialBody(
+                id = BODY_GEALACH,
+                worldId = worldId,
+                name = "Gealach",
+                notes = "The nearer moon. Temple lamps follow its 28-day phases.",
+                kind = CelestialBodyKind.Moon,
+                periodDays = 28,
+                epochOffsetDays = 3,
+                sortIndex = 1,
+                createdAt = now,
+                updatedAt = now,
+            ),
+            WorldCelestialBody(
+                id = BODY_REUL,
+                worldId = worldId,
+                name = "Reul-iùil",
+                notes = "A wandering guide-star. Navigators treat its 88-day loop as an omen for crossings.",
+                kind = CelestialBodyKind.Planet,
+                periodDays = 88,
+                epochOffsetDays = 12,
+                sortIndex = 2,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+    }
+
     private fun campaign(worldId: String): Campaign {
         return Campaign(
             id = CAMPAIGN_ID,
@@ -2262,6 +2304,9 @@ internal class ShatteredAccordWorldBundleFactory(
         const val SESS_GATHERING = "sess-gathering"
         const val OBS_AONTACHD = "obs-aontachd"
         const val OBS_SHATTERING = "obs-shattering"
+        const val BODY_GRIAN = "body-grian"
+        const val BODY_GEALACH = "body-gealach"
+        const val BODY_REUL = "body-reul"
         const val LORE_CEO = "lore-ceo"
         const val LORE_HARMONY = "lore-harmony"
         const val LORE_WARS = "lore-wars"

@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -32,9 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.World
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -274,18 +278,19 @@ private fun WorldRow(
             ) {
                 Text("Export")
             }
-            TextButton(
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Edit,
+                tooltip = "Edit",
+                enabled = !isTransferring,
                 onClick = { onInteraction(WorldsInteraction.EditWorldSelected(world.id)) },
+            )
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Delete,
+                tooltip = "Delete",
+                tint = ErrorRed,
                 enabled = !isTransferring,
-            ) {
-                Text("Edit")
-            }
-            TextButton(
                 onClick = { onInteraction(WorldsInteraction.DeleteWorldSelected(world.id)) },
-                enabled = !isTransferring,
-            ) {
-                Text("Delete")
-            }
+            )
         }
     }
 }

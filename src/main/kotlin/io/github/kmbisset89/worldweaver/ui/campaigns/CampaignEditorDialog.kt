@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -16,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.GameSystem
 import io.github.kmbisset89.worldweaver.domain.LevelingMode
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 
 @Composable
 internal fun CampaignEditorDialog(
@@ -93,9 +96,11 @@ internal fun CampaignEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onInteraction(CampaignsInteraction.EditorSaved) }) {
-                Text("Save")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save",
+                onClick = { onInteraction(CampaignsInteraction.EditorSaved) },
+            )
         },
         dismissButton = {
             TextButton(onClick = { onInteraction(CampaignsInteraction.EditorDismissed) }) {

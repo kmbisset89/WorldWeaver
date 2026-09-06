@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -17,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESkillRank
 import io.github.kmbisset89.worldweaver.domain.PersonKind
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 
 @Composable
 internal fun PathfinderCharacterCreationWizardDialog(
@@ -67,9 +70,11 @@ internal fun PathfinderCharacterCreationWizardDialog(
         },
         confirmButton = {
             if (isLast) {
-                TextButton(onClick = { onInteraction(CharactersInteraction.WizardSaved) }) {
-                    Text("Create")
-                }
+                ActionIconButtonComposeWidget(
+                    icon = Icons.Default.Check,
+                    tooltip = "Create",
+                    onClick = { onInteraction(CharactersInteraction.WizardSaved) },
+                )
             } else {
                 TextButton(onClick = { onInteraction(CharactersInteraction.WizardNextSelected) }) {
                     Text("Next")

@@ -8,16 +8,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.Faction
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
@@ -52,12 +57,17 @@ internal fun FactionsDetailPane(
         }
         MembersSection(members = members, onInteraction = onInteraction)
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = { onInteraction(FactionsInteraction.EditFactionSelected(faction.id)) }) {
-                Text("Edit")
-            }
-            TextButton(onClick = { onInteraction(FactionsInteraction.DeleteFactionSelected(faction.id)) }) {
-                Text("Delete")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Edit,
+                tooltip = "Edit",
+                onClick = { onInteraction(FactionsInteraction.EditFactionSelected(faction.id)) },
+            )
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Delete,
+                tooltip = "Delete",
+                tint = ErrorRed,
+                onClick = { onInteraction(FactionsInteraction.DeleteFactionSelected(faction.id)) },
+            )
         }
     }
 }
@@ -113,13 +123,14 @@ private fun MembersSection(
                                 )
                             }
                         }
-                        TextButton(
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.Close,
+                            tooltip = "Remove",
+                            tint = ErrorRed,
                             onClick = {
                                 onInteraction(FactionsInteraction.MemberRemoved(member.membershipId))
-                            }
-                        ) {
-                            Text("Remove")
-                        }
+                            },
+                        )
                     }
                 }
             }

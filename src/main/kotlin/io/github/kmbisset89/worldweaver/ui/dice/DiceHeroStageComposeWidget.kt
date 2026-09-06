@@ -1,6 +1,7 @@
 package io.github.kmbisset89.worldweaver.ui.dice
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,9 +33,13 @@ import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
 @Composable
 internal fun DiceHeroStageComposeWidget(
     state: DiceViewState.Content,
+    onRoll: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onRoll)
+            .semantics { contentDescription = "Roll dice" },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceCard),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -68,7 +75,7 @@ private fun ReadyStage(
             size = 96.dp,
         )
         Text(
-            text = "Ready to roll",
+            text = "Click to roll",
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary,

@@ -22,11 +22,12 @@ World Weaver is a desktop app for preparing and running tabletop campaigns. Ever
 16. [Maps](#maps)
 17. [Encounters](#encounters)
 18. [Dice](#dice)
-19. [Search](#search)
-20. [Settings](#settings)
-21. [Files, bundles, and backups](#files-bundles-and-backups)
-22. [Using World Weaver with Foundry](#using-world-weaver-with-foundry)
-23. [Sample worlds](#sample-worlds)
+19. [Atmosphere](#atmosphere)
+20. [Search](#search)
+21. [Settings](#settings)
+22. [Files, bundles, and backups](#files-bundles-and-backups)
+23. [Using World Weaver with Foundry](#using-world-weaver-with-foundry)
+24. [Sample worlds](#sample-worlds)
 
 ## First launch
 
@@ -40,18 +41,21 @@ Most screens need an **active world**. Campaign-scoped screens (quests, sessions
 
 | Scope | What lives there |
 |-------|------------------|
-| **World** | Locations, world maps, lore, calendar, holidays, factions, the people library |
+| **World** | Locations, world maps, lore, calendar, holidays, celestial bodies, factions, the people library |
 | **Campaign** | Status, party PCs, quests, sessions, battle maps, encounters, campaign notes on locations |
 
 Create a world first, then a campaign inside it. You can keep several campaigns in one world (an ongoing game, an archived run, a completed chronicle).
 
 **World Map**, the **one-shot wizard**, and **Tonight** are not listed in the sidebar. Open them from Locations, Worlds/Home, and Home (**Continue tonight**) respectively.
 
+On a wide window, library screens keep a roster beside the selected item. On a narrower window the selected item fills the page; use the named control in the header to search, filter, and switch. Maps, Links, and the world map keep the canvas visible and move the list or inspector into that same control.
+
 The main window also opens extra windows:
 
 - **Character sheet** — full sheet for a person
 - **Player view** — fog-filtered battle map for the players
 - **Dice** — floating tray you can keep above other apps
+- **Atmosphere** — floating tray that fires Home Assistant, Philips Hue, and Govee lighting together
 
 ## Home
 
@@ -72,7 +76,7 @@ If you have no worlds yet, use **New world** or **Create a one-shot**.
 3. Choose a default game system: **5E** or **PF2E**. Campaigns can override this later.
 4. Click the world row to make it **Active**.
 
-**Edit** and **Delete** sit on each row. You cannot delete a world that still has campaigns; archive or delete those campaigns first.
+The pencil and trash icons on each row are **Edit** and **Delete** (hover to see the label). You cannot delete a world that still has campaigns; archive or delete those campaigns first.
 
 **Import world** loads a `.wwbundle` file (a single world and its contents). **Export** on a world writes a `.wwbundle` you can share or archive. Importing creates a copy; it does not replace your other worlds.
 
@@ -109,7 +113,7 @@ Statuses:
 - **Archived** — paused
 - **Completed** — finished chronicle
 
-Use **Archive**, **Complete**, **Reopen**, or **Delete** from the campaign detail. The overview shows party, active quests, last session, and shortcuts to **Quests**, **Sessions**, and **Characters**.
+Use **Archive**, **Complete**, or **Reopen** from the campaign detail. The trash icon is **Delete**. The overview shows party, active quests, last session, and shortcuts to **Quests**, **Sessions**, and **Characters**.
 
 If the list looks empty, you may only be seeing active campaigns. Show archived and completed when you need history.
 
@@ -139,7 +143,7 @@ From a location, use **Open world map** or **Add world map** (or **Open map** / 
 - Place child locations as pins: pick an **Unplaced** child, then tap the map
 - Click a pin to select that location; **Clear pin** removes the anchor without deleting the location
 - Drill into a child that has its own map
-- **Replace PNG** swaps the image; **Delete map** removes the map file but keeps location pins on the records
+- **Replace PNG** swaps the image; the trash icon (**Delete map**) removes the map file but keeps location pins on the records
 
 Use **Locations** in the header to go back to the tree.
 
@@ -154,6 +158,8 @@ Each entry can have body text, tags, related lore, and links to locations or peo
 The calendar belongs to the world: era suffix, custom month names, weekday names, and the current in-world date. Sessions can stamp an in-world date so the calendar reflects what you have already played.
 
 Add **holidays and important days** on the same screen. A holiday repeats every year on a month and day. An important day can also carry a year so it marks one date in history. Link either kind to lore; those days show up on the lore entry, and matching days appear on **Run** when the session date or calendar today lands on them.
+
+Add **celestial bodies** (suns, moons, and planets) with a cycle length in world-days and an optional offset. The offset is how far into the cycle the body is on year 1, day 1 of the first month. When a current world date is set, **Today’s sky** shows each body’s place in that cycle. Moons also show a named phase (new through waning crescent). Search can open a body from the **Sky** group.
 
 You need an active world before the calendar has a setting to edit.
 
@@ -185,7 +191,7 @@ Kinds:
 
 The creation wizard and editors follow the world’s (or campaign’s) game system: **5E** or **PF2E**. You can set avatars, companions, relationships, and voice clips on the detail pane. When the campaign uses **XP** leveling, the editor and character sheet also show current XP.
 
-Open the **character sheet** window from a person (also from Tonight’s party cards). The sheet is a separate window with HP, armor class, ability scores, skills, spells and slots, features, items, death saves, and concentration. **Edit** returns you to the in-app editor.
+Open the **character sheet** window from a person (also from Tonight’s party cards). The sheet is a separate window with HP, armor class, ability scores, skills, spells and slots, features, items, death saves, and concentration. The pencil icon (**Edit sheet**) returns you to the in-app editor.
 
 Importing the 5E SRD under Settings adds official SRD races, classes, spells, and monsters to the pickers. Clearing the import returns pickers to the bundled 5E lists; people you already created are unchanged.
 
@@ -231,7 +237,7 @@ The run screen shows:
 - Objectives, party locations, scenes
 - Notes and recap editing
 
-Shortcuts: **Dice tray**, **Encounters**, **Maps**, and **Player view** when the current encounter has a map.
+Shortcuts: **Dice tray**, **Atmosphere**, **Encounters**, **Maps**, and **Player view** when the current encounter has a map.
 
 ## Maps
 
@@ -284,6 +290,7 @@ Player characters stay visible on Player view. You can hide NPC and monster toke
 
 **Dice** rolls digital dice or logs faces from physical dice.
 
+- Click a die, the stage, or **Roll** to tumble the current notation
 - Sides: d4, d6, d8, d10, d12, d20, d100
 - Notation such as `2d6+3`
 - **Normal**, **Advantage**, and **Disadvantage** (advantage/disadvantage apply to a single d20)
@@ -293,6 +300,61 @@ Player characters stay visible on Player view. You can hide NPC and monster toke
 
 **Pop out** opens a floating **Dice** window. Turn on **Always on top** to keep the tray above other windows (the choice is remembered). Tonight’s **Dice tray** opens the same tray.
 
+## Atmosphere
+
+**Atmosphere** is a named tray of table-side looks. One button can fire **Home Assistant**, **Philips Hue**, and **Govee** together. World Weaver does not play music itself and does not change Foundry or battle-map lighting.
+
+Connect whichever hubs you actually have. You do not need all three.
+
+### Set up Home Assistant
+
+1. In Home Assistant, create the scenes you want at the table (Tavern, Combat, Boss, and so on). A scene can set lights and media players together.
+2. Create a **long-lived access token** (Home Assistant profile → Long-Lived Access Tokens).
+3. In World Weaver, open **Atmosphere**.
+4. Enter the local URL, such as `http://homeassistant.local:8123` or `http://192.168.1.50:8123`, and the token.
+5. The save icon (**Save connection**), then **Test connection**. **Load HA scenes** lists `scene.*` entities from that hub.
+
+### Set up Philips Hue
+
+Hue talks to a bridge on your LAN. World Weaver uses the local Hue API, not the Hue cloud.
+
+1. Put the bridge on the same network as this computer.
+2. Open **Atmosphere** and enter the bridge IP, or click **Find bridge**.
+3. Press the round **link button** on the bridge, then **Pair**.
+4. **Test**, then **Load Hue lights** and pick the lamps Atmosphere may change.
+5. Choose a **Look** for those lamps. Built-in moods (Warm, Campfire, Dawn, Forest, Dungeon, Night, Storm, Combat, Off), custom moods, the color picker, brightness slider, and power switch apply immediately to the selected lights. Name the current look and save it as a custom mood. You can also paste a hex color. **Or** **Load Hue scenes** and pick a Hue scene. Click a Hue scene again to clear it. Leave lights unselected only when you want a Hue scene to change every lamp in that scene.
+6. Click a mapped scene in the tray to apply it. Clicking a different mapped scene switches those lights to that look.
+
+If pairing already happened, you can paste an existing application key and use the save icon (**Save**).
+
+### Set up Govee lighting
+
+Govee uses LAN Control (UDP on the local network), not the Govee cloud.
+
+1. In the Govee app, enable **LAN Control** for each light you want at the table.
+2. On **Atmosphere**, click **Scan LAN**.
+3. Select the lights that should follow the next mapping. Color, brightness, and power come from **Look** (moods or the picker) and apply immediately to those lights.
+
+Govee has no local scene catalog. World Weaver stores the last scan so mappings can still find those lights later. If a light’s IP changes, scan again.
+
+### Map scenes
+
+Give the table a short name, then attach any combination of:
+
+- a Home Assistant scene (`scene.tavern`, or pick from the loaded catalog)
+- Hue lights with a Look, or a Hue scene from the loaded Hue catalog (optionally limited to selected Hue lights)
+- Govee lights selected above
+
+**Add scene** requires at least one of those targets.
+
+### At the table
+
+**Pop out** opens a floating **Atmosphere** window. Named scenes, selected Hue and Govee lights, moods, and the color picker live in that tray. Turn on **Always on top** to keep it above other apps (the choice is remembered). Tonight’s **Atmosphere** button opens the same tray. Click a named scene to activate it, or use Look to set color and brightness on the selected lights.
+
+If the tray says you are not connected, connect Home Assistant, pair Hue, or scan Govee lights on the Atmosphere screen first.
+
+Home Assistant URL and token, Hue bridge host and application key, loaded Hue lights, scanned Govee devices, selected lights for Look, custom moods, and scene mappings stay on this computer. They are included in a **Settings** `.wwbackup` so a restore can reconnect. They are not included in a world `.wwbundle`.
+
 ## Search
 
 The field at the top of the main window searches:
@@ -301,6 +363,8 @@ The field at the top of the main window searches:
 - Campaigns
 - Locations
 - Lore
+- Holidays
+- Sky (celestial bodies)
 - Factions
 - People
 - Quests
@@ -308,7 +372,7 @@ The field at the top of the main window searches:
 
 Choosing a result activates the needed world or campaign and opens that screen. Empty query results show **No matching records.**
 
-Search does not include encounters, battle maps, or dice history.
+Search does not include encounters, battle maps, dice history, or atmosphere scenes.
 
 ## Settings
 
@@ -327,11 +391,11 @@ The sidebar theme button cycles Light → Dark → System.
 
 ### Local profile
 
-Edit **Name** and **Email**, then **Save profile**. This is display-only on this machine.
+Edit **Name** and **Email**, then the save icon (**Save profile**). This is display-only on this machine.
 
 ### Backup and restore
 
-**Export backup** writes a `.wwbackup` (default name like `worldweaver-YYYYMMDD.wwbackup`). The archive includes worlds, campaigns, maps, avatars, voice clips, imported SRD, and appearance/profile from this computer.
+**Export backup** writes a `.wwbackup` (default name like `worldweaver-YYYYMMDD.wwbackup`). The archive includes worlds, campaigns, maps, avatars, voice clips, imported SRD, appearance/profile, and this computer’s Home Assistant connection plus atmosphere scene mappings. A backup contains the Home Assistant access token.
 
 **Restore backup** **replaces all World Weaver data on this computer**, then quits so you can reopen with the restored files. Confirm with **Restore and quit**. Export first if you might need the current machine’s data.
 
@@ -361,7 +425,7 @@ On-disk folder: **`~/.worldweaver/`**
 | `voices/` | Voice clips |
 | `srd/` | Imported SRD |
 
-Appearance and profile also use this machine’s Java preferences. Copying only `~/.worldweaver` moves worlds and media; a `.wwbackup` is the supported way to migrate everything Settings knows about.
+Appearance, profile, and Atmosphere (Home Assistant URL and token, Hue application key, scanned Govee devices, and scene mappings) also use this machine’s Java preferences. Copying only `~/.worldweaver` moves worlds and media; a `.wwbackup` is the supported way to migrate everything Settings and Atmosphere know about.
 
 World Weaver is local-first. There is no cloud sync. To play on another computer, export a backup (or a world bundle) and import or restore there.
 

@@ -23,6 +23,7 @@ internal class ShatteredAccordWorldBundleFactoryTest {
         assertEquals("AA", bundle.calendar?.eraSuffix)
         assertEquals(12, bundle.calendar?.months?.size)
         assertEquals(listOf("Aontachd Vigil", "Day the Harmony Broke"), bundle.observances.map { it.name })
+        assertEquals(listOf("Grian", "Gealach", "Reul-iùil"), bundle.celestialBodies.map { it.name })
         assertEquals(listOf("The Shattered Accord"), bundle.campaigns.map { it.name })
         assertEquals(5, bundle.locations.count { it.type == LocationType.Area })
         assertEquals(8, bundle.factions.size)

@@ -1,17 +1,16 @@
 package io.github.kmbisset89.worldweaver.ui.links
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -28,14 +27,20 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.RelationshipType
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailBreakpoint
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListSwitcherComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
+import io.github.kmbisset89.worldweaver.ui.components.rememberAdaptiveListOpen
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -99,17 +104,40 @@ internal fun LinksScreen(
                 )
             }
             is LinksViewState.Content -> {
-                LinksHeader(
-                    subtitle = headerSubtitle(viewState.worldName, viewState.campaignName),
-                    filters = FilterBarState(
-                        searchQuery = viewState.searchQuery,
-                        showIsolates = viewState.showIsolates,
-                        showMemberships = viewState.showMemberships,
-                        enabledRelationshipTypes = viewState.enabledRelationshipTypes,
-                    ),
-                    onInteraction = onInteraction,
-                )
-                LinksContent(state = viewState, onInteraction = onInteraction)
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val compact = maxWidth < AdaptiveListDetailBreakpoint
+                    var listOpen by rememberAdaptiveListOpen(compact)
+                    LaunchedEffect(viewState.selectedNodeId, compact) {
+                        if (compact && viewState.selectedNodeId != null) {
+                            listOpen = true
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        LinksHeader(
+                            subtitle = headerSubtitle(viewState.worldName, viewState.campaignName),
+                            filters = FilterBarState(
+                                searchQuery = viewState.searchQuery,
+                                showIsolates = viewState.showIsolates,
+                                showMemberships = viewState.showMemberships,
+                                enabledRelationshipTypes = viewState.enabledRelationshipTypes,
+                            ),
+                            switcherName = viewState.inspector?.name.takeIf { compact },
+                            onListToggle = { listOpen = !listOpen },
+                            onInteraction = onInteraction,
+                        )
+                        LinksContent(
+                            state = viewState,
+                            compact = compact,
+                            listOpen = listOpen,
+                            onListDismissed = { listOpen = false },
+                            onInteraction = onInteraction,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }
@@ -120,6 +148,8 @@ private fun LinksHeader(
     subtitle: String,
     filters: FilterBarState?,
     onInteraction: (LinksInteraction) -> Unit,
+    switcherName: String? = null,
+    onListToggle: () -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column {
@@ -137,6 +167,13 @@ private fun LinksHeader(
         }
         if (filters != null) {
             FilterBar(state = filters, onInteraction = onInteraction)
+        }
+        if (switcherName != null) {
+            AdaptiveListSwitcherComposeWidget(
+                selectedName = switcherName,
+                listLabel = "link details",
+                onClick = onListToggle,
+            )
         }
     }
 }
@@ -182,34 +219,47 @@ private fun FilterBar(
 @Composable
 private fun LinksContent(
     state: LinksViewState.Content,
+    compact: Boolean,
+    listOpen: Boolean,
+    onListDismissed: () -> Unit,
     onInteraction: (LinksInteraction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Card(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            RelationshipWebCanvasComposeWidget(
-                nodes = state.nodes,
-                edges = state.edges,
-                positions = state.positions,
-                selectedNodeId = state.selectedNodeId,
-                searchQuery = state.searchQuery,
-                onNodeSelected = { onInteraction(LinksInteraction.NodeSelected(it)) },
-                onSelectionCleared = { onInteraction(LinksInteraction.SelectionCleared) },
+    AdaptiveListDetailComposeWidget(
+        compact = compact,
+        listOpen = listOpen,
+        hasSelection = state.inspector != null,
+        listPane = { listModifier ->
+            LinksInspectorPane(
+                inspector = state.inspector,
+                onInteraction = onInteraction,
+                modifier = listModifier,
             )
-        }
-        LinksInspectorPane(
-            inspector = state.inspector,
-            onInteraction = onInteraction,
-            modifier = Modifier.width(320.dp).fillMaxHeight(),
-        )
-    }
+        },
+        detailPane = { detailModifier ->
+            Card(
+                modifier = detailModifier,
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                RelationshipWebCanvasComposeWidget(
+                    nodes = state.nodes,
+                    edges = state.edges,
+                    positions = state.positions,
+                    selectedNodeId = state.selectedNodeId,
+                    searchQuery = state.searchQuery,
+                    onNodeSelected = { onInteraction(LinksInteraction.NodeSelected(it)) },
+                    onSelectionCleared = { onInteraction(LinksInteraction.SelectionCleared) },
+                )
+            }
+        },
+        onListDismissed = onListDismissed,
+        dismissListLabel = "Dismiss link details",
+        listAtEnd = true,
+        keepDetailWhenCompact = true,
+        modifier = modifier,
+    )
 }
 
 @Composable

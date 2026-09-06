@@ -8,11 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,7 +29,7 @@ internal fun BattleMapItemComposeWidget(
     selected: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val pieceShape = RoundedCornerShape(4.dp)
+    val pieceShape = CircleShape
     val highlight = if (selected) {
         Modifier.border(2.dp, NavyBlue, pieceShape)
     } else {
@@ -42,7 +43,8 @@ internal fun BattleMapItemComposeWidget(
             modifier = Modifier
                 .size(28.dp)
                 .then(highlight)
-                .background(ItemFill, pieceShape),
+                .clip(pieceShape)
+                .background(ItemFill),
             contentAlignment = Alignment.Center,
         ) {
             Text(

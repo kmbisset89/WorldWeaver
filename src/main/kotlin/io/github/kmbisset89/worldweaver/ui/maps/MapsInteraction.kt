@@ -33,8 +33,10 @@ internal sealed interface MapsInteraction {
     data class TokenSelected(val participantId: String) : MapsInteraction
     data class MovementSpeedChanged(val speed: String) : MapsInteraction
     data object MovementCleared : MapsInteraction
+    data object BoardToolCleared : MapsInteraction
     data object MeasureToggled : MapsInteraction
     data object MeasureCleared : MapsInteraction
+    data object LayersToggled : MapsInteraction
     data object FogToggled : MapsInteraction
     data object FogRevealBrushSelected : MapsInteraction
     data object FogHideBrushSelected : MapsInteraction

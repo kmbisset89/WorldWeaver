@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.DieSides
 import io.github.kmbisset89.worldweaver.domain.RollMode
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
@@ -47,7 +50,10 @@ internal fun DiceTrayComposeWidget(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            DiceHeroStageComposeWidget(state = state)
+            DiceHeroStageComposeWidget(
+                state = state,
+                onRoll = { onInteraction(DiceInteraction.RollSelected) },
+            )
         }
 
         item {
@@ -63,7 +69,7 @@ internal fun DiceTrayComposeWidget(
                             caption = die.label,
                             selected = state.selectedDie == die,
                             size = 64.dp,
-                            onClick = { onInteraction(DiceInteraction.DieSelected(die)) },
+                            onClick = { rollDie(die, state.entryMode, onInteraction) },
                         )
                     }
                 }
@@ -102,9 +108,12 @@ internal fun DiceTrayComposeWidget(
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary,
                     )
-                    TextButton(onClick = { onInteraction(DiceInteraction.HistoryCleared) }) {
-                        Text("Clear")
-                    }
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.DeleteSweep,
+                        tooltip = "Clear",
+                        tint = ErrorRed,
+                        onClick = { onInteraction(DiceInteraction.HistoryCleared) },
+                    )
                 }
             }
             items(state.history.size) { index ->
@@ -215,6 +224,17 @@ private fun ControlsCard(
                 Text(if (state.entryMode == DiceEntryMode.Table) "Log" else "Roll")
             }
         }
+    }
+}
+
+private fun rollDie(
+    die: DieSides,
+    entryMode: DiceEntryMode,
+    onInteraction: (DiceInteraction) -> Unit,
+) {
+    onInteraction(DiceInteraction.DieSelected(die))
+    if (entryMode == DiceEntryMode.Digital) {
+        onInteraction(DiceInteraction.RollSelected)
     }
 }
 

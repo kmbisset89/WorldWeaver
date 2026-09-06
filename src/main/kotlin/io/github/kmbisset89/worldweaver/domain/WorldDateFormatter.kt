@@ -78,11 +78,20 @@ internal class WorldDateFormatter {
     }
 
     fun weekdayIndex(calendar: WorldCalendar, date: WorldDate): Int? {
-        val month = monthOf(calendar, date) ?: return null
         val weekdays = calendar.weekdays
         if (weekdays.isEmpty()) {
             return null
         }
+        val dayIndex = dayIndex(calendar, date) ?: return null
+        return Math.floorMod(dayIndex, weekdays.size.toLong()).toInt()
+    }
+
+    /**
+     * Zero-based count of days from year 1, day 1 of the first month, or `null`
+     * when [date] is not valid on [calendar].
+     */
+    fun dayIndex(calendar: WorldCalendar, date: WorldDate): Long? {
+        val month = monthOf(calendar, date) ?: return null
         val yearLength = calendar.months.sumOf { it.days }
         if (yearLength <= 0) {
             return null
@@ -90,8 +99,7 @@ internal class WorldDateFormatter {
         val monthOffset = calendar.months
             .takeWhile { it.id != month.id }
             .sumOf { it.days }
-        val dayOffset = (date.year - 1L) * yearLength + monthOffset + (date.day - 1)
-        return Math.floorMod(dayOffset, weekdays.size.toLong()).toInt()
+        return (date.year - 1L) * yearLength + monthOffset + (date.day - 1)
     }
 
     private fun monthOf(calendar: WorldCalendar, date: WorldDate): WorldCalendarMonth? {

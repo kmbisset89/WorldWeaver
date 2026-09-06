@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -17,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 
 @Composable
 internal fun QuestEditorDialog(
@@ -103,11 +108,12 @@ internal fun QuestEditorDialog(
                                 label = { Text(status.displayName) },
                             )
                         }
-                        TextButton(
-                            onClick = { onInteraction(QuestsInteraction.EditorObjectiveRemoved(index)) }
-                        ) {
-                            Text("Remove")
-                        }
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.Close,
+                            tooltip = "Remove",
+                            tint = ErrorRed,
+                            onClick = { onInteraction(QuestsInteraction.EditorObjectiveRemoved(index)) },
+                        )
                     }
                 }
                 TextButton(onClick = { onInteraction(QuestsInteraction.EditorObjectiveAdded) }) {
@@ -161,9 +167,11 @@ internal fun QuestEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onInteraction(QuestsInteraction.EditorSaved) }) {
-                Text("Save")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save",
+                onClick = { onInteraction(QuestsInteraction.EditorSaved) },
+            )
         },
         dismissButton = {
             TextButton(onClick = { onInteraction(QuestsInteraction.EditorDismissed) }) {

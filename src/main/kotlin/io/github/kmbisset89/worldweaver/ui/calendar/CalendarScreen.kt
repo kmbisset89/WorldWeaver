@@ -13,10 +13,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PublicOff
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.foundation.clickable
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,6 +28,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
-import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
@@ -188,9 +193,27 @@ private fun CalendarContent(
                         }
                     }
                 }
+                if (state.todaySky.isNotEmpty()) {
+                    Text("Today’s sky", fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.todaySky.forEach { body ->
+                            FilterChip(
+                                selected = body.id == state.selectedCelestialBodyId,
+                                onClick = {
+                                    onInteraction(CalendarInteraction.CelestialBodySelected(body.id))
+                                },
+                                label = { Text("${body.name} · ${body.appearanceLabel}") },
+                            )
+                        }
+                    }
+                }
             }
         }
         ObservancesCard(state = state, onInteraction = onInteraction)
+        CelestialBodiesCard(state = state, onInteraction = onInteraction)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = SurfaceCard),
@@ -236,25 +259,26 @@ private fun CalendarContent(
                             singleLine = true,
                             modifier = Modifier.width(88.dp)
                         )
-                        TextButton(
-                            onClick = { onInteraction(CalendarInteraction.MonthMoved(index, -1)) },
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.KeyboardArrowUp,
+                            tooltip = "Up",
                             enabled = index > 0,
-                        ) {
-                            Text("Up")
-                        }
-                        TextButton(
-                            onClick = { onInteraction(CalendarInteraction.MonthMoved(index, 1)) },
+                            onClick = { onInteraction(CalendarInteraction.MonthMoved(index, -1)) },
+                        )
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.KeyboardArrowDown,
+                            tooltip = "Down",
                             enabled = index < state.months.lastIndex,
-                        ) {
-                            Text("Down")
-                        }
-                        TextButton(
-                            onClick = { onInteraction(CalendarInteraction.MonthRemoved(index)) },
+                            onClick = { onInteraction(CalendarInteraction.MonthMoved(index, 1)) },
+                        )
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.Close,
+                            tooltip = "Remove",
+                            tint = ErrorRed,
                             enabled = state.months.size > 1 &&
                                 (month.id.isEmpty() || month.id !in state.referencedMonthIds),
-                        ) {
-                            Text("Remove")
-                        }
+                            onClick = { onInteraction(CalendarInteraction.MonthRemoved(index)) },
+                        )
                     }
                 }
             }
@@ -295,23 +319,24 @@ private fun CalendarContent(
                             singleLine = true,
                             modifier = Modifier.weight(1f)
                         )
-                        TextButton(
-                            onClick = { onInteraction(CalendarInteraction.WeekdayMoved(index, -1)) },
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.KeyboardArrowUp,
+                            tooltip = "Up",
                             enabled = index > 0,
-                        ) {
-                            Text("Up")
-                        }
-                        TextButton(
-                            onClick = { onInteraction(CalendarInteraction.WeekdayMoved(index, 1)) },
+                            onClick = { onInteraction(CalendarInteraction.WeekdayMoved(index, -1)) },
+                        )
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.KeyboardArrowDown,
+                            tooltip = "Down",
                             enabled = index < state.weekdays.lastIndex,
-                        ) {
-                            Text("Down")
-                        }
-                        TextButton(
+                            onClick = { onInteraction(CalendarInteraction.WeekdayMoved(index, 1)) },
+                        )
+                        ActionIconButtonComposeWidget(
+                            icon = Icons.Default.Close,
+                            tooltip = "Remove",
+                            tint = ErrorRed,
                             onClick = { onInteraction(CalendarInteraction.WeekdayRemoved(index)) },
-                        ) {
-                            Text("Remove")
-                        }
+                        )
                     }
                 }
             }
@@ -319,17 +344,23 @@ private fun CalendarContent(
         state.saveError?.let { error ->
             Text(text = error, color = TextSecondary, fontSize = 13.sp)
         }
-        Button(
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Save,
+            tooltip = "Save calendar",
+            filled = true,
             onClick = { onInteraction(CalendarInteraction.Saved) },
-            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-        ) {
-            Text("Save calendar")
-        }
+        )
         Spacer(modifier = Modifier.padding(bottom = 8.dp))
         state.editor?.let { editor ->
             ObservanceEditorDialog(
                 editor = editor,
                 months = state.months,
+                onInteraction = onInteraction,
+            )
+        }
+        state.bodyEditor?.let { editor ->
+            CelestialBodyEditorDialog(
+                editor = editor,
                 onInteraction = onInteraction,
             )
         }
@@ -340,6 +371,15 @@ private fun CalendarContent(
                 confirmLabel = "Delete",
                 onConfirm = { onInteraction(CalendarInteraction.DeleteConfirmed) },
                 onDismiss = { onInteraction(CalendarInteraction.DeleteCancelled) },
+            )
+        }
+        state.pendingBodyDelete?.let { pending ->
+            ConfirmDestructiveDialog(
+                title = "Delete this body?",
+                message = "Delete “${pending.name}”? The sky on this calendar will no longer include it.",
+                confirmLabel = "Delete",
+                onConfirm = { onInteraction(CalendarInteraction.DeleteCelestialBodyConfirmed) },
+                onDismiss = { onInteraction(CalendarInteraction.DeleteCelestialBodyCancelled) },
             )
         }
     }
@@ -427,18 +467,19 @@ private fun ObservanceRow(
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(
-                        onClick = { onInteraction(CalendarInteraction.EditObservanceSelected(observance.id)) }
-                    ) {
-                        Text("Edit")
-                    }
-                    TextButton(
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Edit,
+                        tooltip = "Edit",
+                        onClick = { onInteraction(CalendarInteraction.EditObservanceSelected(observance.id)) },
+                    )
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Delete,
+                        tooltip = "Delete",
+                        tint = ErrorRed,
                         onClick = {
                             onInteraction(CalendarInteraction.DeleteObservanceSelected(observance.id))
-                        }
-                    ) {
-                        Text("Delete")
-                    }
+                        },
+                    )
                 }
             }
             if (observance.notes.isNotBlank()) {
@@ -459,6 +500,139 @@ private fun ObservanceRow(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CelestialBodiesCard(
+    state: CalendarViewState.Content,
+    onInteraction: (CalendarInteraction) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Celestial bodies", fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                TextButton(onClick = { onInteraction(CalendarInteraction.NewCelestialBodySelected) }) {
+                    Text("Add body")
+                }
+            }
+            if (state.celestialBodies.isEmpty()) {
+                Text(
+                    text = "Add a sun, moon, or planet with a cycle length so the calendar can show tonight’s sky.",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                )
+            }
+            state.celestialBodies.forEachIndexed { index, body ->
+                CelestialBodyRow(
+                    body = body,
+                    selected = body.id == state.selectedCelestialBodyId,
+                    canMoveUp = index > 0,
+                    canMoveDown = index < state.celestialBodies.lastIndex,
+                    onInteraction = onInteraction,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CelestialBodyRow(
+    body: CalendarViewState.CelestialBodyLine,
+    selected: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onInteraction: (CalendarInteraction) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onInteraction(CalendarInteraction.CelestialBodySelected(body.id)) },
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) SurfaceCard.copy(alpha = 0.65f) else SurfaceCard,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 2.dp else 0.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = body.name,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
+                    )
+                    Text(
+                        text = "${body.kindLabel} · ${body.cycleLabel}",
+                        color = TextSecondary,
+                        fontSize = 13.sp,
+                    )
+                    body.appearanceLabel?.let { appearance ->
+                        Text(
+                            text = appearance,
+                            color = TextSecondary,
+                            fontSize = 13.sp,
+                        )
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.KeyboardArrowUp,
+                        tooltip = "Up",
+                        enabled = canMoveUp,
+                        onClick = {
+                            onInteraction(CalendarInteraction.CelestialBodyMoved(body.id, -1))
+                        },
+                    )
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.KeyboardArrowDown,
+                        tooltip = "Down",
+                        enabled = canMoveDown,
+                        onClick = {
+                            onInteraction(CalendarInteraction.CelestialBodyMoved(body.id, 1))
+                        },
+                    )
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Edit,
+                        tooltip = "Edit",
+                        onClick = {
+                            onInteraction(CalendarInteraction.EditCelestialBodySelected(body.id))
+                        },
+                    )
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Delete,
+                        tooltip = "Delete",
+                        tint = ErrorRed,
+                        onClick = {
+                            onInteraction(CalendarInteraction.DeleteCelestialBodySelected(body.id))
+                        },
+                    )
+                }
+            }
+            if (body.notes.isNotBlank()) {
+                Text(text = body.notes, color = TextSecondary, fontSize = 13.sp)
             }
         }
     }

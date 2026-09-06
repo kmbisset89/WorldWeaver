@@ -9,6 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -23,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.PlotThread
 import io.github.kmbisset89.worldweaver.domain.ReferenceDoc
 import io.github.kmbisset89.worldweaver.domain.Session
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -81,12 +89,17 @@ internal fun SessionDetailPane(
             TextButton(onClick = { onInteraction(SessionsInteraction.GeneratorOpened) }) {
                 Text("Save NPC draft")
             }
-            TextButton(onClick = { onInteraction(SessionsInteraction.EditSessionSelected(session.id)) }) {
-                Text("Edit")
-            }
-            TextButton(onClick = { onInteraction(SessionsInteraction.DeleteSessionSelected(session.id)) }) {
-                Text("Delete")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Edit,
+                tooltip = "Edit",
+                onClick = { onInteraction(SessionsInteraction.EditSessionSelected(session.id)) },
+            )
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Delete,
+                tooltip = "Delete",
+                tint = ErrorRed,
+                onClick = { onInteraction(SessionsInteraction.DeleteSessionSelected(session.id)) },
+            )
         }
     }
 }
@@ -198,21 +211,24 @@ private fun ScenesSection(
                 modifier = Modifier.fillMaxWidth()
             )
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(
-                    onClick = { onInteraction(SessionsInteraction.SceneMoved(index, -1)) },
+                ActionIconButtonComposeWidget(
+                    icon = Icons.Default.KeyboardArrowUp,
+                    tooltip = "Up",
                     enabled = index > 0,
-                ) {
-                    Text("Up")
-                }
-                TextButton(
-                    onClick = { onInteraction(SessionsInteraction.SceneMoved(index, 1)) },
+                    onClick = { onInteraction(SessionsInteraction.SceneMoved(index, -1)) },
+                )
+                ActionIconButtonComposeWidget(
+                    icon = Icons.Default.KeyboardArrowDown,
+                    tooltip = "Down",
                     enabled = index < session.scenes.lastIndex,
-                ) {
-                    Text("Down")
-                }
-                TextButton(onClick = { onInteraction(SessionsInteraction.SceneRemoved(index)) }) {
-                    Text("Remove")
-                }
+                    onClick = { onInteraction(SessionsInteraction.SceneMoved(index, 1)) },
+                )
+                ActionIconButtonComposeWidget(
+                    icon = Icons.Default.Close,
+                    tooltip = "Remove",
+                    tint = ErrorRed,
+                    onClick = { onInteraction(SessionsInteraction.SceneRemoved(index)) },
+                )
             }
         }
         TextButton(onClick = { onInteraction(SessionsInteraction.SceneAdded) }) {
@@ -260,16 +276,17 @@ private fun ThreadsSection(
                     Text(text = thread.details, fontSize = 13.sp, color = TextPrimary)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(
-                        onClick = { onInteraction(SessionsInteraction.ThreadEditSelected(thread.id)) }
-                    ) {
-                        Text("Edit")
-                    }
-                    TextButton(
-                        onClick = { onInteraction(SessionsInteraction.ThreadDeleteSelected(thread.id)) }
-                    ) {
-                        Text("Delete")
-                    }
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Edit,
+                        tooltip = "Edit",
+                        onClick = { onInteraction(SessionsInteraction.ThreadEditSelected(thread.id)) },
+                    )
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Delete,
+                        tooltip = "Delete",
+                        tint = ErrorRed,
+                        onClick = { onInteraction(SessionsInteraction.ThreadDeleteSelected(thread.id)) },
+                    )
                 }
             }
         }
@@ -315,16 +332,17 @@ private fun DocsSection(
                     color = TextSecondary
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(
-                        onClick = { onInteraction(SessionsInteraction.DocEditSelected(doc.id)) }
-                    ) {
-                        Text("Edit")
-                    }
-                    TextButton(
-                        onClick = { onInteraction(SessionsInteraction.DocDeleteSelected(doc.id)) }
-                    ) {
-                        Text("Delete")
-                    }
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Edit,
+                        tooltip = "Edit",
+                        onClick = { onInteraction(SessionsInteraction.DocEditSelected(doc.id)) },
+                    )
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Delete,
+                        tooltip = "Delete",
+                        tint = ErrorRed,
+                        onClick = { onInteraction(SessionsInteraction.DocDeleteSelected(doc.id)) },
+                    )
                 }
             }
         }
@@ -357,23 +375,24 @@ private fun MarchOrderSection(
                     modifier = Modifier.padding(top = 8.dp)
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(
-                        onClick = { onInteraction(SessionsInteraction.MarchEntryMoved(index, -1)) },
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.KeyboardArrowUp,
+                        tooltip = "Up",
                         enabled = index > 0,
-                    ) {
-                        Text("Up")
-                    }
-                    TextButton(
-                        onClick = { onInteraction(SessionsInteraction.MarchEntryMoved(index, 1)) },
+                        onClick = { onInteraction(SessionsInteraction.MarchEntryMoved(index, -1)) },
+                    )
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.KeyboardArrowDown,
+                        tooltip = "Down",
                         enabled = index < session.marchOrder.lastIndex,
-                    ) {
-                        Text("Down")
-                    }
-                    TextButton(
-                        onClick = { onInteraction(SessionsInteraction.MarchEntryRemoved(index)) }
-                    ) {
-                        Text("Remove")
-                    }
+                        onClick = { onInteraction(SessionsInteraction.MarchEntryMoved(index, 1)) },
+                    )
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Close,
+                        tooltip = "Remove",
+                        tint = ErrorRed,
+                        onClick = { onInteraction(SessionsInteraction.MarchEntryRemoved(index)) },
+                    )
                 }
             }
         }

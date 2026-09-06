@@ -325,6 +325,10 @@ internal class EncountersViewModel(
                 boardSession.clearMovement()
                 refreshRunning()
             }
+            EncountersInteraction.BoardToolCleared -> {
+                boardSession.clearBoardTools()
+                refreshRunning()
+            }
             EncountersInteraction.MeasureToggled -> {
                 boardSession.toggleMeasure()
                 refreshRunning()

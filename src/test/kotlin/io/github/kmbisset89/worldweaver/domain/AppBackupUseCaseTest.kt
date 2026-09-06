@@ -20,12 +20,14 @@ internal class AppBackupUseCaseTest {
     private val tempDir = Files.createTempDirectory("ww-backup-usecase").toFile()
     private val preferences = Preferences.userRoot().node(TEST_NODE)
     private val dicePreferences = Preferences.userRoot().node(DICE_NODE)
+    private val atmospherePreferences = Preferences.userRoot().node(ATMOSPHERE_NODE)
 
     @AfterTest
     fun tearDown() {
         tempDir.deleteRecursively()
         preferences.removeNode()
         dicePreferences.removeNode()
+        atmospherePreferences.removeNode()
     }
 
     @Test
@@ -51,6 +53,21 @@ internal class AppBackupUseCaseTest {
         harness.settings.setNavExpanded(false)
         harness.settings.setProfile("Ada", "ada@local")
         DiceColorStyle.save(DiceColorStyle.ONYX, dicePreferences)
+        harness.atmosphere.replaceAll(
+            AtmosphereSettings(
+                connection = HomeAssistantConnection("http://ha.local:8123", "secret-token"),
+                hue = HueConnection("192.168.1.40", "hue-key"),
+                goveeDevices = listOf(GoveeDevice("AA:BB", "192.168.1.50", "H6072")),
+                hueLights = listOf(HueLight("light-1", "Table lamp")),
+                scenes = listOf(
+                    AtmosphereScene("s1", "Tavern", "scene.tavern", 0),
+                ),
+                moods = listOf(AtmosphereMood("m1", "Temple", true, 40, "#C4A35A", 0)),
+                selectedHueLightIds = listOf("light-1"),
+                selectedGoveeDeviceIds = listOf("AA:BB"),
+                isAlwaysOnTop = true,
+            ),
+        )
         val dest = File(tempDir, "app.wwbackup")
 
         assertIs<ExportAppBackupUseCase.Result.Written>(harness.export(dest))
@@ -65,6 +82,15 @@ internal class AppBackupUseCaseTest {
         harness.settings.setProfile("Other", "other@local")
         harness.settings.setThemeMode(ThemeMode.LIGHT)
         DiceColorStyle.save(DiceColorStyle.BONE, dicePreferences)
+        harness.atmosphere.replaceAll(
+            AtmosphereSettings(
+                connection = HomeAssistantConnection("", ""),
+                hue = HueConnection("", ""),
+                goveeDevices = emptyList(),
+                scenes = emptyList(),
+                isAlwaysOnTop = false,
+            ),
+        )
 
         assertIs<RestoreAppBackupUseCase.Result.Restored>(harness.restore(dest))
 
@@ -92,6 +118,29 @@ internal class AppBackupUseCaseTest {
         assertEquals(ThemeSkin.GOTHIC, harness.settings.settings.value.themeSkin)
         assertEquals(false, harness.settings.settings.value.navExpanded)
         assertEquals(DiceColorStyle.ONYX, DiceColorStyle.load(dicePreferences))
+        assertEquals("http://ha.local:8123", harness.atmosphere.settings.value.connection.baseUrl)
+        assertEquals("secret-token", harness.atmosphere.settings.value.connection.token)
+        assertEquals("192.168.1.40", harness.atmosphere.settings.value.hue.bridgeHost)
+        assertEquals("hue-key", harness.atmosphere.settings.value.hue.applicationKey)
+        assertEquals(
+            listOf(GoveeDevice("AA:BB", "192.168.1.50", "H6072")),
+            harness.atmosphere.settings.value.goveeDevices,
+        )
+        assertEquals(
+            listOf(HueLight("light-1", "Table lamp")),
+            harness.atmosphere.settings.value.hueLights,
+        )
+        assertEquals(true, harness.atmosphere.settings.value.isAlwaysOnTop)
+        assertEquals(
+            listOf(AtmosphereScene("s1", "Tavern", "scene.tavern", 0)),
+            harness.atmosphere.settings.value.scenes,
+        )
+        assertEquals(
+            listOf(AtmosphereMood("m1", "Temple", true, 40, "#C4A35A", 0)),
+            harness.atmosphere.settings.value.moods,
+        )
+        assertEquals(listOf("light-1"), harness.atmosphere.settings.value.selectedHueLightIds)
+        assertEquals(listOf("AA:BB"), harness.atmosphere.settings.value.selectedGoveeDeviceIds)
         assertTrue(harness.closed)
     }
 
@@ -120,6 +169,7 @@ internal class AppBackupUseCaseTest {
         val dataDirectory = WorldWeaverDataDirectory(File(tempDir, "data"))
         val context = FakeActiveContextRepository()
         val settings = ShellSettingsStore(preferences)
+        val atmosphere = AtmosphereSettingsStore(atmospherePreferences)
         var snapshotBytes: ByteArray = byteArrayOf(1, 2, 3)
         var closed: Boolean = false
         private val snapshot = object : DatabaseSnapshotExporter {
@@ -142,6 +192,7 @@ internal class AppBackupUseCaseTest {
                 archiveConverter = converter,
                 activeContextRepository = context,
                 shellSettingsStore = settings,
+                atmosphereSettingsStore = atmosphere,
                 instantProvider = instantProvider,
                 dicePreferences = dicePreferences,
             )(dest)
@@ -154,6 +205,7 @@ internal class AppBackupUseCaseTest {
                 archiveConverter = converter,
                 activeContextRepository = context,
                 shellSettingsStore = settings,
+                atmosphereSettingsStore = atmosphere,
                 dicePreferences = dicePreferences,
             )(source)
         }
@@ -162,5 +214,6 @@ internal class AppBackupUseCaseTest {
     private companion object {
         const val TEST_NODE = "io.github.kmbisset89.worldweaver.test.backup"
         const val DICE_NODE = "io.github.kmbisset89.worldweaver.test.backup.dice"
+        const val ATMOSPHERE_NODE = "io.github.kmbisset89.worldweaver.test.backup.atmosphere"
     }
 }

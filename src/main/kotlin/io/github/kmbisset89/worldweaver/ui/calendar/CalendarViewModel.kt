@@ -12,16 +12,21 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.ActiveContextDetails
+import io.github.kmbisset89.worldweaver.domain.CelestialBodyKind
 import io.github.kmbisset89.worldweaver.domain.CreateWorldCalendarObservanceUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateWorldCelestialBodyUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteWorldCalendarObservanceUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteWorldCelestialBodyUseCase
 import io.github.kmbisset89.worldweaver.domain.FindSessionCalendarMonthIdsForWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.Lore
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveLoreForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarObservancesForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveWorldCelestialBodiesForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldCalendarObservanceUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldCalendarUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateWorldCelestialBodyUseCase
 import io.github.kmbisset89.worldweaver.domain.WorldCalendar
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarDraft
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarMonth
@@ -29,6 +34,9 @@ import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservance
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservanceDraft
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservanceKind
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarWeekday
+import io.github.kmbisset89.worldweaver.domain.WorldCelestialAppearanceCalculator
+import io.github.kmbisset89.worldweaver.domain.WorldCelestialBody
+import io.github.kmbisset89.worldweaver.domain.WorldCelestialBodyDraft
 import io.github.kmbisset89.worldweaver.domain.WorldDate
 import io.github.kmbisset89.worldweaver.domain.WorldDateFormatter
 
@@ -37,13 +45,18 @@ internal class CalendarViewModel(
     private val observeActiveContextDetails: ObserveActiveContextDetailsUseCase,
     private val observeCalendar: ObserveWorldCalendarForActiveWorldUseCase,
     private val observeObservances: ObserveWorldCalendarObservancesForActiveWorldUseCase,
+    private val observeCelestialBodies: ObserveWorldCelestialBodiesForActiveWorldUseCase,
     private val observeLore: ObserveLoreForActiveWorldUseCase,
     private val findSessionMonthIds: FindSessionCalendarMonthIdsForWorldUseCase,
     private val updateCalendar: UpdateWorldCalendarUseCase,
     private val createObservance: CreateWorldCalendarObservanceUseCase,
     private val updateObservance: UpdateWorldCalendarObservanceUseCase,
     private val deleteObservance: DeleteWorldCalendarObservanceUseCase,
+    private val createCelestialBody: CreateWorldCelestialBodyUseCase,
+    private val updateCelestialBody: UpdateWorldCelestialBodyUseCase,
+    private val deleteCelestialBody: DeleteWorldCelestialBodyUseCase,
     private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
+    private val appearanceCalculator: WorldCelestialAppearanceCalculator = WorldCelestialAppearanceCalculator(),
 ) {
     private val _state = MutableStateFlow<CalendarViewState>(CalendarViewState.Loading)
     val state: StateFlow<CalendarViewState> = _state.asStateFlow()
@@ -54,12 +67,15 @@ internal class CalendarViewModel(
     private var observeJob: Job? = null
     private var latestCalendar: WorldCalendar? = null
     private var latestObservances: List<WorldCalendarObservance> = emptyList()
+    private var latestCelestialBodies: List<WorldCelestialBody> = emptyList()
     private var latestLore: List<Lore> = emptyList()
     private var latestWorldId: String? = null
     private var latestWorldName: String = ""
     private var referencedMonthIds: Set<String> = emptySet()
     private var selectedObservanceId: String? = null
+    private var selectedCelestialBodyId: String? = null
     private var pendingOpenObservanceId: String? = null
+    private var pendingOpenCelestialBodyId: String? = null
     private var dirty = false
 
     init {
@@ -209,6 +225,32 @@ internal class CalendarViewModel(
             }
             CalendarInteraction.EditorSaved -> saveEditor()
             CalendarInteraction.EditorDismissed -> updateEditor { null }
+            CalendarInteraction.NewCelestialBodySelected -> openCreateBodyEditor()
+            is CalendarInteraction.CelestialBodySelected,
+            is CalendarInteraction.CelestialBodyOpened,
+            -> selectCelestialBody(bodyId(interaction))
+            is CalendarInteraction.EditCelestialBodySelected -> openEditBodyEditor(interaction.bodyId)
+            is CalendarInteraction.DeleteCelestialBodySelected -> requestBodyDelete(interaction.bodyId)
+            CalendarInteraction.DeleteCelestialBodyConfirmed -> confirmBodyDelete()
+            CalendarInteraction.DeleteCelestialBodyCancelled -> updatePendingBodyDelete(null)
+            is CalendarInteraction.CelestialBodyMoved -> moveCelestialBody(interaction.bodyId, interaction.delta)
+            is CalendarInteraction.BodyEditorNameChanged -> updateBodyEditor { editor ->
+                editor.copy(name = interaction.name, nameError = null, saveError = null)
+            }
+            is CalendarInteraction.BodyEditorNotesChanged -> updateBodyEditor { editor ->
+                editor.copy(notes = interaction.notes)
+            }
+            is CalendarInteraction.BodyEditorKindSelected -> updateBodyEditor { editor ->
+                editor.copy(kind = interaction.kind)
+            }
+            is CalendarInteraction.BodyEditorPeriodChanged -> updateBodyEditor { editor ->
+                editor.copy(periodDaysText = interaction.periodDays, periodError = null, saveError = null)
+            }
+            is CalendarInteraction.BodyEditorOffsetChanged -> updateBodyEditor { editor ->
+                editor.copy(epochOffsetDaysText = interaction.epochOffsetDays, saveError = null)
+            }
+            CalendarInteraction.BodyEditorSaved -> saveBodyEditor()
+            CalendarInteraction.BodyEditorDismissed -> updateBodyEditor { null }
         }
     }
 
@@ -221,9 +263,10 @@ internal class CalendarViewModel(
                 observeActiveContextDetails(),
                 observeCalendar(),
                 observeObservances(),
+                observeCelestialBodies(),
                 observeLore(),
-            ) { details, calendar, observances, lore ->
-                LoadedSnapshot(details, calendar, observances, lore)
+            ) { details, calendar, observances, bodies, lore ->
+                LoadedSnapshot(details, calendar, observances, bodies, lore)
             }
                 .catch { error ->
                     _state.value = CalendarViewState.Error(
@@ -232,7 +275,13 @@ internal class CalendarViewModel(
                     )
                 }
                 .collect { snapshot ->
-                    applyLoaded(snapshot.details, snapshot.calendar, snapshot.observances, snapshot.lore)
+                    applyLoaded(
+                        snapshot.details,
+                        snapshot.calendar,
+                        snapshot.observances,
+                        snapshot.celestialBodies,
+                        snapshot.lore,
+                    )
                 }
         }
     }
@@ -241,17 +290,20 @@ internal class CalendarViewModel(
         details: ActiveContextDetails,
         calendar: WorldCalendar?,
         observances: List<WorldCalendarObservance>,
+        celestialBodies: List<WorldCelestialBody>,
         lore: List<Lore>,
     ) {
         val world = details.world
         if (world == null) {
             latestCalendar = null
             latestObservances = emptyList()
+            latestCelestialBodies = emptyList()
             latestLore = emptyList()
             latestWorldId = null
             latestWorldName = ""
             referencedMonthIds = emptySet()
             selectedObservanceId = null
+            selectedCelestialBodyId = null
             dirty = false
             _state.value = CalendarViewState.NoActiveWorld
             return
@@ -261,6 +313,7 @@ internal class CalendarViewModel(
         latestWorldName = world.name
         latestCalendar = calendar
         latestObservances = observances
+        latestCelestialBodies = celestialBodies
         latestLore = lore
         referencedMonthIds = findSessionMonthIds(world.id) +
             observances.map { it.monthId } +
@@ -279,12 +332,27 @@ internal class CalendarViewModel(
                 pendingOpenObservanceId = null
             }
         }
+        pendingOpenCelestialBodyId?.let { openId ->
+            if (celestialBodies.any { it.id == openId }) {
+                selectedCelestialBodyId = openId
+                pendingOpenCelestialBodyId = null
+            }
+        }
         if (selectedObservanceId != null && observances.none { it.id == selectedObservanceId }) {
             selectedObservanceId = null
         }
+        if (selectedCelestialBodyId != null && celestialBodies.none { it.id == selectedCelestialBodyId }) {
+            selectedCelestialBodyId = null
+        }
         if (worldChanged || !dirty) {
             dirty = false
-            _state.value = contentFrom(calendar, currentEditor(), currentPendingDelete())
+            _state.value = contentFrom(
+                calendar = calendar,
+                editor = currentEditor(),
+                bodyEditor = currentBodyEditor(),
+                pendingDelete = currentPendingDelete(),
+                pendingBodyDelete = currentPendingBodyDelete(),
+            )
         } else {
             updateContent(markDirty = false) { content ->
                 content.copy(
@@ -292,6 +360,7 @@ internal class CalendarViewModel(
                     todayObservances = todayLines(calendar, observances),
                     observances = observanceLines(calendar, observances),
                     selectedObservanceId = selectedObservanceId,
+                    selectedCelestialBodyId = selectedCelestialBodyId,
                     referencedMonthIds = referencedMonthIds,
                     preview = previewFor(content),
                     editor = content.editor?.copy(loreOptions = lore),
@@ -370,10 +439,12 @@ internal class CalendarViewModel(
     private fun contentFrom(
         calendar: WorldCalendar,
         editor: CalendarViewState.ObservanceEditorState?,
+        bodyEditor: CalendarViewState.CelestialBodyEditorState?,
         pendingDelete: CalendarViewState.PendingDelete?,
+        pendingBodyDelete: CalendarViewState.PendingBodyDelete?,
     ): CalendarViewState.Content {
         val current = calendar.currentDate
-        return CalendarViewState.Content(
+        val content = CalendarViewState.Content(
             worldName = latestWorldName,
             calendarId = calendar.id,
             eraSuffix = calendar.eraSuffix,
@@ -392,15 +463,24 @@ internal class CalendarViewModel(
             currentDay = current?.day?.toString().orEmpty(),
             preview = current?.let { dateFormatter.format(calendar, it) },
             todayObservances = todayLines(calendar, latestObservances),
+            todaySky = emptyList(),
             observances = observanceLines(calendar, latestObservances),
+            celestialBodies = emptyList(),
             selectedObservanceId = selectedObservanceId,
+            selectedCelestialBodyId = selectedCelestialBodyId,
             referencedMonthIds = referencedMonthIds,
             monthsError = null,
             weekdaysError = null,
             currentDateError = null,
             saveError = null,
             editor = editor,
+            bodyEditor = bodyEditor,
             pendingDelete = pendingDelete,
+            pendingBodyDelete = pendingBodyDelete,
+        )
+        return content.copy(
+            todaySky = skyFor(content),
+            celestialBodies = bodyLines(content),
         )
     }
 
@@ -447,9 +527,61 @@ internal class CalendarViewModel(
     }
 
     private fun previewFor(content: CalendarViewState.Content): String? {
-        val calendar = latestCalendar ?: return null
         val date = (parsedCurrentDate(content) as? DateParse.Found)?.date ?: return null
-        val draftCalendar = calendar.copy(
+        val draftCalendar = draftCalendarFor(content) ?: return null
+        return dateFormatter.format(draftCalendar, date)
+    }
+
+    private fun skyFor(content: CalendarViewState.Content): List<CalendarViewState.SkyLine> {
+        val date = (parsedCurrentDate(content) as? DateParse.Found)?.date ?: return emptyList()
+        val draftCalendar = draftCalendarFor(content) ?: return emptyList()
+        return latestCelestialBodies.mapNotNull { body ->
+            val appearance = appearanceCalculator.appearance(draftCalendar, date, body) ?: return@mapNotNull null
+            CalendarViewState.SkyLine(
+                id = body.id,
+                name = body.name,
+                kindLabel = body.kind.displayName,
+                appearanceLabel = appearance.label(),
+            )
+        }
+    }
+
+    private fun bodyLines(content: CalendarViewState.Content): List<CalendarViewState.CelestialBodyLine> {
+        val date = (parsedCurrentDate(content) as? DateParse.Found)?.date
+        val draftCalendar = draftCalendarFor(content)
+        return latestCelestialBodies.map { body ->
+            val appearance = if (date != null && draftCalendar != null) {
+                appearanceCalculator.appearance(draftCalendar, date, body)?.label()
+            } else {
+                null
+            }
+            CalendarViewState.CelestialBodyLine(
+                id = body.id,
+                name = body.name,
+                kindLabel = body.kind.displayName,
+                cycleLabel = cycleLabel(body),
+                notes = body.notes,
+                appearanceLabel = appearance,
+            )
+        }
+    }
+
+    private fun cycleLabel(body: WorldCelestialBody): String {
+        val period = if (body.periodDays == 1) {
+            "1-day cycle"
+        } else {
+            "${body.periodDays}-day cycle"
+        }
+        return if (body.epochOffsetDays == 0) {
+            period
+        } else {
+            "$period, offset ${body.epochOffsetDays}"
+        }
+    }
+
+    private fun draftCalendarFor(content: CalendarViewState.Content): WorldCalendar? {
+        val calendar = latestCalendar ?: return null
+        return calendar.copy(
             eraSuffix = content.eraSuffix,
             months = content.months.mapNotNull { month ->
                 val days = month.daysText.trim().toIntOrNull() ?: return@mapNotNull null
@@ -459,7 +591,6 @@ internal class CalendarViewModel(
                 WorldCalendarWeekday(id = weekday.id.ifBlank { weekday.name }, name = weekday.name)
             },
         )
-        return dateFormatter.format(draftCalendar, date)
     }
 
     private fun parsedCurrentDate(content: CalendarViewState.Content): DateParse {
@@ -638,12 +769,203 @@ internal class CalendarViewModel(
         }
     }
 
+    private fun bodyId(interaction: CalendarInteraction): String {
+        return when (interaction) {
+            is CalendarInteraction.CelestialBodySelected -> interaction.bodyId
+            is CalendarInteraction.CelestialBodyOpened -> interaction.bodyId
+            else -> ""
+        }
+    }
+
+    private fun selectCelestialBody(bodyId: String) {
+        val exists = latestCelestialBodies.any { it.id == bodyId }
+        if (!exists) {
+            pendingOpenCelestialBodyId = bodyId
+            return
+        }
+        selectedCelestialBodyId = bodyId
+        updateContent(markDirty = false) { content ->
+            content.copy(selectedCelestialBodyId = bodyId)
+        }
+    }
+
+    private fun openCreateBodyEditor() {
+        updateBodyEditor {
+            CalendarViewState.CelestialBodyEditorState(
+                bodyId = null,
+                name = "",
+                notes = "",
+                kind = CelestialBodyKind.Moon,
+                periodDaysText = "29",
+                epochOffsetDaysText = "0",
+                nameError = null,
+                periodError = null,
+                saveError = null,
+            )
+        }
+    }
+
+    private fun openEditBodyEditor(bodyId: String) {
+        val body = latestCelestialBodies.firstOrNull { it.id == bodyId } ?: return
+        selectedCelestialBodyId = bodyId
+        updateBodyEditor {
+            CalendarViewState.CelestialBodyEditorState(
+                bodyId = body.id,
+                name = body.name,
+                notes = body.notes,
+                kind = body.kind,
+                periodDaysText = body.periodDays.toString(),
+                epochOffsetDaysText = body.epochOffsetDays.toString(),
+                nameError = null,
+                periodError = null,
+                saveError = null,
+            )
+        }
+    }
+
+    private fun requestBodyDelete(bodyId: String) {
+        val body = latestCelestialBodies.firstOrNull { it.id == bodyId } ?: return
+        updatePendingBodyDelete(
+            CalendarViewState.PendingBodyDelete(
+                bodyId = body.id,
+                name = body.name,
+            )
+        )
+    }
+
+    private fun confirmBodyDelete() {
+        val pending = currentPendingBodyDelete() ?: return
+        appScope.scope.launch {
+            when (deleteCelestialBody(pending.bodyId)) {
+                DeleteWorldCelestialBodyUseCase.Result.Deleted -> {
+                    if (selectedCelestialBodyId == pending.bodyId) {
+                        selectedCelestialBodyId = null
+                    }
+                    updatePendingBodyDelete(null)
+                }
+                DeleteWorldCelestialBodyUseCase.Result.NotFound -> updatePendingBodyDelete(null)
+            }
+        }
+    }
+
+    private fun moveCelestialBody(bodyId: String, delta: Int) {
+        val ordered = latestCelestialBodies
+        val index = ordered.indexOfFirst { it.id == bodyId }
+        val target = index + delta
+        if (index !in ordered.indices || target !in ordered.indices) {
+            return
+        }
+        val first = ordered[index]
+        val second = ordered[target]
+        val firstIndex = if (first.sortIndex == second.sortIndex) index else second.sortIndex
+        val secondIndex = if (first.sortIndex == second.sortIndex) target else first.sortIndex
+        appScope.scope.launch {
+            updateCelestialBody(first.id, bodyDraft(first, sortIndex = firstIndex))
+            updateCelestialBody(second.id, bodyDraft(second, sortIndex = secondIndex))
+        }
+    }
+
+    private fun saveBodyEditor() {
+        val content = _state.value as? CalendarViewState.Content ?: return
+        val editor = content.bodyEditor ?: return
+        val name = editor.name.trim()
+        if (name.isEmpty()) {
+            updateBodyEditor { current -> current.copy(nameError = "Name is required.") }
+            return
+        }
+        val periodDays = editor.periodDaysText.trim().toIntOrNull()
+        if (periodDays == null || periodDays < 1) {
+            updateBodyEditor { current ->
+                current.copy(periodError = "Period must be at least 1 day.")
+            }
+            return
+        }
+        val epochOffsetDays = editor.epochOffsetDaysText.trim().toIntOrNull()
+        if (epochOffsetDays == null) {
+            updateBodyEditor { current ->
+                current.copy(saveError = "Offset must be a whole number of days.")
+            }
+            return
+        }
+        val existing = editor.bodyId?.let { bodyId ->
+            latestCelestialBodies.firstOrNull { it.id == bodyId }
+        }
+        val draft = WorldCelestialBodyDraft(
+            name = editor.name,
+            notes = editor.notes,
+            kind = editor.kind,
+            periodDays = periodDays,
+            epochOffsetDays = epochOffsetDays,
+            sortIndex = existing?.sortIndex,
+        )
+        appScope.scope.launch {
+            if (editor.bodyId == null) {
+                when (val result = createCelestialBody(draft)) {
+                    is CreateWorldCelestialBodyUseCase.Result.Created -> {
+                        selectedCelestialBodyId = result.body.id
+                        updateBodyEditor { null }
+                    }
+                    CreateWorldCelestialBodyUseCase.Result.InvalidName -> updateBodyEditor { current ->
+                        current.copy(nameError = "Name is required.")
+                    }
+                    CreateWorldCelestialBodyUseCase.Result.DuplicateName -> updateBodyEditor { current ->
+                        current.copy(nameError = "That name is already used.")
+                    }
+                    CreateWorldCelestialBodyUseCase.Result.InvalidPeriod -> updateBodyEditor { current ->
+                        current.copy(periodError = "Period must be at least 1 day.")
+                    }
+                    CreateWorldCelestialBodyUseCase.Result.NoActiveWorld -> updateBodyEditor { current ->
+                        current.copy(saveError = "Could not save this body.")
+                    }
+                }
+            } else {
+                when (updateCelestialBody(editor.bodyId, draft)) {
+                    UpdateWorldCelestialBodyUseCase.Result.Updated -> updateBodyEditor { null }
+                    UpdateWorldCelestialBodyUseCase.Result.InvalidName -> updateBodyEditor { current ->
+                        current.copy(nameError = "Name is required.")
+                    }
+                    UpdateWorldCelestialBodyUseCase.Result.DuplicateName -> updateBodyEditor { current ->
+                        current.copy(nameError = "That name is already used.")
+                    }
+                    UpdateWorldCelestialBodyUseCase.Result.InvalidPeriod -> updateBodyEditor { current ->
+                        current.copy(periodError = "Period must be at least 1 day.")
+                    }
+                    UpdateWorldCelestialBodyUseCase.Result.NotFound -> updateBodyEditor { current ->
+                        current.copy(saveError = "Could not save this body.")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun bodyDraft(
+        body: WorldCelestialBody,
+        sortIndex: Int = body.sortIndex,
+    ): WorldCelestialBodyDraft {
+        return WorldCelestialBodyDraft(
+            name = body.name,
+            notes = body.notes,
+            kind = body.kind,
+            periodDays = body.periodDays,
+            epochOffsetDays = body.epochOffsetDays,
+            sortIndex = sortIndex,
+        )
+    }
+
     private fun currentEditor(): CalendarViewState.ObservanceEditorState? {
         return (_state.value as? CalendarViewState.Content)?.editor
     }
 
     private fun currentPendingDelete(): CalendarViewState.PendingDelete? {
         return (_state.value as? CalendarViewState.Content)?.pendingDelete
+    }
+
+    private fun currentBodyEditor(): CalendarViewState.CelestialBodyEditorState? {
+        return (_state.value as? CalendarViewState.Content)?.bodyEditor
+    }
+
+    private fun currentPendingBodyDelete(): CalendarViewState.PendingBodyDelete? {
+        return (_state.value as? CalendarViewState.Content)?.pendingBodyDelete
     }
 
     private fun updateEditor(transform: (CalendarViewState.ObservanceEditorState) -> CalendarViewState.ObservanceEditorState?) {
@@ -679,6 +1001,38 @@ internal class CalendarViewModel(
         }
     }
 
+    private fun updateBodyEditor(
+        transform: (CalendarViewState.CelestialBodyEditorState) -> CalendarViewState.CelestialBodyEditorState?,
+    ) {
+        updateContent(markDirty = false) { content ->
+            val editor = content.bodyEditor
+            val next = if (editor == null) {
+                transform(
+                    CalendarViewState.CelestialBodyEditorState(
+                        bodyId = null,
+                        name = "",
+                        notes = "",
+                        kind = CelestialBodyKind.Moon,
+                        periodDaysText = "29",
+                        epochOffsetDaysText = "0",
+                        nameError = null,
+                        periodError = null,
+                        saveError = null,
+                    )
+                )
+            } else {
+                transform(editor)
+            }
+            content.copy(bodyEditor = next)
+        }
+    }
+
+    private fun updatePendingBodyDelete(pending: CalendarViewState.PendingBodyDelete?) {
+        updateContent(markDirty = false) { content ->
+            content.copy(pendingBodyDelete = pending)
+        }
+    }
+
     private fun updateContent(
         markDirty: Boolean = true,
         transform: (CalendarViewState.Content) -> CalendarViewState.Content,
@@ -691,7 +1045,11 @@ internal class CalendarViewModel(
             dirty = true
         }
         val next = transform(current)
-        _state.value = next.copy(preview = previewFor(next))
+        _state.value = next.copy(
+            preview = previewFor(next),
+            todaySky = skyFor(next),
+            celestialBodies = bodyLines(next),
+        )
     }
 
     private fun <T> move(items: List<T>, index: Int, delta: Int): List<T> {
@@ -709,6 +1067,7 @@ internal class CalendarViewModel(
         val details: ActiveContextDetails,
         val calendar: WorldCalendar?,
         val observances: List<WorldCalendarObservance>,
+        val celestialBodies: List<WorldCelestialBody>,
         val lore: List<Lore>,
     )
 

@@ -89,6 +89,7 @@ internal class LargeWorldBundleFactoryTest {
         val locations = FakeLocationRepository()
         val lore = FakeLoreRepository()
         val observances = FakeWorldCalendarObservanceRepository()
+        val celestialBodies = FakeWorldCelestialBodyRepository()
         val factions = FakeFactionRepository()
         val memberships = FakeFactionMembershipRepository()
         val worldPeople = FakeWorldPersonRepository()
@@ -121,6 +122,7 @@ internal class LargeWorldBundleFactoryTest {
             worldCalendarRepository = FakeWorldCalendarRepository(),
             defaultCalendarFactory = DefaultWorldCalendarFactory(EntityIdFactory { "cal-${++nextId}" }),
             observanceRepository = observances,
+            celestialBodyRepository = celestialBodies,
             campaignRepository = campaigns,
             locationRepository = locations,
             loreRepository = lore,

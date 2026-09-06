@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -32,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.DeathSaves
 import io.github.kmbisset89.worldweaver.ui.characters.PersonAvatarComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
@@ -150,15 +153,12 @@ private fun CharacterSheetContent(
             ) {
                 Text("Close")
             }
-            Button(
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Edit,
+                tooltip = "Edit sheet",
+                filled = true,
                 onClick = { onInteraction(CharacterSheetInteraction.EditSelected) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            ) {
-                Text("Edit sheet")
-            }
+            )
         }
     }
 }

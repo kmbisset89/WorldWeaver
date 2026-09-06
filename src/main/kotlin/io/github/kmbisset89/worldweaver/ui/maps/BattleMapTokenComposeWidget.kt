@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -56,18 +56,14 @@ internal fun BattleMapTokenComposeWidget(
             }
         }
     }
-    val pieceShape = RoundedCornerShape(6.dp)
-    val highlight = if (selected) {
-        Modifier.border(2.dp, NavyBlue, pieceShape)
-    } else {
-        Modifier
+    val showDetails = selected
+    val ringColor = when {
+        selected -> NavyBlue
+        combatState == CombatState.Conscious -> SuccessGreen
+        else -> ErrorRed
     }
-    val stateColor = when (combatState) {
-        CombatState.Conscious -> SuccessGreen
-        CombatState.Downed, CombatState.Dead -> ErrorRed
-    }
-    val shownConditions = conditions.take(2)
-    val extraConditions = conditions.size - shownConditions.size
+    val shownConditions = if (showDetails) conditions.take(2) else emptyList()
+    val extraConditions = if (showDetails) conditions.size - shownConditions.size else 0
     Column(
         modifier = modifier
             .width(size)
@@ -77,8 +73,8 @@ internal fun BattleMapTokenComposeWidget(
         Box(
             modifier = Modifier
                 .size(size)
-                .then(highlight)
-                .clip(pieceShape)
+                .border(2.dp, ringColor, CircleShape)
+                .clip(CircleShape)
                 .background(NavyBlue.copy(alpha = 0.22f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -87,7 +83,7 @@ internal fun BattleMapTokenComposeWidget(
                     bitmap = bitmap,
                     contentDescription = name,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(size).clip(pieceShape),
+                    modifier = Modifier.size(size).clip(CircleShape),
                 )
             } else {
                 Text(
@@ -112,45 +108,47 @@ internal fun BattleMapTokenComposeWidget(
                 )
             }
         }
-        Text(
-            text = name,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-        )
-        Text(
-            text = combatState.displayName,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.Medium,
-            color = stateColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        shownConditions.forEach { condition ->
+        if (showDetails) {
             Text(
-                text = condition,
-                fontSize = 8.sp,
+                text = name,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            )
+            Text(
+                text = combatState.displayName,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (combatState == CombatState.Conscious) SuccessGreen else ErrorRed,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
-        }
-        if (extraConditions > 0) {
-            Text(
-                text = "+$extraConditions",
-                fontSize = 8.sp,
-                color = TextPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            shownConditions.forEach { condition ->
+                Text(
+                    text = condition,
+                    fontSize = 8.sp,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (extraConditions > 0) {
+                Text(
+                    text = "+$extraConditions",
+                    fontSize = 8.sp,
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

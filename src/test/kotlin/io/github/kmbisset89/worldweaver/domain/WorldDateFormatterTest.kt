@@ -35,6 +35,7 @@ internal class WorldDateFormatterTest {
         val date = WorldDate(year = 1, monthId = "m-1", day = 1)
 
         assertEquals(0, formatter.weekdayIndex(calendar, date))
+        assertEquals(0, formatter.dayIndex(calendar, date))
         assertTrue(formatter.isValid(calendar, date))
     }
 

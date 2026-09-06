@@ -4,11 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CharacterListPane(
     people: List<CharactersViewState.PersonRow>,
@@ -40,7 +42,7 @@ internal fun CharacterListPane(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.width(320.dp),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         OutlinedTextField(
@@ -51,7 +53,10 @@ internal fun CharacterListPane(
             modifier = Modifier.fillMaxWidth()
         )
         Text("Type", fontSize = 12.sp, color = TextSecondary)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             FilterChip(
                 selected = kindFilter == null,
                 onClick = { onInteraction(CharactersInteraction.KindFilterSelected(null)) },
@@ -66,7 +71,10 @@ internal fun CharacterListPane(
             }
         }
         Text("Membership", fontSize = 12.sp, color = TextSecondary)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             FilterChip(
                 selected = membershipFilter == null,
                 onClick = { onInteraction(CharactersInteraction.MembershipFilterSelected(null)) },

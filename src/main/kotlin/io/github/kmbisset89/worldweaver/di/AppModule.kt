@@ -16,6 +16,9 @@ import io.github.kmbisset89.worldweaver.data.FactionEntityConverter
 import io.github.kmbisset89.worldweaver.data.FactionMembershipEntityConverter
 import io.github.kmbisset89.worldweaver.data.FactionMembershipRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.FactionRepositoryImpl
+import io.github.kmbisset89.worldweaver.data.GoveeLanClient
+import io.github.kmbisset89.worldweaver.data.HomeAssistantRestClient
+import io.github.kmbisset89.worldweaver.data.HueRestClient
 import io.github.kmbisset89.worldweaver.data.FifthEditionSheetConverter
 import io.github.kmbisset89.worldweaver.data.Pathfinder2ESheetConverter
 import io.github.kmbisset89.worldweaver.data.PersonSheetEntityConverter
@@ -43,6 +46,8 @@ import io.github.kmbisset89.worldweaver.data.WorldCalendarEntityConverter
 import io.github.kmbisset89.worldweaver.data.WorldCalendarObservanceEntityConverter
 import io.github.kmbisset89.worldweaver.data.WorldCalendarObservanceRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldCalendarRepositoryImpl
+import io.github.kmbisset89.worldweaver.data.WorldCelestialBodyEntityConverter
+import io.github.kmbisset89.worldweaver.data.WorldCelestialBodyRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldEntityConverter
 import io.github.kmbisset89.worldweaver.data.WorldMapEntityConverter
 import io.github.kmbisset89.worldweaver.data.WorldMapRepositoryImpl
@@ -50,7 +55,30 @@ import io.github.kmbisset89.worldweaver.data.WorldPersonEntityConverter
 import io.github.kmbisset89.worldweaver.data.WorldPersonRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldWeaverDatabase
+import io.github.kmbisset89.worldweaver.domain.ActivateAtmosphereSceneUseCase
+import io.github.kmbisset89.worldweaver.domain.ApplyAtmosphereLookUseCase
 import io.github.kmbisset89.worldweaver.domain.AbilityScoreRoller
+import io.github.kmbisset89.worldweaver.domain.AtmosphereSettingsStore
+import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereMoodUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereSceneUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereMoodUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereSceneUseCase
+import io.github.kmbisset89.worldweaver.domain.DiscoverHueBridgesUseCase
+import io.github.kmbisset89.worldweaver.domain.GoveeLightingClient
+import io.github.kmbisset89.worldweaver.domain.HomeAssistantClient
+import io.github.kmbisset89.worldweaver.domain.HomeAssistantConnectionParser
+import io.github.kmbisset89.worldweaver.domain.HomeAssistantSceneListTransformer
+import io.github.kmbisset89.worldweaver.domain.HueBridgeHostParser
+import io.github.kmbisset89.worldweaver.domain.HueClient
+import io.github.kmbisset89.worldweaver.domain.ListHomeAssistantScenesUseCase
+import io.github.kmbisset89.worldweaver.domain.ListHueLightsUseCase
+import io.github.kmbisset89.worldweaver.domain.ListHueScenesUseCase
+import io.github.kmbisset89.worldweaver.domain.PairHueBridgeUseCase
+import io.github.kmbisset89.worldweaver.domain.SaveHomeAssistantConnectionUseCase
+import io.github.kmbisset89.worldweaver.domain.SaveHueConnectionUseCase
+import io.github.kmbisset89.worldweaver.domain.ScanGoveeDevicesUseCase
+import io.github.kmbisset89.worldweaver.domain.TestHomeAssistantConnectionUseCase
+import io.github.kmbisset89.worldweaver.domain.TestHueConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.BattleMapFileStore
 import io.github.kmbisset89.worldweaver.domain.BundledBattleMapCatalogLoader
 import io.github.kmbisset89.worldweaver.domain.BundledSrdCatalogLoader
@@ -83,6 +111,7 @@ import io.github.kmbisset89.worldweaver.domain.CreateEncounterUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateFactionMembershipUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateFactionUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateWorldCalendarObservanceUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateWorldCelestialBodyUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateWorldMapUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateLocationUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateLoreUseCase
@@ -169,14 +198,19 @@ import io.github.kmbisset89.worldweaver.domain.ObserveDashboardCountsUseCase
 import io.github.kmbisset89.worldweaver.domain.SearchRecordsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarObservancesForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveWorldCelestialBodiesForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteWorldCalendarObservanceUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteWorldCelestialBodyUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldMapsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldsUseCase
 import io.github.kmbisset89.worldweaver.domain.OneShotDraftFactory
 import io.github.kmbisset89.worldweaver.domain.OneShotTemplateCatalog
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldCalendarObservanceUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateWorldCelestialBodyUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldCalendarUseCase
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservanceRepository
+import io.github.kmbisset89.worldweaver.domain.WorldCelestialAppearanceCalculator
+import io.github.kmbisset89.worldweaver.domain.WorldCelestialBodyRepository
 import io.github.kmbisset89.worldweaver.domain.PersonAvatarFileStore
 import io.github.kmbisset89.worldweaver.domain.PersonSheetFactory
 import io.github.kmbisset89.worldweaver.domain.PersonCompanionRepository
@@ -233,6 +267,7 @@ import io.github.kmbisset89.worldweaver.ui.calendar.CalendarViewModel
 import io.github.kmbisset89.worldweaver.ui.campaigns.CampaignsViewModel
 import io.github.kmbisset89.worldweaver.ui.characters.CharactersViewModel
 import io.github.kmbisset89.worldweaver.ui.sheet.CharacterSheetViewModel
+import io.github.kmbisset89.worldweaver.ui.atmosphere.AtmosphereViewModel
 import io.github.kmbisset89.worldweaver.ui.dice.DiceViewModel
 import io.github.kmbisset89.worldweaver.ui.search.SearchViewModel
 import io.github.kmbisset89.worldweaver.ui.factions.FactionsViewModel
@@ -269,7 +304,9 @@ internal fun appModule() = module {
     single { WorldEntityConverter() }
     single { WorldCalendarEntityConverter() }
     single { WorldCalendarObservanceEntityConverter() }
+    single { WorldCelestialBodyEntityConverter() }
     single { WorldDateFormatter() }
+    single { WorldCelestialAppearanceCalculator(get()) }
     single { DefaultWorldCalendarFactory(get()) }
     single { CampaignEntityConverter() }
     single { LocationEntityConverter() }
@@ -321,6 +358,7 @@ internal fun appModule() = module {
     single { get<WorldWeaverDatabase>().worldCalendarWeekdayDao() }
     single { get<WorldWeaverDatabase>().worldCalendarObservanceDao() }
     single { get<WorldWeaverDatabase>().worldCalendarObservanceLoreLinkDao() }
+    single { get<WorldWeaverDatabase>().worldCelestialBodyDao() }
     single { get<WorldWeaverDatabase>().campaignDao() }
     single { get<WorldWeaverDatabase>().locationDao() }
     single { get<WorldWeaverDatabase>().locationOverlayDao() }
@@ -351,6 +389,9 @@ internal fun appModule() = module {
     single<WorldCalendarObservanceRepository> {
         WorldCalendarObservanceRepositoryImpl(get(), get(), get())
     }
+    single<WorldCelestialBodyRepository> {
+        WorldCelestialBodyRepositoryImpl(get(), get())
+    }
     single<CampaignRepository> { CampaignRepositoryImpl(get(), get()) }
     single<LocationRepository> { LocationRepositoryImpl(get(), get()) }
     single<LocationOverlayRepository> { LocationOverlayRepositoryImpl(get(), get()) }
@@ -379,6 +420,7 @@ internal fun appModule() = module {
             worldRepository = get(),
             worldCalendarRepository = get(),
             observanceRepository = get(),
+            celestialBodyRepository = get(),
             campaignRepository = get(),
             locationRepository = get(),
             loreRepository = get(),
@@ -425,6 +467,7 @@ internal fun appModule() = module {
             archiveConverter = get(),
             activeContextRepository = get(),
             shellSettingsStore = get(),
+            atmosphereSettingsStore = get(),
             instantProvider = get(),
         )
     }
@@ -435,6 +478,7 @@ internal fun appModule() = module {
             archiveConverter = get(),
             activeContextRepository = get(),
             shellSettingsStore = get(),
+            atmosphereSettingsStore = get(),
         )
     }
     factory {
@@ -446,6 +490,7 @@ internal fun appModule() = module {
             worldCalendarRepository = get(),
             defaultCalendarFactory = get(),
             observanceRepository = get(),
+            celestialBodyRepository = get(),
             campaignRepository = get(),
             locationRepository = get(),
             loreRepository = get(),
@@ -473,7 +518,7 @@ internal fun appModule() = module {
     }
     factory { ObserveWorldsUseCase(get()) }
     factory { ObserveDashboardCountsUseCase(get(), get(), get(), get()) }
-    factory { SearchRecordsUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { SearchRecordsUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { CreateCampaignUseCase(get(), get(), get(), get(), get()) }
     factory { UpdateCampaignUseCase(get(), get()) }
     factory { SetCampaignStatusUseCase(get(), get()) }
@@ -499,11 +544,15 @@ internal fun appModule() = module {
     factory { ObserveFactionMembershipsUseCase(get()) }
     factory { ObserveWorldCalendarForActiveWorldUseCase(get(), get()) }
     factory { ObserveWorldCalendarObservancesForActiveWorldUseCase(get(), get()) }
+    factory { ObserveWorldCelestialBodiesForActiveWorldUseCase(get(), get()) }
     factory { FindSessionCalendarMonthIdsForWorldUseCase(get(), get()) }
     factory { UpdateWorldCalendarUseCase(get(), get(), get(), get(), get(), get()) }
     factory { CreateWorldCalendarObservanceUseCase(get(), get(), get(), get(), get(), get()) }
     factory { UpdateWorldCalendarObservanceUseCase(get(), get(), get(), get()) }
     factory { DeleteWorldCalendarObservanceUseCase(get()) }
+    factory { CreateWorldCelestialBodyUseCase(get(), get(), get(), get()) }
+    factory { UpdateWorldCelestialBodyUseCase(get(), get()) }
+    factory { DeleteWorldCelestialBodyUseCase(get()) }
     factory { CreateWorldPersonUseCase(get(), get(), get(), get()) }
     factory { UpdateWorldPersonUseCase(get(), get()) }
     factory { DeleteWorldPersonUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
@@ -612,6 +661,33 @@ internal fun appModule() = module {
         )
     }
     single {
+        AtmosphereSettingsStore(
+            preferences = Preferences.userRoot().node(AtmosphereSettingsStore.PREF_NODE),
+        )
+    }
+    single { HomeAssistantConnectionParser() }
+    single { HomeAssistantSceneListTransformer() }
+    single<HomeAssistantClient> { HomeAssistantRestClient(sceneListTransformer = get()) }
+    single { HueBridgeHostParser() }
+    single<HueClient> { HueRestClient() }
+    single<GoveeLightingClient> { GoveeLanClient() }
+    factory { TestHomeAssistantConnectionUseCase(get(), get()) }
+    factory { ListHomeAssistantScenesUseCase(get(), get()) }
+    factory { SaveHomeAssistantConnectionUseCase(get(), get()) }
+    factory { SaveHueConnectionUseCase(get(), get()) }
+    factory { PairHueBridgeUseCase(get(), get(), get()) }
+    factory { TestHueConnectionUseCase(get(), get()) }
+    factory { DiscoverHueBridgesUseCase(get()) }
+    factory { ListHueScenesUseCase(get(), get()) }
+    factory { ListHueLightsUseCase(get(), get()) }
+    factory { ScanGoveeDevicesUseCase(get(), get()) }
+    factory { ApplyAtmosphereLookUseCase(get(), get(), get()) }
+    factory { CreateAtmosphereSceneUseCase(get(), get()) }
+    factory { DeleteAtmosphereSceneUseCase(get()) }
+    factory { CreateAtmosphereMoodUseCase(get(), get()) }
+    factory { DeleteAtmosphereMoodUseCase(get()) }
+    factory { ActivateAtmosphereSceneUseCase(get(), get(), get(), get()) }
+    single {
         HomeViewModel(
             shellSettingsStore = get(),
             appScope = get(),
@@ -688,13 +764,18 @@ internal fun appModule() = module {
             observeActiveContextDetails = get(),
             observeCalendar = get(),
             observeObservances = get(),
+            observeCelestialBodies = get(),
             observeLore = get(),
             findSessionMonthIds = get(),
             updateCalendar = get(),
             createObservance = get(),
             updateObservance = get(),
             deleteObservance = get(),
+            createCelestialBody = get(),
+            updateCelestialBody = get(),
+            deleteCelestialBody = get(),
             dateFormatter = get(),
+            appearanceCalculator = get(),
         )
     }
     single {
@@ -919,6 +1000,28 @@ internal fun appModule() = module {
         )
     }
     single {
+        AtmosphereViewModel(
+            store = get(),
+            saveConnection = get(),
+            testConnection = get(),
+            listScenes = get(),
+            saveHueConnection = get(),
+            pairHueBridge = get(),
+            testHueConnection = get(),
+            discoverHueBridges = get(),
+            listHueScenes = get(),
+            listHueLights = get(),
+            scanGoveeDevices = get(),
+            createScene = get(),
+            deleteScene = get(),
+            createMood = get(),
+            deleteMood = get(),
+            activateScene = get(),
+            applyLook = get(),
+            appScope = get(),
+        )
+    }
+    single {
         SearchViewModel(
             appScope = get(),
             searchRecords = get(),
@@ -955,6 +1058,7 @@ internal fun appModule() = module {
             worldMapViewModel = get(),
             runViewModel = get(),
             diceViewModel = get(),
+            atmosphereViewModel = get(),
             searchViewModel = get(),
             settingsViewModel = get(),
             shellSettingsStore = get(),

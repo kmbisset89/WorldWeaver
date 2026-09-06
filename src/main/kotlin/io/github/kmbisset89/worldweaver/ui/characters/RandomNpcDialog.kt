@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
@@ -13,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.AbilityScoreMethod
 import io.github.kmbisset89.worldweaver.domain.AbilityScores
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 
 @Composable
 internal fun RandomNpcDialog(
@@ -54,9 +57,11 @@ internal fun RandomNpcDialog(
                     Text(if (generator.draft == null) "Roll" else "Reroll")
                 }
                 if (generator.draft != null) {
-                    TextButton(onClick = { onInteraction(CharactersInteraction.GeneratorSaved) }) {
-                        Text("Save to library")
-                    }
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Save,
+                        tooltip = "Save to library",
+                        onClick = { onInteraction(CharactersInteraction.GeneratorSaved) },
+                    )
                 }
             }
         },

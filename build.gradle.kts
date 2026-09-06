@@ -75,6 +75,7 @@ compose.desktop {
             modules(
                 "java.instrument",
                 "java.naming",
+                "java.net.http",
                 "java.prefs",
                 "java.sql",
                 "java.xml",

@@ -62,6 +62,8 @@ internal class AppBackupArchiveConverterTest {
                 byteArrayOf(8, 9).toList(),
                 File(ready.extractedDataDir, "srd/5e.json").readBytes().toList(),
             )
+            assertEquals("", ready.prefs.homeAssistantBaseUrl)
+            assertEquals(emptyList(), ready.prefs.atmosphereScenes)
         } finally {
             temp.deleteRecursively()
         }
@@ -148,6 +150,31 @@ internal class AppBackupArchiveConverterTest {
         } finally {
             temp.deleteRecursively()
         }
+    }
+
+    @Test
+    fun prefsWithoutAtmosphereFieldsDefaultToEmpty() {
+        val json = Json { ignoreUnknownKeys = true }
+        val prefs = json.decodeFromString(
+            AppBackupPrefs.serializer(),
+            """
+            {
+              "displayName": "Ada",
+              "email": "ada@local",
+              "themeMode": "DARK",
+              "themeSkin": "GOTHIC",
+              "navExpanded": false,
+              "diceColorStyle": "ONYX"
+            }
+            """.trimIndent(),
+        )
+        assertEquals("", prefs.homeAssistantBaseUrl)
+        assertEquals("", prefs.homeAssistantToken)
+        assertEquals("", prefs.hueBridgeHost)
+        assertEquals("", prefs.hueApplicationKey)
+        assertEquals(emptyList(), prefs.goveeDevices)
+        assertEquals(false, prefs.atmosphereAlwaysOnTop)
+        assertEquals(emptyList(), prefs.atmosphereScenes)
     }
 
     @Test

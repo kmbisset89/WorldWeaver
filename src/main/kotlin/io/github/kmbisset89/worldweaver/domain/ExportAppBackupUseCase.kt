@@ -11,6 +11,7 @@ internal class ExportAppBackupUseCase(
     private val archiveConverter: AppBackupArchiveConverter,
     private val activeContextRepository: ActiveContextRepository,
     private val shellSettingsStore: ShellSettingsStore,
+    private val atmosphereSettingsStore: AtmosphereSettingsStore,
     private val instantProvider: InstantProvider,
     private val dicePreferences: Preferences = Preferences.userRoot(),
 ) {
@@ -29,6 +30,7 @@ internal class ExportAppBackupUseCase(
             snapshotDir.mkdirs()
             snapshotExporter.exportConsistentCopy(snapshotDb)
             val settings = shellSettingsStore.settings.value
+            val atmosphere = atmosphereSettingsStore.settings.value
             val context = activeContextRepository.get()
             archiveConverter.write(
                 destFile = destFile,
@@ -48,6 +50,17 @@ internal class ExportAppBackupUseCase(
                     themeSkin = settings.themeSkin.name,
                     navExpanded = settings.navExpanded,
                     diceColorStyle = DiceColorStyle.load(dicePreferences).name,
+                    homeAssistantBaseUrl = atmosphere.connection.baseUrl,
+                    homeAssistantToken = atmosphere.connection.token,
+                    hueBridgeHost = atmosphere.hue.bridgeHost,
+                    hueApplicationKey = atmosphere.hue.applicationKey,
+                    goveeDevices = atmosphere.goveeDevices,
+                    hueLights = atmosphere.hueLights,
+                    atmosphereAlwaysOnTop = atmosphere.isAlwaysOnTop,
+                    atmosphereScenes = atmosphere.scenes,
+                    atmosphereMoods = atmosphere.moods,
+                    atmosphereSelectedHueLightIds = atmosphere.selectedHueLightIds,
+                    atmosphereSelectedGoveeDeviceIds = atmosphere.selectedGoveeDeviceIds,
                 ),
                 databaseFile = snapshotDb,
                 avatarsDir = dataDirectory.avatarsDir,

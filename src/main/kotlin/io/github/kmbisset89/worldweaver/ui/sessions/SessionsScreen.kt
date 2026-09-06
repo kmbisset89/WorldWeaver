@@ -3,10 +3,10 @@ package io.github.kmbisset89.worldweaver.ui.sessions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.PublicOff
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -32,6 +33,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -43,9 +46,14 @@ import io.github.kmbisset89.worldweaver.domain.PlotThreadPriority
 import io.github.kmbisset89.worldweaver.domain.PlotThreadStatus
 import io.github.kmbisset89.worldweaver.domain.Session
 import io.github.kmbisset89.worldweaver.domain.SessionNpcDraftDestination
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailBreakpoint
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveScreenHeaderComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
+import io.github.kmbisset89.worldweaver.ui.components.rememberAdaptiveListOpen
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -115,12 +123,31 @@ internal fun SessionsScreen(
                 }
             }
             is SessionsViewState.Content -> {
-                SessionsHeader(
-                    subtitle = "${viewState.campaignName} · ${viewState.worldName}",
-                    showCreate = true,
-                    onInteraction = onInteraction,
-                )
-                SessionsContent(state = viewState, onInteraction = onInteraction)
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val compact = maxWidth < AdaptiveListDetailBreakpoint
+                    var listOpen by rememberAdaptiveListOpen(compact)
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        SessionsHeader(
+                            subtitle = "${viewState.campaignName} · ${viewState.worldName}",
+                            showCreate = true,
+                            compact = compact,
+                            selectedName = viewState.selectedSession?.name,
+                            onListToggle = { listOpen = !listOpen },
+                            onInteraction = onInteraction,
+                        )
+                        SessionsContent(
+                            state = viewState,
+                            compact = compact,
+                            listOpen = listOpen,
+                            onListDismissed = { listOpen = false },
+                            onInteraction = onInteraction,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }
@@ -131,25 +158,18 @@ private fun SessionsHeader(
     subtitle: String,
     showCreate: Boolean,
     onInteraction: (SessionsInteraction) -> Unit,
+    compact: Boolean = false,
+    selectedName: String? = null,
+    onListToggle: () -> Unit = {},
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    AdaptiveScreenHeaderComposeWidget(
+        title = "Sessions",
+        subtitle = subtitle,
+        compact = compact,
+        switcherName = selectedName,
+        listLabel = "sessions list",
+        onListToggle = onListToggle,
     ) {
-        Column {
-            Text(
-                text = "Sessions",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(
-                text = subtitle,
-                fontSize = 14.sp,
-                color = TextSecondary
-            )
-        }
         if (showCreate) {
             Button(
                 onClick = { onInteraction(SessionsInteraction.NewSessionSelected) },
@@ -166,46 +186,62 @@ private fun SessionsHeader(
 @Composable
 private fun SessionsContent(
     state: SessionsViewState.Content,
+    compact: Boolean,
+    listOpen: Boolean,
+    onListDismissed: () -> Unit,
     onInteraction: (SessionsInteraction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        LazyColumn(
-            modifier = Modifier.width(320.dp).fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(state.sessions, key = { it.id }) { session ->
-                SessionRow(
-                    session = session,
-                    dateLabel = state.sessionDateLabels[session.id],
-                    isSelected = session.id == state.selectedSession?.id,
+    val listInteraction: (SessionsInteraction) -> Unit = { interaction ->
+        if (interaction is SessionsInteraction.SessionSelected) {
+            onListDismissed()
+        }
+        onInteraction(interaction)
+    }
+    AdaptiveListDetailComposeWidget(
+        compact = compact,
+        listOpen = listOpen,
+        hasSelection = state.selectedSession != null,
+        listPane = { listModifier ->
+            LazyColumn(
+                modifier = listModifier,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(state.sessions, key = { it.id }) { session ->
+                    SessionRow(
+                        session = session,
+                        dateLabel = state.sessionDateLabels[session.id],
+                        isSelected = session.id == state.selectedSession?.id,
+                        onInteraction = listInteraction,
+                    )
+                }
+            }
+        },
+        detailPane = { detailModifier ->
+            if (state.selectedSession != null) {
+                SessionDetailPane(
+                    session = state.selectedSession,
+                    dateLabel = state.selectedDateLabel,
+                    checklist = state.checklist,
+                    linkedQuests = state.linkedQuests,
+                    threads = state.threads,
+                    docs = state.docs,
+                    personOptions = state.personOptions,
                     onInteraction = onInteraction,
+                    modifier = detailModifier,
+                )
+            } else {
+                Text(
+                    text = "Select a session to prepare it.",
+                    color = TextSecondary,
+                    modifier = detailModifier.padding(16.dp)
                 )
             }
-        }
-
-        if (state.selectedSession != null) {
-            SessionDetailPane(
-                session = state.selectedSession,
-                dateLabel = state.selectedDateLabel,
-                checklist = state.checklist,
-                linkedQuests = state.linkedQuests,
-                threads = state.threads,
-                docs = state.docs,
-                personOptions = state.personOptions,
-                onInteraction = onInteraction,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-            )
-        } else {
-            Text(
-                text = "Select a session to prepare it.",
-                color = TextSecondary,
-                modifier = Modifier.weight(1f).padding(16.dp)
-            )
-        }
-    }
+        },
+        onListDismissed = onListDismissed,
+        dismissListLabel = "Dismiss sessions list",
+        modifier = modifier,
+    )
 
     state.editor?.let { editor ->
         SessionEditorDialog(editor = editor, onInteraction = onInteraction)
@@ -362,9 +398,11 @@ private fun ThreadEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onInteraction(SessionsInteraction.ThreadSaved) }) {
-                Text("Save")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save",
+                onClick = { onInteraction(SessionsInteraction.ThreadSaved) },
+            )
         },
         dismissButton = {
             TextButton(onClick = { onInteraction(SessionsInteraction.ThreadEditorDismissed) }) {
@@ -415,9 +453,11 @@ private fun DocEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onInteraction(SessionsInteraction.DocSaved) }) {
-                Text("Save")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save",
+                onClick = { onInteraction(SessionsInteraction.DocSaved) },
+            )
         },
         dismissButton = {
             TextButton(onClick = { onInteraction(SessionsInteraction.DocEditorDismissed) }) {
@@ -487,9 +527,11 @@ private fun SessionNpcDialog(
                     Text(if (generator.draft == null) "Roll" else "Reroll")
                 }
                 if (generator.draft != null) {
-                    TextButton(onClick = { onInteraction(SessionsInteraction.GeneratorSaved) }) {
-                        Text("Save")
-                    }
+                    ActionIconButtonComposeWidget(
+                        icon = Icons.Default.Save,
+                        tooltip = "Save",
+                        onClick = { onInteraction(SessionsInteraction.GeneratorSaved) },
+                    )
                 }
             }
         },

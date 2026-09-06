@@ -132,6 +132,7 @@ internal class MapsViewModel(
     private var itemDropEnabled = false
     private var itemNameText = ""
     private var selectedItemId: String? = null
+    private var layersPanelOpen = false
 
     init {
         observe()
@@ -199,7 +200,9 @@ internal class MapsViewModel(
             is MapsInteraction.TokenSelected -> selectToken(interaction.participantId)
             is MapsInteraction.MovementSpeedChanged -> changeMovementSpeed(interaction.speed)
             MapsInteraction.MovementCleared -> clearMovement()
+            MapsInteraction.BoardToolCleared -> clearBoardTools()
             MapsInteraction.MeasureToggled -> toggleMeasure()
+            MapsInteraction.LayersToggled -> toggleLayersPanel()
             MapsInteraction.MeasureCleared -> clearMeasure()
             MapsInteraction.FogToggled -> toggleFogPaint()
             MapsInteraction.FogRevealBrushSelected -> setFogRevealBrush(true)
@@ -339,6 +342,7 @@ internal class MapsViewModel(
             fogPaintEnabled = false
             terrainPaint = null
             itemDropEnabled = false
+            layersPanelOpen = false
             selectedItemId = null
             selectedTokenParticipantId = null
             syncSelectedToken()
@@ -368,6 +372,7 @@ internal class MapsViewModel(
             tokens = boardTokens(selected.id),
             selectedTokenName = selectedTokenName(),
             unplacedTokenCount = unplacedTokenCount(selected.id),
+            layersPanelOpen = layersPanelOpen,
         )
     }
 
@@ -693,6 +698,7 @@ internal class MapsViewModel(
             itemNameText = itemNameText,
             selectedItemId = selectedItemId,
             selectedItemName = selectedItemName(),
+            layersPanelOpen = layersPanelOpen,
             )
         }
     }
@@ -826,12 +832,39 @@ internal class MapsViewModel(
         }
     }
 
+    private fun clearBoardTools() {
+        measureEnabled = false
+        fogPaintEnabled = false
+        terrainPaint = null
+        itemDropEnabled = false
+        layersPanelOpen = false
+        clearMeasure(refresh = false)
+        val selected = selectedFrom(latestMaps)
+        if (selected != null) {
+            bindMapOverlays(selected)
+        }
+        refreshMovementState()
+    }
+
+    private fun toggleLayersPanel() {
+        layersPanelOpen = !layersPanelOpen
+        if (layersPanelOpen) {
+            measureEnabled = false
+            fogPaintEnabled = false
+            terrainPaint = null
+            itemDropEnabled = false
+            clearMeasure(refresh = false)
+        }
+        refreshMovementState()
+    }
+
     private fun toggleMeasure() {
         measureEnabled = !measureEnabled
         if (measureEnabled) {
             fogPaintEnabled = false
             terrainPaint = null
             itemDropEnabled = false
+            layersPanelOpen = false
         }
         if (!measureEnabled) {
             clearMeasure()
@@ -884,6 +917,7 @@ internal class MapsViewModel(
             terrainPaint = null
             itemDropEnabled = false
             measureEnabled = false
+            layersPanelOpen = false
             clearMeasure(refresh = false)
         }
         refreshMovementState()
@@ -895,6 +929,7 @@ internal class MapsViewModel(
         terrainPaint = null
         itemDropEnabled = false
         measureEnabled = false
+        layersPanelOpen = false
         clearMeasure(refresh = false)
         refreshMovementState()
     }
@@ -905,6 +940,7 @@ internal class MapsViewModel(
             fogPaintEnabled = false
             itemDropEnabled = false
             measureEnabled = false
+            layersPanelOpen = false
             clearMeasure(refresh = false)
         }
         refreshMovementState()
@@ -916,6 +952,7 @@ internal class MapsViewModel(
             fogPaintEnabled = false
             terrainPaint = null
             measureEnabled = false
+            layersPanelOpen = false
             clearMeasure(refresh = false)
         }
         refreshMovementState()
@@ -1001,6 +1038,7 @@ internal class MapsViewModel(
                 tokens = boardTokens(current.selectedMap?.id),
                 selectedTokenName = selectedTokenName(),
                 unplacedTokenCount = unplacedTokenCount(current.selectedMap?.id),
+                layersPanelOpen = layersPanelOpen,
             )
         }
     }
@@ -1038,6 +1076,7 @@ internal class MapsViewModel(
             selectedTokenName = selectedTokenName(),
             unplacedTokenCount = unplacedTokenCount(selected.id),
             starterCatalogAvailable = bundledCatalogLoader.isAvailable(),
+            layersPanelOpen = layersPanelOpen,
         )
     }
 

@@ -9,6 +9,7 @@ import kotlinx.coroutines.yield
 import kotlinx.coroutines.withTimeout
 import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.AppBackupArchiveConverter
+import io.github.kmbisset89.worldweaver.domain.AtmosphereSettingsStore
 import io.github.kmbisset89.worldweaver.domain.BundledSrdCatalogLoader
 import io.github.kmbisset89.worldweaver.domain.ClearSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.DatabaseSnapshotExporter
@@ -37,6 +38,7 @@ import kotlin.test.assertTrue
 internal class SettingsViewModelTest {
     private val preferences = Preferences.userRoot().node(TEST_NODE)
     private val dicePreferences = Preferences.userRoot().node(DICE_NODE)
+    private val atmospherePreferences = Preferences.userRoot().node(ATMOSPHERE_NODE)
     private val scope = AppCoroutineScope()
     private val tempDir = Files.createTempDirectory("ww-settings-backup").toFile()
 
@@ -45,6 +47,7 @@ internal class SettingsViewModelTest {
         scope.cancel()
         preferences.removeNode()
         dicePreferences.removeNode()
+        atmospherePreferences.removeNode()
         tempDir.deleteRecursively()
     }
 
@@ -157,6 +160,7 @@ internal class SettingsViewModelTest {
         val context = FakeActiveContextRepository()
         val instantProvider = InstantProvider { Instant.parse("2026-08-30T12:00:00Z") }
         val srdConverter = SrdCatalogJsonConverter()
+        val atmosphereStore = AtmosphereSettingsStore(atmospherePreferences)
         return SettingsViewModel(
             shellSettingsStore = store,
             exportAppBackup = ExportAppBackupUseCase(
@@ -165,6 +169,7 @@ internal class SettingsViewModelTest {
                 archiveConverter = converter,
                 activeContextRepository = context,
                 shellSettingsStore = store,
+                atmosphereSettingsStore = atmosphereStore,
                 instantProvider = instantProvider,
                 dicePreferences = dicePreferences,
             ),
@@ -174,6 +179,7 @@ internal class SettingsViewModelTest {
                 archiveConverter = converter,
                 activeContextRepository = context,
                 shellSettingsStore = store,
+                atmosphereSettingsStore = atmosphereStore,
                 dicePreferences = dicePreferences,
             ),
             observeSrdCatalog = ObserveSrdCatalogUseCase(catalogs),
@@ -212,5 +218,6 @@ internal class SettingsViewModelTest {
     private companion object {
         const val TEST_NODE = "io.github.kmbisset89.worldweaver.test.settings"
         const val DICE_NODE = "io.github.kmbisset89.worldweaver.test.settings.dice"
+        const val ATMOSPHERE_NODE = "io.github.kmbisset89.worldweaver.test.settings.atmosphere"
     }
 }

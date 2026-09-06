@@ -229,6 +229,16 @@ internal class BattleMapBoardSession(
         return snapshot()
     }
 
+    fun clearBoardTools(): BattleMapBoardSnapshot {
+        measureEnabled = false
+        fogPaintEnabled = false
+        terrainPaint = null
+        itemDropEnabled = false
+        clearMeasure(refreshOverlays = false)
+        bindMapOverlays()
+        return snapshot()
+    }
+
     fun toggleMeasure(): BattleMapBoardSnapshot {
         measureEnabled = !measureEnabled
         if (measureEnabled) {

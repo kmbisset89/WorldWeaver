@@ -11,6 +11,7 @@ import androidx.room.RoomDatabase
         WorldCalendarWeekdayEntity::class,
         WorldCalendarObservanceEntity::class,
         WorldCalendarObservanceLoreLinkEntity::class,
+        WorldCelestialBodyEntity::class,
         CampaignEntity::class,
         LocationEntity::class,
         LocationOverlayEntity::class,
@@ -37,7 +38,7 @@ import androidx.room.RoomDatabase
         BattleMapSituationEntity::class,
         WorldMapEntity::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
 )
 internal abstract class WorldWeaverDatabase : RoomDatabase() {
@@ -47,6 +48,7 @@ internal abstract class WorldWeaverDatabase : RoomDatabase() {
     abstract fun worldCalendarWeekdayDao(): WorldCalendarWeekdayDao
     abstract fun worldCalendarObservanceDao(): WorldCalendarObservanceDao
     abstract fun worldCalendarObservanceLoreLinkDao(): WorldCalendarObservanceLoreLinkDao
+    abstract fun worldCelestialBodyDao(): WorldCelestialBodyDao
     abstract fun campaignDao(): CampaignDao
     abstract fun locationDao(): LocationDao
     abstract fun locationOverlayDao(): LocationOverlayDao

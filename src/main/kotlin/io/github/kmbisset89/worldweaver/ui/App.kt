@@ -46,6 +46,10 @@ import io.github.kmbisset89.worldweaver.ui.dice.DiceFloatingWindow
 import io.github.kmbisset89.worldweaver.ui.dice.DiceInteraction
 import io.github.kmbisset89.worldweaver.ui.dice.DiceScreen
 import io.github.kmbisset89.worldweaver.ui.dice.DiceViewState
+import io.github.kmbisset89.worldweaver.ui.atmosphere.AtmosphereFloatingWindow
+import io.github.kmbisset89.worldweaver.ui.atmosphere.AtmosphereInteraction
+import io.github.kmbisset89.worldweaver.ui.atmosphere.AtmosphereScreen
+import io.github.kmbisset89.worldweaver.ui.atmosphere.AtmosphereViewState
 import io.github.kmbisset89.worldweaver.ui.encounters.EncountersInteraction
 import io.github.kmbisset89.worldweaver.ui.encounters.EncountersScreen
 import io.github.kmbisset89.worldweaver.ui.encounters.EncountersViewState
@@ -73,6 +77,7 @@ internal fun App(
         val encountersState by viewModel.encountersViewModel.state.collectAsState()
         val sheetState by viewModel.characterSheetViewModel.state.collectAsState()
         val diceState by viewModel.diceViewModel.state.collectAsState()
+        val atmosphereState by viewModel.atmosphereViewModel.state.collectAsState()
         val mapsPlayerMapState = viewModel.mapsViewModel.playerMapState
         val encounterPlayerMapState = viewModel.encountersViewModel.playerMapState
         val mapsPlayerContent = mapsState as? MapsViewState.Content
@@ -201,6 +206,31 @@ internal fun App(
                     DiceFloatingWindow(
                         viewState = diceState,
                         onInteraction = viewModel.diceViewModel::onInteraction,
+                    )
+                }
+            }
+        }
+        val atmosphereContent = atmosphereState as? AtmosphereViewState.Content
+        if (atmosphereContent?.isFloatingOpen == true) {
+            val atmosphereWindowState = remember {
+                WindowState(size = DpSize(420.dp, 640.dp))
+            }
+            Window(
+                title = "Atmosphere",
+                icon = appWindowIcon(),
+                alwaysOnTop = atmosphereContent.isAlwaysOnTop,
+                onCloseRequest = {
+                    viewModel.atmosphereViewModel.onInteraction(AtmosphereInteraction.FloatingClosed)
+                },
+                state = atmosphereWindowState,
+            ) {
+                WorldWeaverTheme(
+                    themeMode = viewModel.themeMode,
+                    themeSkin = viewModel.themeSkin,
+                ) {
+                    AtmosphereFloatingWindow(
+                        viewState = atmosphereState,
+                        onInteraction = viewModel.atmosphereViewModel::onInteraction,
                     )
                 }
             }
@@ -405,6 +435,13 @@ internal fun App(
                         DiceScreen(
                             viewState = diceState,
                             onInteraction = viewModel.diceViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.ATMOSPHERE -> {
+                        AtmosphereScreen(
+                            viewState = atmosphereState,
+                            onInteraction = viewModel.atmosphereViewModel::onInteraction
                         )
                     }
 

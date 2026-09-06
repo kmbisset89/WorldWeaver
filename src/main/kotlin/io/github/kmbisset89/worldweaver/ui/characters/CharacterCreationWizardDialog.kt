@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -18,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.CompanionKind
 import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalog
 import io.github.kmbisset89.worldweaver.domain.PersonKind
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 
 @Composable
 internal fun CharacterCreationWizardDialog(
@@ -65,9 +70,11 @@ internal fun CharacterCreationWizardDialog(
         },
         confirmButton = {
             if (isLast) {
-                TextButton(onClick = { onInteraction(CharactersInteraction.WizardSaved) }) {
-                    Text("Create")
-                }
+                ActionIconButtonComposeWidget(
+                    icon = Icons.Default.Check,
+                    tooltip = "Create",
+                    onClick = { onInteraction(CharactersInteraction.WizardSaved) },
+                )
             } else {
                 TextButton(onClick = { onInteraction(CharactersInteraction.WizardNextSelected) }) {
                     Text("Next")
@@ -211,9 +218,12 @@ private fun RaceAndClassStep(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        TextButton(onClick = { onInteraction(CharactersInteraction.WizardClassLevelRemoved(index)) }) {
-            Text("Remove class")
-        }
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Close,
+            tooltip = "Remove class",
+            tint = ErrorRed,
+            onClick = { onInteraction(CharactersInteraction.WizardClassLevelRemoved(index)) },
+        )
     }
     TextButton(onClick = { onInteraction(CharactersInteraction.WizardClassLevelAdded) }) {
         Text("Add class")
@@ -352,9 +362,12 @@ private fun CompanionsStep(
                 )
             }
         }
-        TextButton(onClick = { onInteraction(CharactersInteraction.WizardCompanionRemoved(index)) }) {
-            Text("Remove companion")
-        }
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Close,
+            tooltip = "Remove companion",
+            tint = ErrorRed,
+            onClick = { onInteraction(CharactersInteraction.WizardCompanionRemoved(index)) },
+        )
     }
     TextButton(onClick = { onInteraction(CharactersInteraction.WizardCompanionAdded) }) {
         Text("Add companion")

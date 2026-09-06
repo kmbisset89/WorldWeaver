@@ -13,6 +13,7 @@ internal class RestoreAppBackupUseCase(
     private val archiveConverter: AppBackupArchiveConverter,
     private val activeContextRepository: ActiveContextRepository,
     private val shellSettingsStore: ShellSettingsStore,
+    private val atmosphereSettingsStore: AtmosphereSettingsStore,
     private val dicePreferences: Preferences = Preferences.userRoot(),
 ) {
     sealed interface Result {
@@ -90,6 +91,25 @@ internal class RestoreAppBackupUseCase(
         val diceStyle = DiceColorStyle.entries.firstOrNull { it.name == prefs.diceColorStyle }
             ?: DiceColorStyle.BONE
         DiceColorStyle.save(diceStyle, dicePreferences)
+        atmosphereSettingsStore.replaceAll(
+            AtmosphereSettings(
+                connection = HomeAssistantConnection(
+                    baseUrl = prefs.homeAssistantBaseUrl,
+                    token = prefs.homeAssistantToken,
+                ),
+                hue = HueConnection(
+                    bridgeHost = prefs.hueBridgeHost,
+                    applicationKey = prefs.hueApplicationKey,
+                ),
+                goveeDevices = prefs.goveeDevices,
+                hueLights = prefs.hueLights,
+                scenes = prefs.atmosphereScenes,
+                moods = prefs.atmosphereMoods,
+                selectedHueLightIds = prefs.atmosphereSelectedHueLightIds,
+                selectedGoveeDeviceIds = prefs.atmosphereSelectedGoveeDeviceIds,
+                isAlwaysOnTop = prefs.atmosphereAlwaysOnTop,
+            ),
+        )
     }
 
     private fun parseThemeMode(raw: String): ThemeMode {

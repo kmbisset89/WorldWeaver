@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -22,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.Location
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.voice.VoiceClipComposeWidget
 import io.github.kmbisset89.worldweaver.ui.voice.chooseWavPath
@@ -122,16 +128,17 @@ internal fun LocationDetailPane(
             ) {
                 Text(if (selectedLocationHasMap) "Open map" else "Add map")
             }
-            TextButton(
-                onClick = { onInteraction(LocationsInteraction.EditLocationSelected(location.id)) }
-            ) {
-                Text("Edit")
-            }
-            TextButton(
-                onClick = { onInteraction(LocationsInteraction.DeleteLocationSelected(location.id)) }
-            ) {
-                Text("Delete")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Edit,
+                tooltip = "Edit",
+                onClick = { onInteraction(LocationsInteraction.EditLocationSelected(location.id)) },
+            )
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Delete,
+                tooltip = "Delete",
+                tint = ErrorRed,
+                onClick = { onInteraction(LocationsInteraction.DeleteLocationSelected(location.id)) },
+            )
         }
 
         if (overlay != null) {
@@ -273,9 +280,11 @@ private fun OverlayCard(
                 minLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
-            TextButton(onClick = { onInteraction(LocationsInteraction.OverlaySaved) }) {
-                Text("Save campaign notes")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save campaign notes",
+                onClick = { onInteraction(LocationsInteraction.OverlaySaved) },
+            )
         }
     }
 }

@@ -2,10 +2,9 @@ package io.github.kmbisset89.worldweaver.ui.characters
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -29,15 +28,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.SrdMonsterEntry
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailBreakpoint
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveListDetailComposeWidget
+import io.github.kmbisset89.worldweaver.ui.components.AdaptiveScreenHeaderComposeWidget
 import io.github.kmbisset89.worldweaver.ui.components.ConfirmDestructiveDialog
 import io.github.kmbisset89.worldweaver.ui.components.FeatureEmptyState
 import io.github.kmbisset89.worldweaver.ui.components.FeatureErrorState
+import io.github.kmbisset89.worldweaver.ui.components.rememberAdaptiveListOpen
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
@@ -154,16 +158,35 @@ internal fun CharactersScreen(
                 }
             }
             is CharactersViewState.Content -> {
-                CharactersHeader(
-                    subtitle = viewState.worldName,
-                    showActions = true,
-                    canCreatePlayerCharacter = viewState.campaignName != null,
-                    canImportSrdMonster = viewState.worldGameSystemIsFifthEdition &&
-                        viewState.pickerCatalog.monsters.isNotEmpty(),
-                    canGenerateRandomNpc = viewState.worldGameSystemIsFifthEdition,
-                    onInteraction = onInteraction,
-                )
-                CharactersContent(state = viewState, onInteraction = onInteraction)
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val compact = maxWidth < AdaptiveListDetailBreakpoint
+                    var peopleListOpen by rememberAdaptiveListOpen(compact)
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
+                        CharactersHeader(
+                            subtitle = viewState.worldName,
+                            showActions = true,
+                            canCreatePlayerCharacter = viewState.campaignName != null,
+                            canImportSrdMonster = viewState.worldGameSystemIsFifthEdition &&
+                                viewState.pickerCatalog.monsters.isNotEmpty(),
+                            canGenerateRandomNpc = viewState.worldGameSystemIsFifthEdition,
+                            compact = compact,
+                            selectedPersonName = viewState.selected?.name,
+                            onPeopleListSelected = { peopleListOpen = !peopleListOpen },
+                            onInteraction = onInteraction,
+                        )
+                        CharactersContent(
+                            state = viewState,
+                            compact = compact,
+                            peopleListOpen = peopleListOpen,
+                            onPeopleListDismissed = { peopleListOpen = false },
+                            onInteraction = onInteraction,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }
@@ -176,67 +199,58 @@ private fun CharactersHeader(
     canCreatePlayerCharacter: Boolean = false,
     canImportSrdMonster: Boolean = false,
     canGenerateRandomNpc: Boolean = false,
+    compact: Boolean = false,
+    selectedPersonName: String? = null,
+    onPeopleListSelected: (() -> Unit)? = null,
     onInteraction: (CharactersInteraction) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    AdaptiveScreenHeaderComposeWidget(
+        title = "Characters",
+        subtitle = subtitle,
+        compact = compact,
+        switcherName = selectedPersonName,
+        listLabel = "people list",
+        onListToggle = { onPeopleListSelected?.invoke() },
     ) {
-        Column {
-            Text(
-                text = "Characters",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(
-                text = subtitle,
-                fontSize = 14.sp,
-                color = TextSecondary
-            )
-        }
         if (showActions) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (canImportSrdMonster) {
-                    OutlinedButton(
-                        onClick = { onInteraction(CharactersInteraction.SrdMonsterImportOpened) }
-                    ) {
-                        Text("Add SRD monster")
-                    }
+            if (canImportSrdMonster) {
+                OutlinedButton(
+                    onClick = { onInteraction(CharactersInteraction.SrdMonsterImportOpened) }
+                ) {
+                    Text("Add SRD monster")
                 }
-                if (canGenerateRandomNpc) {
-                    OutlinedButton(
-                        onClick = { onInteraction(CharactersInteraction.RandomNpcSelected) }
-                    ) {
-                        Text("Random NPC")
-                    }
+            }
+            if (canGenerateRandomNpc) {
+                OutlinedButton(
+                    onClick = { onInteraction(CharactersInteraction.RandomNpcSelected) }
+                ) {
+                    Text("Random NPC")
                 }
-                if (canCreatePlayerCharacter) {
-                    Button(
-                        onClick = {
-                            onInteraction(CharactersInteraction.NewPlayerCharacterSelected)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                        Text("New PC")
-                    }
-                    OutlinedButton(
-                        onClick = { onInteraction(CharactersInteraction.NewPersonSelected) }
-                    ) {
-                        Text("New person")
-                    }
-                } else {
-                    Button(
-                        onClick = { onInteraction(CharactersInteraction.NewPersonSelected) },
-                        colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                        Text("New person")
-                    }
+            }
+            if (canCreatePlayerCharacter) {
+                Button(
+                    onClick = {
+                        onInteraction(CharactersInteraction.NewPlayerCharacterSelected)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                    Text("New PC")
+                }
+                OutlinedButton(
+                    onClick = { onInteraction(CharactersInteraction.NewPersonSelected) }
+                ) {
+                    Text("New person")
+                }
+            } else {
+                Button(
+                    onClick = { onInteraction(CharactersInteraction.NewPersonSelected) },
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                    Text("New person")
                 }
             }
         }
@@ -246,54 +260,62 @@ private fun CharactersHeader(
 @Composable
 private fun CharactersContent(
     state: CharactersViewState.Content,
+    compact: Boolean,
+    peopleListOpen: Boolean,
+    onPeopleListDismissed: () -> Unit,
     onInteraction: (CharactersInteraction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    if (state.blockDeleteReason != null) {
-        Card(
-            modifier = Modifier.fillMaxWidth().clickable {
-                onInteraction(CharactersInteraction.BlockReasonDismissed)
-            },
-            colors = CardDefaults.cardColors(containerColor = SurfaceCard)
-        ) {
-            Text(
-                text = state.blockDeleteReason,
-                modifier = Modifier.padding(16.dp),
-                color = TextPrimary,
-                fontSize = 13.sp
-            )
+    val listInteraction: (CharactersInteraction) -> Unit = { interaction ->
+        if (interaction is CharactersInteraction.PersonSelected) {
+            onPeopleListDismissed()
         }
+        onInteraction(interaction)
     }
 
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        CharacterListPane(
-            people = state.people,
-            selectedKey = state.selected?.key,
-            searchQuery = state.searchQuery,
-            kindFilter = state.kindFilter,
-            membershipFilter = state.membershipFilter,
-            onInteraction = onInteraction,
-            modifier = Modifier.fillMaxHeight(),
-        )
-        if (state.selected != null) {
-            CharacterDetailPane(
-                selected = state.selected,
-                relationshipEditor = state.relationshipEditor,
-                membershipEditor = state.membershipEditor,
-                companionEditor = state.companionEditor,
-                pickerCatalog = state.pickerCatalog,
-                onInteraction = onInteraction,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-            )
-        } else {
-            Text(
-                text = "Select a person to see their details.",
-                color = TextSecondary,
-                modifier = Modifier.weight(1f).padding(16.dp)
-            )
+    Column(modifier = modifier.fillMaxSize()) {
+        if (state.blockDeleteReason != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable {
+                    onInteraction(CharactersInteraction.BlockReasonDismissed)
+                },
+                colors = CardDefaults.cardColors(containerColor = SurfaceCard)
+            ) {
+                Text(
+                    text = state.blockDeleteReason,
+                    modifier = Modifier.padding(16.dp),
+                    color = TextPrimary,
+                    fontSize = 13.sp
+                )
+            }
         }
+
+        AdaptiveListDetailComposeWidget(
+            compact = compact,
+            listOpen = peopleListOpen,
+            hasSelection = state.selected != null,
+            listPane = { listModifier ->
+                CharacterListPane(
+                    people = state.people,
+                    selectedKey = state.selected?.key,
+                    searchQuery = state.searchQuery,
+                    kindFilter = state.kindFilter,
+                    membershipFilter = state.membershipFilter,
+                    onInteraction = listInteraction,
+                    modifier = listModifier,
+                )
+            },
+            detailPane = { detailModifier ->
+                CharacterDetailOrPlaceholder(
+                    state = state,
+                    onInteraction = onInteraction,
+                    modifier = detailModifier,
+                )
+            },
+            onListDismissed = onPeopleListDismissed,
+            dismissListLabel = "Dismiss people list",
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        )
     }
 
     state.editor?.let { editor ->
@@ -340,6 +362,31 @@ private fun CharactersContent(
             confirmLabel = "Delete",
             onConfirm = { onInteraction(CharactersInteraction.DeleteConfirmed) },
             onDismiss = { onInteraction(CharactersInteraction.DeleteCancelled) },
+        )
+    }
+}
+
+@Composable
+private fun CharacterDetailOrPlaceholder(
+    state: CharactersViewState.Content,
+    onInteraction: (CharactersInteraction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (state.selected != null) {
+        CharacterDetailPane(
+            selected = state.selected,
+            relationshipEditor = state.relationshipEditor,
+            membershipEditor = state.membershipEditor,
+            companionEditor = state.companionEditor,
+            pickerCatalog = state.pickerCatalog,
+            onInteraction = onInteraction,
+            modifier = modifier,
+        )
+    } else {
+        Text(
+            text = "Select a person to see their details.",
+            color = TextSecondary,
+            modifier = modifier.padding(16.dp)
         )
     }
 }

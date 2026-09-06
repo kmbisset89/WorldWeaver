@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
@@ -20,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.CreatureSize
 import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalog
 import io.github.kmbisset89.worldweaver.domain.PersonKind
+import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 
 @Composable
 internal fun CharacterEditorDialog(
@@ -96,9 +101,11 @@ internal fun CharacterEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onInteraction(CharactersInteraction.EditorSaved) }) {
-                Text("Save")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Save,
+                tooltip = "Save",
+                onClick = { onInteraction(CharactersInteraction.EditorSaved) },
+            )
         },
         dismissButton = {
             TextButton(onClick = { onInteraction(CharactersInteraction.EditorDismissed) }) {
@@ -292,9 +299,12 @@ private fun SheetEditor(
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = { onInteraction(CharactersInteraction.EditorSpellSlotRemoved(index)) }) {
-                Text("Remove")
-            }
+            ActionIconButtonComposeWidget(
+                icon = Icons.Default.Close,
+                tooltip = "Remove",
+                tint = ErrorRed,
+                onClick = { onInteraction(CharactersInteraction.EditorSpellSlotRemoved(index)) },
+            )
         }
     }
     TextButton(onClick = { onInteraction(CharactersInteraction.EditorSpellSlotAdded) }) {
@@ -329,9 +339,12 @@ private fun SheetEditor(
                 modifier = Modifier.weight(2f)
             )
         }
-        TextButton(onClick = { onInteraction(CharactersInteraction.EditorItemRemoved(index)) }) {
-            Text("Remove item")
-        }
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Close,
+            tooltip = "Remove item",
+            tint = ErrorRed,
+            onClick = { onInteraction(CharactersInteraction.EditorItemRemoved(index)) },
+        )
     }
     TextButton(onClick = { onInteraction(CharactersInteraction.EditorItemAdded) }) {
         Text("Add item")
@@ -355,9 +368,12 @@ private fun SheetEditor(
             label = { Text("Description") },
             modifier = Modifier.fillMaxWidth()
         )
-        TextButton(onClick = { onInteraction(CharactersInteraction.EditorFeatureRemoved(index)) }) {
-            Text("Remove feature")
-        }
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Close,
+            tooltip = "Remove feature",
+            tint = ErrorRed,
+            onClick = { onInteraction(CharactersInteraction.EditorFeatureRemoved(index)) },
+        )
     }
     TextButton(onClick = { onInteraction(CharactersInteraction.EditorFeatureAdded) }) {
         Text("Add feature")
@@ -403,9 +419,12 @@ private fun SheetEditor(
                 Text("Prepared")
             }
         }
-        TextButton(onClick = { onInteraction(CharactersInteraction.EditorSpellRemoved(index)) }) {
-            Text("Remove spell")
-        }
+        ActionIconButtonComposeWidget(
+            icon = Icons.Default.Close,
+            tooltip = "Remove spell",
+            tint = ErrorRed,
+            onClick = { onInteraction(CharactersInteraction.EditorSpellRemoved(index)) },
+        )
     }
     TextButton(onClick = { onInteraction(CharactersInteraction.EditorSpellAdded) }) {
         Text("Add spell")
@@ -465,9 +484,12 @@ private fun ClassLevelEditor(
         singleLine = true,
         modifier = Modifier.fillMaxWidth()
     )
-    TextButton(onClick = { onInteraction(CharactersInteraction.EditorClassLevelRemoved(index)) }) {
-        Text("Remove class")
-    }
+    ActionIconButtonComposeWidget(
+        icon = Icons.Default.Close,
+        tooltip = "Remove class",
+        tint = ErrorRed,
+        onClick = { onInteraction(CharactersInteraction.EditorClassLevelRemoved(index)) },
+    )
 }
 
 @Composable

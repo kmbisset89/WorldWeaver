@@ -6,6 +6,7 @@ internal class SearchRecordsUseCase(
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
     private val observanceRepository: WorldCalendarObservanceRepository,
+    private val celestialBodyRepository: WorldCelestialBodyRepository,
     private val factionRepository: FactionRepository,
     private val worldPersonRepository: WorldPersonRepository,
     private val campaignPersonRepository: CampaignPersonRepository,
@@ -67,6 +68,16 @@ internal class SearchRecordsUseCase(
                 campaignId = null,
             )
         }
+        val celestialBodies = celestialBodyRepository.search(trimmed).map { body ->
+            hit(
+                kind = SearchKind.CelestialBody,
+                id = body.id,
+                title = body.name,
+                snippet = snippet(body.notes.ifBlank { body.kind.displayName }),
+                worldId = body.worldId,
+                campaignId = null,
+            )
+        }
         val factions = factionRepository.search(trimmed).map { faction ->
             hit(
                 kind = SearchKind.Faction,
@@ -120,7 +131,7 @@ internal class SearchRecordsUseCase(
                 campaignId = session.campaignId,
             )
         }
-        return worlds + campaigns + locations + lore + observances + factions +
+        return worlds + campaigns + locations + lore + observances + celestialBodies + factions +
             worldPeople + campaignPeople + quests + sessions
     }
 
