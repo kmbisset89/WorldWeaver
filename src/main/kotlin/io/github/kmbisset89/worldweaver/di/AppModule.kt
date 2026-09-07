@@ -37,6 +37,10 @@ import io.github.kmbisset89.worldweaver.data.PlotThreadRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.PreferenceActiveContextRepository
 import io.github.kmbisset89.worldweaver.data.QuestEntityConverter
 import io.github.kmbisset89.worldweaver.data.QuestRepositoryImpl
+import io.github.kmbisset89.worldweaver.data.RandomTableEntityConverter
+import io.github.kmbisset89.worldweaver.data.RandomTableRepositoryImpl
+import io.github.kmbisset89.worldweaver.data.AssetEntityConverter
+import io.github.kmbisset89.worldweaver.data.AssetRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.RoomTransactionRunner
 import io.github.kmbisset89.worldweaver.data.ReferenceDocEntityConverter
 import io.github.kmbisset89.worldweaver.data.ReferenceDocRepositoryImpl
@@ -58,6 +62,10 @@ import io.github.kmbisset89.worldweaver.data.WorldPersonRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldRepositoryImpl
 import io.github.kmbisset89.worldweaver.data.WorldWeaverDatabase
 import io.github.kmbisset89.worldweaver.domain.ActivateAtmosphereSceneUseCase
+import io.github.kmbisset89.worldweaver.domain.AtmosphereMusicPlayer
+import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereMusicTrackUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereMusicTrackUseCase
+import io.github.kmbisset89.worldweaver.domain.SetAtmosphereSceneMusicUseCase
 import io.github.kmbisset89.worldweaver.domain.ApplyAtmosphereLookUseCase
 import io.github.kmbisset89.worldweaver.domain.AbilityScoreRoller
 import io.github.kmbisset89.worldweaver.domain.AtmosphereSettingsStore
@@ -114,6 +122,8 @@ import io.github.kmbisset89.worldweaver.domain.CreateCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateEncounterUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateFactionMembershipUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateFactionUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateRandomTableUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateAssetUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateWorldCalendarObservanceUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateWorldCelestialBodyUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateWorldMapUseCase
@@ -145,6 +155,8 @@ import io.github.kmbisset89.worldweaver.domain.DeletePersonCompanionUseCase
 import io.github.kmbisset89.worldweaver.domain.DeletePersonRelationshipUseCase
 import io.github.kmbisset89.worldweaver.domain.DeletePlotThreadUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteQuestUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteRandomTableUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteAssetUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteReferenceDocUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteSessionClockUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteSessionRecordingUseCase
@@ -160,6 +172,9 @@ import io.github.kmbisset89.worldweaver.domain.AppBackupArchiveConverter
 import io.github.kmbisset89.worldweaver.domain.ExportAppBackupUseCase
 import io.github.kmbisset89.worldweaver.domain.FactionMembershipRepository
 import io.github.kmbisset89.worldweaver.domain.FactionRepository
+import io.github.kmbisset89.worldweaver.domain.RandomTableRepository
+import io.github.kmbisset89.worldweaver.domain.AssetRepository
+import io.github.kmbisset89.worldweaver.domain.AssetFileStore
 import io.github.kmbisset89.worldweaver.domain.ExportWorldBundleUseCase
 import io.github.kmbisset89.worldweaver.domain.ExportUniversalVttUseCase
 import io.github.kmbisset89.worldweaver.domain.UniversalVttDocumentFactory
@@ -168,6 +183,8 @@ import io.github.kmbisset89.worldweaver.domain.ImportBundledBattleMapUseCase
 import io.github.kmbisset89.worldweaver.domain.ImportSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.ImportWorldBundleUseCase
 import io.github.kmbisset89.worldweaver.domain.LoadSessionReferencePeekUseCase
+import io.github.kmbisset89.worldweaver.domain.LoadWikilinkCatalogUseCase
+import io.github.kmbisset89.worldweaver.domain.ListWikilinkBacklinksUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveFifthEditionPickerCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSrdCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.RestoreAppBackupUseCase
@@ -191,6 +208,8 @@ import io.github.kmbisset89.worldweaver.domain.ObserveBattleMapsForActiveCampaig
 import io.github.kmbisset89.worldweaver.domain.ToggleBattleMapSituationUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveFactionMembershipsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveFactionsForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveRandomTablesForActiveWorldUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveAssetsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveEncountersForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationOverlaysForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
@@ -248,6 +267,7 @@ import io.github.kmbisset89.worldweaver.domain.QuestRepository
 import io.github.kmbisset89.worldweaver.domain.ReferenceDocRepository
 import io.github.kmbisset89.worldweaver.domain.RollAllEncounterInitiativeUseCase
 import io.github.kmbisset89.worldweaver.domain.RollEncounterInitiativeUseCase
+import io.github.kmbisset89.worldweaver.domain.RollRandomTableUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveSessionNpcDraftUseCase
 import io.github.kmbisset89.worldweaver.domain.SessionClockRepository
 import io.github.kmbisset89.worldweaver.domain.SessionRepository
@@ -274,6 +294,8 @@ import io.github.kmbisset89.worldweaver.domain.UpdateFactionUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateLoreUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdatePlotThreadUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateQuestUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateRandomTableUseCase
+import io.github.kmbisset89.worldweaver.domain.UpdateAssetUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateReferenceDocUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateSessionClockUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateSessionRunnerNotesUseCase
@@ -295,7 +317,6 @@ import io.github.kmbisset89.worldweaver.ui.dice.DiceViewModel
 import io.github.kmbisset89.worldweaver.ui.search.SearchViewModel
 import io.github.kmbisset89.worldweaver.ui.factions.FactionsViewModel
 import io.github.kmbisset89.worldweaver.ui.links.LinksViewModel
-import io.github.kmbisset89.worldweaver.ui.links.RelationshipWebLayoutFactory
 import io.github.kmbisset89.worldweaver.ui.encounters.EncountersViewModel
 import io.github.kmbisset89.worldweaver.ui.home.HomeViewModel
 import io.github.kmbisset89.worldweaver.ui.oneshot.OneShotWizardViewModel
@@ -314,6 +335,8 @@ import io.github.kmbisset89.worldweaver.ui.worldmap.WorldMapViewModel
 import io.github.kmbisset89.worldweaver.ui.quests.QuestsViewModel
 import io.github.kmbisset89.worldweaver.ui.run.RunViewModel
 import io.github.kmbisset89.worldweaver.ui.sessions.SessionsViewModel
+import io.github.kmbisset89.worldweaver.ui.tables.TablesViewModel
+import io.github.kmbisset89.worldweaver.ui.assets.AssetsViewModel
 import io.github.kmbisset89.worldweaver.ui.settings.SettingsViewModel
 import io.github.kmbisset89.worldweaver.domain.ShellSettingsStore
 import io.github.kmbisset89.worldweaver.ui.worlds.WorldsViewModel
@@ -336,6 +359,8 @@ internal fun appModule() = module {
     single { LocationOverlayEntityConverter() }
     single { LoreEntityConverter() }
     single { FactionEntityConverter() }
+    single { RandomTableEntityConverter() }
+    single { AssetEntityConverter() }
     single { FactionMembershipEntityConverter() }
     single { FifthEditionSheetConverter() }
     single { Pathfinder2ESheetConverter() }
@@ -364,6 +389,7 @@ internal fun appModule() = module {
     single { PersonAvatarFileStore(get<WorldWeaverDataDirectory>().avatarsDir) }
     single { VoiceClipFileStore(get<WorldWeaverDataDirectory>().voicesDir) }
     single { SessionRecordingFileStore(get<WorldWeaverDataDirectory>().recordingsDir) }
+    single { AssetFileStore(get<WorldWeaverDataDirectory>().assetsDir) }
     single { SessionCaptureDeviceProbe() }
     single { SessionCameraPermissionSettingsOpener() }
     single<SessionRecordingCapture> {
@@ -383,6 +409,7 @@ internal fun appModule() = module {
     }
     single { VoiceClipRecorder() }
     single { VoiceClipPlayer() }
+    single { AtmosphereMusicPlayer() }
     single { DiceRoller() }
     single { AbilityScoreRoller(get()) }
     single { DatabaseProvider(get()) }
@@ -404,6 +431,9 @@ internal fun appModule() = module {
     single { get<WorldWeaverDatabase>().worldPersonDao() }
     single { get<WorldWeaverDatabase>().campaignPersonDao() }
     single { get<WorldWeaverDatabase>().factionDao() }
+    single { get<WorldWeaverDatabase>().randomTableDao() }
+    single { get<WorldWeaverDatabase>().randomTableRowDao() }
+    single { get<WorldWeaverDatabase>().assetDao() }
     single { get<WorldWeaverDatabase>().factionMembershipDao() }
     single { get<WorldWeaverDatabase>().personRelationshipDao() }
     single { get<WorldWeaverDatabase>().personCompanionDao() }
@@ -434,6 +464,8 @@ internal fun appModule() = module {
     single<LocationOverlayRepository> { LocationOverlayRepositoryImpl(get(), get()) }
     single<LoreRepository> { LoreRepositoryImpl(get(), get(), get(), get()) }
     single<FactionRepository> { FactionRepositoryImpl(get(), get()) }
+    single<RandomTableRepository> { RandomTableRepositoryImpl(get(), get(), get()) }
+    single<AssetRepository> { AssetRepositoryImpl(get(), get()) }
     single<FactionMembershipRepository> { FactionMembershipRepositoryImpl(get(), get()) }
     single<WorldPersonRepository> { WorldPersonRepositoryImpl(get(), get()) }
     single<CampaignPersonRepository> { CampaignPersonRepositoryImpl(get(), get()) }
@@ -463,6 +495,8 @@ internal fun appModule() = module {
             locationRepository = get(),
             loreRepository = get(),
             factionRepository = get(),
+            randomTableRepository = get(),
+            assetRepository = get(),
             factionMembershipRepository = get(),
             worldPersonRepository = get(),
             campaignPersonRepository = get(),
@@ -482,6 +516,7 @@ internal fun appModule() = module {
             worldMapRepository = get(),
             worldMapFileStore = get(),
             voiceClipFileStore = get(),
+            assetFileStore = get(),
             instantProvider = get(),
         )
     }
@@ -495,7 +530,7 @@ internal fun appModule() = module {
     factory { OneShotDraftFactory(get()) }
     factory { CreateOneShotUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { UpdateWorldUseCase(get(), get()) }
-    factory { DeleteWorldUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { DeleteWorldUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { ExportWorldBundleUseCase(get(), get()) }
     factory { UniversalVttDocumentFactory() }
     factory { ExportUniversalVttUseCase(get(), get(), get()) }
@@ -536,6 +571,8 @@ internal fun appModule() = module {
             locationRepository = get(),
             loreRepository = get(),
             factionRepository = get(),
+            randomTableRepository = get(),
+            assetRepository = get(),
             factionMembershipRepository = get(),
             worldPersonRepository = get(),
             campaignPersonRepository = get(),
@@ -555,12 +592,13 @@ internal fun appModule() = module {
             worldMapRepository = get(),
             worldMapFileStore = get(),
             voiceClipFileStore = get(),
+            assetFileStore = get(),
             setActiveWorld = get(),
         )
     }
     factory { ObserveWorldsUseCase(get()) }
     factory { ObserveDashboardCountsUseCase(get(), get(), get(), get()) }
-    factory { SearchRecordsUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { SearchRecordsUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { CreateCampaignUseCase(get(), get(), get(), get(), get()) }
     factory { UpdateCampaignUseCase(get(), get()) }
     factory { SetCampaignStatusUseCase(get(), get()) }
@@ -577,10 +615,21 @@ internal fun appModule() = module {
     factory { UpdateLoreUseCase(get(), get(), get(), get()) }
     factory { DeleteLoreUseCase(get(), get()) }
     factory { ObserveLoreForActiveWorldUseCase(get(), get()) }
+    factory { LoadWikilinkCatalogUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { ListWikilinkBacklinksUseCase(get(), get(), get(), get()) }
     factory { CreateFactionUseCase(get(), get(), get(), get()) }
     factory { UpdateFactionUseCase(get(), get()) }
     factory { DeleteFactionUseCase(get(), get(), get()) }
     factory { ObserveFactionsForActiveWorldUseCase(get(), get()) }
+    factory { CreateRandomTableUseCase(get(), get(), get(), get()) }
+    factory { UpdateRandomTableUseCase(get(), get(), get()) }
+    factory { DeleteRandomTableUseCase(get()) }
+    factory { ObserveRandomTablesForActiveWorldUseCase(get(), get()) }
+    factory { RollRandomTableUseCase(get()) }
+    factory { CreateAssetUseCase(get(), get(), get(), get(), get()) }
+    factory { UpdateAssetUseCase(get(), get()) }
+    factory { DeleteAssetUseCase(get(), get()) }
+    factory { ObserveAssetsForActiveWorldUseCase(get(), get()) }
     factory { CreateFactionMembershipUseCase(get(), get(), get(), get(), get(), get(), get()) }
     factory { DeleteFactionMembershipUseCase(get()) }
     factory { ObserveFactionMembershipsUseCase(get()) }
@@ -734,6 +783,9 @@ internal fun appModule() = module {
     factory { PlayAtmosphereLightingLoopUseCase(get()) }
     factory { CreateAtmosphereSceneUseCase(get(), get()) }
     factory { DeleteAtmosphereSceneUseCase(get()) }
+    factory { CreateAtmosphereMusicTrackUseCase(get(), get()) }
+    factory { DeleteAtmosphereMusicTrackUseCase(get()) }
+    factory { SetAtmosphereSceneMusicUseCase(get()) }
     factory { CreateAtmosphereMoodUseCase(get(), get()) }
     factory { DeleteAtmosphereMoodUseCase(get()) }
     factory { ActivateAtmosphereSceneUseCase(get(), get(), get(), get()) }
@@ -806,6 +858,7 @@ internal fun appModule() = module {
             voiceClipFileStore = get(),
             voiceClipRecorder = get(),
             voiceClipPlayer = get(),
+            listWikilinkBacklinks = get(),
         )
     }
     single {
@@ -840,6 +893,8 @@ internal fun appModule() = module {
             createLore = get(),
             updateLore = get(),
             deleteLore = get(),
+            loadWikilinkCatalog = get(),
+            listWikilinkBacklinks = get(),
         )
     }
     single {
@@ -855,13 +910,33 @@ internal fun appModule() = module {
             deleteMembership = get(),
         )
     }
-    single { RelationshipWebLayoutFactory() }
+    single {
+        TablesViewModel(
+            appScope = get(),
+            observeActiveContextDetails = get(),
+            observeTables = get(),
+            createTable = get(),
+            updateTable = get(),
+            deleteTable = get(),
+            rollTable = get(),
+        )
+    }
+    single {
+        AssetsViewModel(
+            appScope = get(),
+            observeActiveContextDetails = get(),
+            observeAssets = get(),
+            createAsset = get(),
+            updateAsset = get(),
+            deleteAsset = get(),
+            assetFileStore = get(),
+        )
+    }
     single {
         LinksViewModel(
             appScope = get(),
             observeRelationshipWeb = get(),
             relationshipWebFactory = get(),
-            layoutFactory = get(),
         )
     }
     single {
@@ -899,6 +974,7 @@ internal fun appModule() = module {
             deleteFactionMembership = get(),
             createPersonCompanion = get(),
             deletePersonCompanion = get(),
+            listWikilinkBacklinks = get(),
         )
     }
     single {
@@ -926,6 +1002,7 @@ internal fun appModule() = module {
             deleteQuest = get(),
             awardPartyLevel = get(),
             awardPartyExperience = get(),
+            listWikilinkBacklinks = get(),
         )
     }
     single {
@@ -952,6 +1029,8 @@ internal fun appModule() = module {
             generateRandomNpc = get(),
             saveSessionNpcDraft = get(),
             setActiveSession = get(),
+            loadWikilinkCatalog = get(),
+            listWikilinkBacklinks = get(),
         )
     }
     single {
@@ -1045,6 +1124,7 @@ internal fun appModule() = module {
             observeOverlays = get(),
             observeLocations = get(),
             observeClocks = get(),
+            observeTables = get(),
             updateRunnerNotes = get(),
             createClock = get(),
             updateClock = get(),
@@ -1059,6 +1139,8 @@ internal fun appModule() = module {
             captureDeviceProbe = get(),
             cameraPermissionSettingsOpener = get(),
             deleteRecording = get(),
+            loadWikilinkCatalog = get(),
+            rollTable = get(),
         )
     }
     single {
@@ -1090,6 +1172,10 @@ internal fun appModule() = module {
             applyLook = get(),
             playEffect = get(),
             playLoop = get(),
+            createMusicTrack = get(),
+            deleteMusicTrack = get(),
+            setSceneMusic = get(),
+            musicPlayer = get(),
             appScope = get(),
         )
     }
@@ -1125,6 +1211,8 @@ internal fun appModule() = module {
             characterSheetViewModel = get(),
             questsViewModel = get(),
             sessionsViewModel = get(),
+            tablesViewModel = get(),
+            assetsViewModel = get(),
             encountersViewModel = get(),
             mapsViewModel = get(),
             worldMapViewModel = get(),

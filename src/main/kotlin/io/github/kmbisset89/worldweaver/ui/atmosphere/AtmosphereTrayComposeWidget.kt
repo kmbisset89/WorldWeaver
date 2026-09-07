@@ -30,6 +30,15 @@ internal fun AtmosphereTrayComposeWidget(
         modifier = Modifier.fillMaxWidth().padding(contentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        AtmosphereMusicComposeWidget(
+            tracks = state.musicTracks,
+            playingTrackId = state.playingTrackId,
+            volume = state.musicVolume,
+            loopEnabled = state.musicLoopEnabled,
+            musicError = state.musicError,
+            showLibraryActions = false,
+            onInteraction = onInteraction,
+        )
         when {
             !state.isConfigured -> Text(
                 text = "Connect Home Assistant, Philips Hue, or Govee lighting on the Atmosphere screen.",

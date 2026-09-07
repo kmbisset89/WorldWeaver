@@ -14,20 +14,22 @@ World Weaver is a desktop app for preparing and running tabletop campaigns. Ever
 8. [Lore](#lore)
 9. [Calendar](#calendar)
 10. [Factions](#factions)
-11. [Links](#links)
-12. [Characters](#characters)
-13. [Quests](#quests)
-14. [Sessions](#sessions)
-15. [Tonight (session runner)](#tonight-session-runner)
-16. [Maps](#maps)
-17. [Encounters](#encounters)
-18. [Dice](#dice)
-19. [Atmosphere](#atmosphere)
-20. [Search](#search)
-21. [Settings](#settings)
-22. [Files, bundles, and backups](#files-bundles-and-backups)
-23. [Using World Weaver with Foundry](#using-world-weaver-with-foundry)
-24. [Sample worlds](#sample-worlds)
+11. [Tables](#tables)
+12. [Assets](#assets)
+13. [Links](#links)
+14. [Characters](#characters)
+15. [Quests](#quests)
+16. [Sessions](#sessions)
+17. [Tonight (session runner)](#tonight-session-runner)
+18. [Maps](#maps)
+19. [Encounters](#encounters)
+20. [Dice](#dice)
+21. [Atmosphere](#atmosphere)
+22. [Search](#search)
+23. [Settings](#settings)
+24. [Files, bundles, and backups](#files-bundles-and-backups)
+25. [Using World Weaver with Foundry](#using-world-weaver-with-foundry)
+26. [Sample worlds](#sample-worlds)
 
 ## First launch
 
@@ -41,7 +43,7 @@ Most screens need an **active world**. Campaign-scoped screens (quests, sessions
 
 | Scope | What lives there |
 |-------|------------------|
-| **World** | Locations, world maps, lore, calendar, holidays, celestial bodies, factions, the people library |
+| **World** | Locations, world maps, lore, calendar, holidays, celestial bodies, factions, random tables, assets, the people library |
 | **Campaign** | Status, party PCs, quests, sessions, battle maps, encounters, campaign notes on locations |
 
 Create a world first, then a campaign inside it. You can keep several campaigns in one world (an ongoing game, an archived run, a completed chronicle).
@@ -153,6 +155,8 @@ Lore is world-scoped. Categories include History, Myth, Religion, Culture, Geogr
 
 Each entry can have body text, tags, related lore, and links to locations or people. Mark **DM-only secrets** and optional **hints** so you can reveal them at the table without putting the secret in the player-facing text.
 
+Type `[[` in lore body text, session notes, scene notes, or Tonight notes to insert an inline link to a person, place, lore entry, faction, quest, or session. Click a resolved link to open that page. People, places, lore, quests, and sessions show a **Mentioned in** section of notes that link back to them.
+
 ## Calendar
 
 The calendar belongs to the world: era suffix, custom month names, weekday names, and the current in-world date. Sessions can stamp an in-world date so the calendar reflects what you have already played.
@@ -167,11 +171,23 @@ You need an active world before the calendar has a setting to edit.
 
 Create factions with name, description, goals, and notes. Attach people as members. Memberships show up on **Links**.
 
+## Tables
+
+Tables are world-scoped weighted lists for encounters, loot, rumors, weather, and similar prep. Add named rows with a weight (higher is more likely) and optionally nest another table on a row.
+
+**Roll** from the Tables screen or from **Tonight**. Type `[[` in notes to link people, places, and lore; tables themselves are rolled, not wikilinked.
+
+## Assets
+
+**Assets** is a world-scoped inbox for files you are considering: a map you might use, a portrait you have not assigned, a letter that may become a handout. Add one or more files, give them a name and notes, preview images, and **Open** anything else in your OS. Removing an item deletes World Weaver’s copy, not the original on disk.
+
+These files travel with a world `.wwbundle` and a machine `.wwbackup`. They are not attached to locations, sessions, or Player view until you decide they belong somewhere else.
+
 ## Links
 
-**Links** is a relationship web of people and faction memberships.
+**Links** is a relationship web of people and faction memberships. Nodes settle into clusters, glow by kind, and dim unrelated people when you hover or select one.
 
-Filter by search and relationship type (Parent, Child, Sibling, Spouse, Ancestor, Descendant, Mentor, Student, Ally, Rival, Enemy, Other). You can show or hide isolates and memberships.
+Pan the graph by dragging empty space, drag a node to pin it, and scroll to zoom toward the cursor. Search highlights matching names. The Tune control opens a drawer for relationship-type filters, unlinked nodes, memberships, and the selected person's or faction's details.
 
 Add relationships on **Characters** and memberships on **Factions**; this screen visualizes them.
 
@@ -212,7 +228,7 @@ Sessions also belong to the active campaign. Clicking a session makes it the **a
 
 Typical fields and sections:
 
-- Name, notes, in-world date
+- Name, notes, in-world date (type `[[` in notes and scene notes to link people, places, and lore)
 - Recap (“what changed”)
 - Scenes
 - March order
@@ -236,10 +252,11 @@ The run screen shows:
 - Session name, in-world date, calendar “today”, and any holiday or important day that falls on that date
 - Planned scenes
 - Progress clocks (2–12 segments) for story pressure; click a segment to fill or unfill
+- Weighted tables with **Roll** and the last result
 - One countdown timer with 5 / 10 / 15 minute presets
 - **Record** — Pick a **microphone**, then **Mic** for table audio or **Camera** for video plus that mic with a live preview. The first Camera attempt asks the OS for access. If that is denied, **Allow camera** opens Camera privacy settings. **Open** plays the file in the OS player. Recordings stay on this computer with the session (`~/.worldweaver/recordings`); they are not included in world bundles or machine backups
 - Lookup for people, locations, and lore, with a read-only peek and **Open** to the full screen
-- Editable session notes and a separate scratch pad (scratch does not overwrite prep notes)
+- Editable session notes and a separate scratch pad (scratch does not overwrite prep notes). Type `[[` to link people, places, lore, and other records; click a link to open it
 - Recap (“what changed”) after you close a session
 - Party cards (HP and AC; click to open the sheet)
 - Atmosphere scenes, one-shot effects, and live loops in place, plus **Pop out** for the floating tray
@@ -312,7 +329,7 @@ Player characters stay visible on Player view. You can hide NPC and monster toke
 
 ## Atmosphere
 
-**Atmosphere** is a named tray of table-side looks. One button can fire **Home Assistant**, **Philips Hue**, and **Govee** together. World Weaver does not play music itself and does not change Foundry or battle-map lighting.
+**Atmosphere** is a named tray of table-side looks and ambience. One button can fire **Home Assistant**, **Philips Hue**, and **Govee** together, and can start a linked music file. World Weaver does not change Foundry or battle-map lighting.
 
 Connect whichever hubs you actually have. You do not need all three.
 
@@ -347,6 +364,17 @@ Govee uses LAN Control (UDP on the local network), not the Govee cloud.
 
 Govee has no local scene catalog. World Weaver stores the last scan so mappings can still find those lights later. If a light’s IP changes, scan again.
 
+### Music
+
+Link audio files that already live on this computer. World Weaver plays them in the Atmosphere tray, the pop-out window, and Tonight. It does not copy the files.
+
+1. Open **Atmosphere**.
+2. Under **Music**, click **Add files** and choose `mp3`, `wav`, `ogg`, `flac`, `m4a`, `aac`, or `aiff` files.
+3. Play a track from the list, or from the tray on Tonight. **Loop** stays on until you turn it off. **Volume** is remembered on this computer.
+4. When mapping a scene, pick a track so activating that scene also starts the music. Activating a scene with no track leaves the current music playing.
+
+If a linked file is moved or deleted, Play shows that the file is missing. Link it again from the new location. A Settings `.wwbackup` stores the paths, not the audio bytes. Restoring on another computer does not bring the files with it.
+
 ### Map scenes
 
 Give the table a short name, then attach any combination of:
@@ -354,16 +382,17 @@ Give the table a short name, then attach any combination of:
 - a Home Assistant scene (`scene.tavern`, or pick from the loaded catalog)
 - Hue lights with a Look, or a Hue scene from the loaded Hue catalog (optionally limited to selected Hue lights)
 - Govee lights selected above
+- a music file linked on this computer (optional)
 
-**Add scene** requires at least one of those targets.
+**Add scene** requires at least one lighting target. Music is optional.
 
 ### At the table
 
-**Pop out** opens a floating **Atmosphere** window. Named scenes, selected Hue and Govee lights, moods, the color picker, transition, one-shot effects, and live looping effects live in that tray. Turn on **Always on top** to keep it above other apps (the choice is remembered). Tonight embeds the same scene and effect controls; **Pop out** on Tonight opens the floating tray. Click a named scene to activate it, use Look to set color and brightness on the selected lights, fire a one-shot effect when something happens at the table, or start a live loop such as Fire or Water.
+**Pop out** opens a floating **Atmosphere** window. Named scenes, selected Hue and Govee lights, moods, the color picker, transition, one-shot effects, live looping effects, and the music player live in that tray. Turn on **Always on top** to keep it above other apps (the choice is remembered). Tonight embeds the same scene, effect, and music controls; **Pop out** on Tonight opens the floating tray. Click a named scene to activate it, use Look to set color and brightness on the selected lights, fire a one-shot effect when something happens at the table, start a live loop such as Fire or Water, or play a linked music file.
 
-If the tray says you are not connected, connect Home Assistant, pair Hue, or scan Govee lights on the Atmosphere screen first.
+If the tray says you are not connected, connect Home Assistant, pair Hue, or scan Govee lights on the Atmosphere screen first. Linked music still plays without those hubs.
 
-Home Assistant URL and token, Hue bridge host and application key, loaded Hue lights, scanned Govee devices, selected lights for Look, custom moods, and scene mappings stay on this computer. They are included in a **Settings** `.wwbackup` so a restore can reconnect. They are not included in a world `.wwbundle`.
+Home Assistant URL and token, Hue bridge host and application key, loaded Hue lights, scanned Govee devices, selected lights for Look, custom moods, scene mappings, linked music paths, volume, and loop stay on this computer. They are included in a **Settings** `.wwbackup` so a restore can reconnect. They are not included in a world `.wwbundle`.
 
 ## Search
 
@@ -379,6 +408,8 @@ The field at the top of the main window searches:
 - People
 - Quests
 - Sessions
+- Tables
+- Assets
 
 Choosing a result activates the needed world or campaign and opens that screen. Empty query results show **No matching records.**
 
@@ -435,6 +466,7 @@ On-disk folder: **`~/.worldweaver/`**
 | `world_maps/` | World map tiles |
 | `voices/` | Voice clips |
 | `recordings/` | Tonight session recordings (not in bundles or backups) |
+| `assets/` | Assets inbox files |
 | `srd/` | Imported SRD |
 
 Appearance, profile, and Atmosphere (Home Assistant URL and token, Hue application key, scanned Govee devices, and scene mappings) also use this machine’s Java preferences. Copying only `~/.worldweaver` moves worlds and media; a `.wwbackup` is the supported way to migrate everything Settings and Atmosphere know about.

@@ -5,6 +5,8 @@ import io.github.kmbisset89.worldweaver.domain.PersonRef
 import io.github.kmbisset89.worldweaver.domain.PlotThreadPriority
 import io.github.kmbisset89.worldweaver.domain.PlotThreadStatus
 import io.github.kmbisset89.worldweaver.domain.SessionNpcDraftDestination
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
 
 internal sealed interface SessionsInteraction {
     data object ScreenStarted : SessionsInteraction
@@ -19,6 +21,9 @@ internal sealed interface SessionsInteraction {
     data object DeleteConfirmed : SessionsInteraction
     data object DeleteCancelled : SessionsInteraction
     data class LinkedQuestSelected(val questId: String) : SessionsInteraction
+    data class WikilinkSelected(val target: WikilinkTarget) : SessionsInteraction
+    data class BacklinkSelected(val backlink: WikilinkBacklink) : SessionsInteraction
+    data class EditorWikilinkSelected(val target: WikilinkTarget) : SessionsInteraction
     data class EditorNameChanged(val name: String) : SessionsInteraction
     data class EditorNotesChanged(val notes: String) : SessionsInteraction
     data class EditorYearChanged(val year: String) : SessionsInteraction
@@ -31,6 +36,7 @@ internal sealed interface SessionsInteraction {
     data class SceneRemoved(val index: Int) : SessionsInteraction
     data class SceneTitleChanged(val index: Int, val title: String) : SessionsInteraction
     data class SceneNotesChanged(val index: Int, val notes: String) : SessionsInteraction
+    data class SceneNotesWikilinkSelected(val index: Int, val target: WikilinkTarget) : SessionsInteraction
     data class SceneMoved(val index: Int, val delta: Int) : SessionsInteraction
     data class MarchPersonAdded(val person: PersonRef) : SessionsInteraction
     data class MarchEntryRemoved(val index: Int) : SessionsInteraction

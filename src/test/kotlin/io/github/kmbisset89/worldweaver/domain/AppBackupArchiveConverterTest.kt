@@ -39,6 +39,7 @@ internal class AppBackupArchiveConverterTest {
                 worldMapsDir = File(temp, "world_maps"),
                 voicesDir = voices,
                 srdDir = srd,
+                assetsDir = File(temp, "assets"),
             )
 
             val result = converter.read(dest, extractTo)
@@ -64,6 +65,9 @@ internal class AppBackupArchiveConverterTest {
             )
             assertEquals("", ready.prefs.homeAssistantBaseUrl)
             assertEquals(emptyList(), ready.prefs.atmosphereScenes)
+            assertEquals(emptyList(), ready.prefs.atmosphereMusicTracks)
+            assertEquals(AtmosphereSettings.DEFAULT_MUSIC_VOLUME, ready.prefs.atmosphereMusicVolume)
+            assertEquals(AtmosphereSettings.DEFAULT_MUSIC_LOOP, ready.prefs.atmosphereMusicLoopEnabled)
         } finally {
             temp.deleteRecursively()
         }

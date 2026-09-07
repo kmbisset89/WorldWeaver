@@ -29,7 +29,6 @@ internal sealed class LinksViewState {
         val campaignName: String?,
         val nodes: List<Node>,
         val edges: List<Edge>,
-        val positions: Map<String, LayoutPoint>,
         val selectedNodeId: String?,
         val inspector: Inspector?,
         val searchQuery: String,

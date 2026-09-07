@@ -91,6 +91,8 @@ internal class LargeWorldBundleFactoryTest {
         val observances = FakeWorldCalendarObservanceRepository()
         val celestialBodies = FakeWorldCelestialBodyRepository()
         val factions = FakeFactionRepository()
+        val randomTables = FakeRandomTableRepository()
+        val assets = FakeAssetRepository()
         val memberships = FakeFactionMembershipRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
@@ -111,6 +113,7 @@ internal class LargeWorldBundleFactoryTest {
         val worldMaps = FakeWorldMapRepository()
         val worldMapFileStore = WorldMapFileStore(File(tempDir, "world_maps"))
         val voiceClipFileStore = VoiceClipFileStore(File(tempDir, "voices"))
+        val assetFileStore = AssetFileStore(File(tempDir, "assets"))
         private val instant = InstantProvider { java.time.Instant.parse("2026-08-30T15:00:00Z") }
         private var nextId = 0
         private val importWorldUseCase = ImportWorldBundleUseCase(
@@ -128,6 +131,8 @@ internal class LargeWorldBundleFactoryTest {
             locationRepository = locations,
             loreRepository = lore,
             factionRepository = factions,
+            randomTableRepository = randomTables,
+            assetRepository = assets,
             factionMembershipRepository = memberships,
             worldPersonRepository = worldPeople,
             campaignPersonRepository = campaignPeople,
@@ -147,6 +152,7 @@ internal class LargeWorldBundleFactoryTest {
             worldMapRepository = worldMaps,
             worldMapFileStore = worldMapFileStore,
             voiceClipFileStore = voiceClipFileStore,
+            assetFileStore = assetFileStore,
             setActiveWorld = SetActiveWorldUseCase(worlds, campaigns, context, instant),
         )
 

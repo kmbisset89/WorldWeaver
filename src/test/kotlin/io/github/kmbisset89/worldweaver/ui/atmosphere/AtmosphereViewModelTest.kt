@@ -11,11 +11,15 @@ import io.github.kmbisset89.worldweaver.domain.ApplyAtmosphereLookUseCase
 import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingEffect
 import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingLoop
 import io.github.kmbisset89.worldweaver.domain.AtmosphereMood
+import io.github.kmbisset89.worldweaver.domain.AtmosphereMusicPlayer
+import io.github.kmbisset89.worldweaver.domain.AtmosphereMusicTrack
 import io.github.kmbisset89.worldweaver.domain.AtmosphereScene
 import io.github.kmbisset89.worldweaver.domain.AtmosphereSettingsStore
 import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereMoodUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereMusicTrackUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereSceneUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereMoodUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereMusicTrackUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereSceneUseCase
 import io.github.kmbisset89.worldweaver.domain.DiscoverHueBridgesUseCase
 import io.github.kmbisset89.worldweaver.domain.EntityIdFactory
@@ -44,6 +48,7 @@ import io.github.kmbisset89.worldweaver.domain.PlayAtmosphereLightingLoopUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHomeAssistantConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHueConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.ScanGoveeDevicesUseCase
+import io.github.kmbisset89.worldweaver.domain.SetAtmosphereSceneMusicUseCase
 import io.github.kmbisset89.worldweaver.domain.TestHomeAssistantConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.TestHueConnectionUseCase
 import java.util.prefs.Preferences
@@ -556,6 +561,83 @@ internal class AtmosphereViewModelTest {
         assertFalse(content(viewModel).isFloatingOpen)
     }
 
+    @Test
+    fun playingAMissingLinkedFileShowsError() {
+        val store = AtmosphereSettingsStore(preferences)
+        store.setMusicTracks(
+            listOf(AtmosphereMusicTrack("t1", "Tavern", "/nope/tavern.mp3", 0)),
+        )
+        val viewModel = viewModel(store)
+
+        viewModel.onInteraction(AtmosphereInteraction.MusicTrackPlaySelected("t1"))
+
+        val state = content(viewModel)
+        assertEquals("That music file is missing", state.musicError)
+        assertNull(state.playingTrackId)
+    }
+
+    @Test
+    fun activatingASceneStartsLinkedMusicEvenWhenLightsFail() {
+        val store = AtmosphereSettingsStore(preferences)
+        store.setMusicTracks(
+            listOf(AtmosphereMusicTrack("t1", "Tavern", "/nope/tavern.mp3", 0)),
+        )
+        store.setScenes(
+            listOf(
+                AtmosphereScene(
+                    id = "s1",
+                    name = "Tavern",
+                    entityId = "scene.tavern",
+                    sortOrder = 0,
+                    musicTrackId = "t1",
+                ),
+            ),
+        )
+        val viewModel = viewModel(store)
+
+        viewModel.onInteraction(AtmosphereInteraction.SceneActivateSelected("s1"))
+        val state = awaitContent(viewModel) { it.activationError != null && !it.isActivating }
+        assertEquals("Home Assistant is not connected.", state.activationError)
+        assertEquals("That music file is missing", state.musicError)
+        assertNull(state.playingTrackId)
+    }
+
+    @Test
+    fun activatingASceneWithoutMusicLeavesPlaybackAlone() {
+        val store = AtmosphereSettingsStore(preferences)
+        store.setConnection(HomeAssistantConnection("http://ha.local:8123", "token"))
+        store.setMusicTracks(
+            listOf(AtmosphereMusicTrack("t1", "Tavern", "/nope/tavern.mp3", 0)),
+        )
+        store.setScenes(
+            listOf(AtmosphereScene("s1", "Tavern", "scene.tavern", 0)),
+        )
+        val viewModel = viewModel(store)
+        viewModel.onInteraction(AtmosphereInteraction.MusicTrackPlaySelected("t1"))
+        assertEquals("That music file is missing", content(viewModel).musicError)
+
+        viewModel.onInteraction(AtmosphereInteraction.SceneActivateSelected("s1"))
+        val activated = awaitContent(viewModel) { it.lastActivatedSceneId != null && !it.isActivating }
+        assertEquals("s1", activated.lastActivatedSceneId)
+        assertEquals("That music file is missing", activated.musicError)
+    }
+
+    @Test
+    fun linkingFilesAddsTracks() {
+        val file = kotlin.io.path.createTempFile(suffix = ".mp3").toFile()
+        try {
+            file.writeBytes(byteArrayOf(1, 2, 3))
+            val viewModel = viewModel()
+            viewModel.onInteraction(AtmosphereInteraction.MusicFilesChosen(listOf(file.absolutePath)))
+            val state = content(viewModel)
+            assertEquals(1, state.musicTracks.size)
+            assertEquals("track-1", state.musicTracks.single().id)
+            assertNull(state.musicError)
+        } finally {
+            file.delete()
+        }
+    }
+
     private fun viewModel(
         store: AtmosphereSettingsStore = AtmosphereSettingsStore(preferences),
     ): AtmosphereViewModel {
@@ -587,6 +669,10 @@ internal class AtmosphereViewModelTest {
             applyLook = applyLook,
             playEffect = PlayAtmosphereLightingEffectUseCase(applyLook),
             playLoop = PlayAtmosphereLightingLoopUseCase(applyLook),
+            createMusicTrack = CreateAtmosphereMusicTrackUseCase(store, EntityIdFactory { "track-1" }),
+            deleteMusicTrack = DeleteAtmosphereMusicTrackUseCase(store),
+            setSceneMusic = SetAtmosphereSceneMusicUseCase(store),
+            musicPlayer = AtmosphereMusicPlayer(),
             appScope = scope,
         )
     }

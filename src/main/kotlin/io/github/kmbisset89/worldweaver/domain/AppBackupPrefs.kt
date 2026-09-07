@@ -25,4 +25,7 @@ internal data class AppBackupPrefs(
     val atmosphereSelectedHueLightIds: List<String> = emptyList(),
     val atmosphereSelectedGoveeDeviceIds: List<String> = emptyList(),
     val atmosphereLookTransitionMs: Int = LightingTransitionCalculator.DEFAULT_DURATION_MS,
+    val atmosphereMusicTracks: List<AtmosphereMusicTrack> = emptyList(),
+    val atmosphereMusicVolume: Int = AtmosphereSettings.DEFAULT_MUSIC_VOLUME,
+    val atmosphereMusicLoopEnabled: Boolean = AtmosphereSettings.DEFAULT_MUSIC_LOOP,
 )

@@ -191,6 +191,8 @@ internal class DeleteWorldUseCaseTest {
             relationships,
             deleteWorldPerson,
             voiceClipFileStore,
+            FakeAssetRepository(),
+            AssetFileStore(Files.createTempDirectory("ww-assets").toFile()),
             context,
         )
 

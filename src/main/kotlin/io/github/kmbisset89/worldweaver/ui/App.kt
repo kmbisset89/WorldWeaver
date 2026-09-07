@@ -60,6 +60,8 @@ import io.github.kmbisset89.worldweaver.ui.quests.QuestsScreen
 import io.github.kmbisset89.worldweaver.ui.run.RunScreen
 import io.github.kmbisset89.worldweaver.ui.sessions.SessionsScreen
 import io.github.kmbisset89.worldweaver.ui.settings.SettingsScreen
+import io.github.kmbisset89.worldweaver.ui.tables.TablesScreen
+import io.github.kmbisset89.worldweaver.ui.assets.AssetsScreen
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.SuccessGreen
 import io.github.kmbisset89.worldweaver.ui.theme.WorldWeaverTheme
@@ -406,6 +408,22 @@ internal fun App(
                         SessionsScreen(
                             viewState = sessionsState,
                             onInteraction = viewModel.sessionsViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.TABLES -> {
+                        val tablesState by viewModel.tablesViewModel.state.collectAsState()
+                        TablesScreen(
+                            viewState = tablesState,
+                            onInteraction = viewModel.tablesViewModel::onInteraction
+                        )
+                    }
+
+                    Screen.ASSETS -> {
+                        val assetsState by viewModel.assetsViewModel.state.collectAsState()
+                        AssetsScreen(
+                            viewState = assetsState,
+                            onInteraction = viewModel.assetsViewModel::onInteraction
                         )
                     }
 

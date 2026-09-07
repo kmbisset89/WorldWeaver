@@ -20,6 +20,7 @@ internal data class AtmosphereScene(
     val goveePowerOn: Boolean = true,
     val goveeBrightness: Int = 80,
     val goveeColorHex: String = "",
+    val musicTrackId: String = "",
 ) {
     val hasHomeAssistant: Boolean
         get() = entityId.isNotBlank()

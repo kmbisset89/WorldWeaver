@@ -28,6 +28,7 @@ import io.github.kmbisset89.worldweaver.domain.EncounterStatus
 import io.github.kmbisset89.worldweaver.domain.FifthEditionSheet
 import io.github.kmbisset89.worldweaver.domain.LevelingMode
 import io.github.kmbisset89.worldweaver.domain.LoadSessionReferencePeekUseCase
+import io.github.kmbisset89.worldweaver.domain.LoadWikilinkCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.LocationOverlay
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
@@ -37,6 +38,7 @@ import io.github.kmbisset89.worldweaver.domain.ObserveLocationOverlaysForActiveC
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObservePeopleForActiveContextUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveRandomTablesForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionClocksForActiveSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
@@ -45,6 +47,8 @@ import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
 import io.github.kmbisset89.worldweaver.domain.PersonKind
 import io.github.kmbisset89.worldweaver.domain.Quest
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
+import io.github.kmbisset89.worldweaver.domain.RandomTable
+import io.github.kmbisset89.worldweaver.domain.RollRandomTableUseCase
 import io.github.kmbisset89.worldweaver.domain.SearchHit
 import io.github.kmbisset89.worldweaver.domain.SearchSessionReferencesUseCase
 import io.github.kmbisset89.worldweaver.domain.Session
@@ -59,6 +63,11 @@ import io.github.kmbisset89.worldweaver.domain.SessionRecordingKind
 import io.github.kmbisset89.worldweaver.domain.SessionReferencePeek
 import io.github.kmbisset89.worldweaver.domain.UpdateSessionClockUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateSessionRunnerNotesUseCase
+import io.github.kmbisset89.worldweaver.domain.WikilinkCatalog
+import io.github.kmbisset89.worldweaver.domain.WikilinkDraftCompleter
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
+import io.github.kmbisset89.worldweaver.domain.WikilinkTextParser
+import io.github.kmbisset89.worldweaver.domain.WikilinkTextResolver
 import io.github.kmbisset89.worldweaver.domain.WorldCalendar
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservance
 import io.github.kmbisset89.worldweaver.domain.WorldDateFormatter
@@ -81,6 +90,7 @@ internal class RunViewModel(
     private val observeOverlays: ObserveLocationOverlaysForActiveCampaignUseCase,
     private val observeLocations: ObserveLocationsForActiveWorldUseCase,
     private val observeClocks: ObserveSessionClocksForActiveSessionUseCase,
+    private val observeTables: ObserveRandomTablesForActiveWorldUseCase,
     private val updateRunnerNotes: UpdateSessionRunnerNotesUseCase,
     private val createClock: CreateSessionClockUseCase,
     private val updateClock: UpdateSessionClockUseCase,
@@ -95,7 +105,12 @@ internal class RunViewModel(
     private val captureDeviceProbe: SessionCaptureDeviceProbe,
     private val cameraPermissionSettingsOpener: SessionCameraPermissionSettingsOpener,
     private val deleteRecording: DeleteSessionRecordingUseCase,
+    private val loadWikilinkCatalog: LoadWikilinkCatalogUseCase,
+    private val rollTable: RollRandomTableUseCase,
     private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
+    private val wikilinkParser: WikilinkTextParser = WikilinkTextParser(),
+    private val wikilinkResolver: WikilinkTextResolver = WikilinkTextResolver(),
+    private val wikilinkCompleter: WikilinkDraftCompleter = WikilinkDraftCompleter(),
 ) {
     private val _state = MutableStateFlow<RunViewState>(RunViewState.Loading)
     val state: StateFlow<RunViewState> = _state.asStateFlow()
@@ -131,6 +146,8 @@ internal class RunViewModel(
     private var lookupResults: List<SearchHit> = emptyList()
     private var lookupPeek: SessionReferencePeek? = null
     private var latestClocks: List<SessionClock> = emptyList()
+    private var latestTables: List<RandomTable> = emptyList()
+    private var lastTableRoll: String? = null
     private var hasMicrophone: Boolean = false
     private var hasCamera: Boolean = false
     private var microphones: List<SessionMicrophoneDevice> = emptyList()
@@ -142,6 +159,8 @@ internal class RunViewModel(
     private var recordings: List<RunViewState.RecordingLine> = emptyList()
     private var recordingError: String? = null
     private var recordingElapsedJob: Job? = null
+    private var latestCatalog: WikilinkCatalog = WikilinkCatalog(emptyList())
+    private var catalogJob: Job? = null
 
     init {
         refreshCaptureDevices()
@@ -185,6 +204,26 @@ internal class RunViewModel(
                 refreshContentFields()
                 scheduleNotesSave()
             }
+            is RunInteraction.SessionNotesWikilinkSelected -> {
+                draftNotes = wikilinkCompleter.complete(draftNotes.orEmpty().ifEmpty {
+                    (_state.value as? RunViewState.Content)?.sessionNotes.orEmpty()
+                }, interaction.target)
+                refreshContentFields()
+                scheduleNotesSave()
+            }
+            is RunInteraction.ScratchNotesWikilinkSelected -> {
+                draftScratchNotes = wikilinkCompleter.complete(
+                    draftScratchNotes.orEmpty().ifEmpty {
+                        (_state.value as? RunViewState.Content)?.scratchNotes.orEmpty()
+                    },
+                    interaction.target,
+                )
+                refreshContentFields()
+                scheduleNotesSave()
+            }
+            is RunInteraction.WikilinkSelected -> emitEffect(
+                RunViewEffect.OpenSearchHit(interaction.target.toSearchHit())
+            )
             is RunInteraction.LookupQueryChanged -> changeLookupQuery(interaction.query)
             is RunInteraction.LookupResultSelected -> selectLookupResult(interaction.hit)
             RunInteraction.LookupPeekDismissed -> {
@@ -209,6 +248,7 @@ internal class RunViewModel(
             RunInteraction.ClockCreateSelected -> createProgressClock()
             is RunInteraction.ClockFilledSelected -> fillClock(interaction.clockId, interaction.filledCount)
             is RunInteraction.ClockDeleteSelected -> removeClock(interaction.clockId)
+            is RunInteraction.TableRollSelected -> rollRandomTable(interaction.tableId)
             is RunInteraction.TimerMinutesChanged -> {
                 timerMinutesText = interaction.value
                 refreshContentFields()
@@ -268,8 +308,9 @@ internal class RunViewModel(
                     SupportBundle(encounters, calendar, observances, overlays, locations)
                 },
                 observeClocks(),
-            ) { primary, support, clocks ->
-                LoadedSnapshot(primary, support, clocks)
+                observeTables(),
+            ) { primary, support, clocks, tables ->
+                LoadedSnapshot(primary, support, clocks, tables)
             }
                 .catch { error ->
                     _state.value = RunViewState.Error(
@@ -295,6 +336,7 @@ internal class RunViewModel(
             return
         }
         latestWorldId = world.id
+        refreshWikilinkCatalog(world.id)
         val campaign = snapshot.primary.details.campaign
         if (campaign == null) {
             latestSessionId = null
@@ -334,6 +376,7 @@ internal class RunViewModel(
         }
         latestSessionId = session.id
         latestClocks = snapshot.clocks
+        latestTables = snapshot.tables
         _state.value = contentState(
             worldName = world.name,
             campaignName = campaign.name,
@@ -385,6 +428,14 @@ internal class RunViewModel(
             sessionNotes = draftNotes ?: session.notes,
             scratchNotes = draftScratchNotes ?: session.scratchNotes,
             recap = session.recap,
+            sessionNotesSpans = wikilinkResolver.resolve(draftNotes ?: session.notes, latestCatalog),
+            scratchNotesSpans = wikilinkResolver.resolve(
+                draftScratchNotes ?: session.scratchNotes,
+                latestCatalog,
+            ),
+            recapSpans = wikilinkResolver.resolve(session.recap, latestCatalog),
+            notesSuggestions = suggestionsFor(draftNotes ?: session.notes),
+            scratchSuggestions = suggestionsFor(draftScratchNotes ?: session.scratchNotes),
             inWorldDateLabel = inWorldDateLabel,
             calendarTodayLabel = calendarTodayLabel,
             observanceNames = observanceNames,
@@ -445,6 +496,10 @@ internal class RunViewModel(
             recordings = recordings,
             recordingError = recordingError,
             cameraNeedsPermission = cameraNeedsPermission,
+            tables = latestTables.map { table ->
+                RunViewState.TableLine(tableId = table.id, name = table.name)
+            },
+            lastTableRoll = lastTableRoll,
         )
     }
 
@@ -476,6 +531,17 @@ internal class RunViewModel(
             _state.value = current.copy(
                 sessionNotes = draftNotes ?: current.sessionNotes,
                 scratchNotes = draftScratchNotes ?: current.scratchNotes,
+                sessionNotesSpans = wikilinkResolver.resolve(
+                    draftNotes ?: current.sessionNotes,
+                    latestCatalog,
+                ),
+                scratchNotesSpans = wikilinkResolver.resolve(
+                    draftScratchNotes ?: current.scratchNotes,
+                    latestCatalog,
+                ),
+                recapSpans = wikilinkResolver.resolve(current.recap, latestCatalog),
+                notesSuggestions = suggestionsFor(draftNotes ?: current.sessionNotes),
+                scratchSuggestions = suggestionsFor(draftScratchNotes ?: current.scratchNotes),
                 clocks = latestClocks.map { RunViewState.ClockLine(it) },
                 clockLabel = clockLabel,
                 clockSegmentCount = clockSegmentCount,
@@ -501,6 +567,10 @@ internal class RunViewModel(
                 recordings = recordings,
                 recordingError = recordingError,
                 cameraNeedsPermission = cameraNeedsPermission,
+                tables = latestTables.map { table ->
+                    RunViewState.TableLine(tableId = table.id, name = table.name)
+                },
+                lastTableRoll = lastTableRoll,
             )
         }
     }
@@ -585,6 +655,20 @@ internal class RunViewModel(
     private fun removeClock(clockId: String) {
         appScope.scope.launch {
             deleteClock(clockId)
+        }
+    }
+
+    private fun rollRandomTable(tableId: String) {
+        appScope.scope.launch {
+            when (val result = rollTable(tableId)) {
+                is RollRandomTableUseCase.Result.Rolled -> {
+                    lastTableRoll = result.roll.displayText()
+                    refreshContentFields()
+                }
+                RollRandomTableUseCase.Result.Empty,
+                RollRandomTableUseCase.Result.NotFound,
+                -> Unit
+            }
         }
     }
 
@@ -898,6 +982,19 @@ internal class RunViewModel(
         )
     }
 
+    private fun suggestionsFor(text: String): List<WikilinkTarget> {
+        val query = wikilinkParser.incompleteQuery(text) ?: return emptyList()
+        return latestCatalog.suggest(query)
+    }
+
+    private fun refreshWikilinkCatalog(worldId: String) {
+        catalogJob?.cancel()
+        catalogJob = appScope.scope.launch {
+            latestCatalog = loadWikilinkCatalog(worldId)
+            refreshContentFields()
+        }
+    }
+
     private fun elapsedLabel(seconds: Int): String {
         val hours = seconds / 3600
         val minutes = (seconds % 3600) / 60
@@ -942,6 +1039,7 @@ internal class RunViewModel(
         val primary: PrimaryBundle,
         val support: SupportBundle,
         val clocks: List<SessionClock>,
+        val tables: List<RandomTable>,
     )
 
     private companion object {

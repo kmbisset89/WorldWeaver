@@ -39,6 +39,7 @@ import io.github.kmbisset89.worldweaver.ui.voice.chooseWavPath
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkBacklinksComposeWidget
 
 @Composable
 internal fun CharacterDetailPane(
@@ -172,6 +173,12 @@ internal fun CharacterDetailPane(
         AttachedQuestSection(
             attachedQuests = selected.attachedQuests,
             onInteraction = onInteraction,
+        )
+        WikilinkBacklinksComposeWidget(
+            backlinks = selected.wikilinkBacklinks,
+            onBacklinkSelected = { backlink ->
+                onInteraction(CharactersInteraction.BacklinkSelected(backlink))
+            },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(

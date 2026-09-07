@@ -12,6 +12,8 @@ internal class SearchRecordsUseCase(
     private val campaignPersonRepository: CampaignPersonRepository,
     private val questRepository: QuestRepository,
     private val sessionRepository: SessionRepository,
+    private val randomTableRepository: RandomTableRepository,
+    private val assetRepository: AssetRepository,
 ) {
     suspend operator fun invoke(query: String): List<SearchHit> {
         val trimmed = query.trim()
@@ -131,8 +133,28 @@ internal class SearchRecordsUseCase(
                 campaignId = session.campaignId,
             )
         }
+        val tables = randomTableRepository.search(trimmed).map { table ->
+            hit(
+                kind = SearchKind.RandomTable,
+                id = table.id,
+                title = table.name,
+                snippet = snippet(table.notes),
+                worldId = table.worldId,
+                campaignId = null,
+            )
+        }
+        val assets = assetRepository.search(trimmed).map { asset ->
+            hit(
+                kind = SearchKind.Asset,
+                id = asset.id,
+                title = asset.displayName,
+                snippet = snippet(asset.notes.ifBlank { asset.originalFileName }),
+                worldId = asset.worldId,
+                campaignId = null,
+            )
+        }
         return worlds + campaigns + locations + lore + observances + celestialBodies + factions +
-            worldPeople + campaignPeople + quests + sessions
+            worldPeople + campaignPeople + quests + sessions + tables + assets
     }
 
     private fun hit(

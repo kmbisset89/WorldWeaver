@@ -20,6 +20,8 @@ import io.github.kmbisset89.worldweaver.domain.DeletePlotThreadUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteReferenceDocUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.GenerateRandomNpcUseCase
+import io.github.kmbisset89.worldweaver.domain.ListWikilinkBacklinksUseCase
+import io.github.kmbisset89.worldweaver.domain.LoadWikilinkCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.LocationOverlay
 import io.github.kmbisset89.worldweaver.domain.MarchOrderEntry
@@ -53,6 +55,12 @@ import io.github.kmbisset89.worldweaver.domain.SetActiveSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdatePlotThreadUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateReferenceDocUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateSessionUseCase
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
+import io.github.kmbisset89.worldweaver.domain.WikilinkCatalog
+import io.github.kmbisset89.worldweaver.domain.WikilinkDraftCompleter
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
+import io.github.kmbisset89.worldweaver.domain.WikilinkTextParser
+import io.github.kmbisset89.worldweaver.domain.WikilinkTextResolver
 import io.github.kmbisset89.worldweaver.domain.WorldCalendar
 import io.github.kmbisset89.worldweaver.domain.WorldDate
 import io.github.kmbisset89.worldweaver.domain.WorldDateFormatter
@@ -80,7 +88,12 @@ internal class SessionsViewModel(
     private val generateRandomNpc: GenerateRandomNpcUseCase,
     private val saveSessionNpcDraft: SaveSessionNpcDraftUseCase,
     private val setActiveSession: SetActiveSessionUseCase,
+    private val loadWikilinkCatalog: LoadWikilinkCatalogUseCase,
+    private val listWikilinkBacklinks: ListWikilinkBacklinksUseCase,
     private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
+    private val wikilinkParser: WikilinkTextParser = WikilinkTextParser(),
+    private val wikilinkCompleter: WikilinkDraftCompleter = WikilinkDraftCompleter(),
+    private val wikilinkResolver: WikilinkTextResolver = WikilinkTextResolver(),
 ) {
     private val _state = MutableStateFlow<SessionsViewState>(SessionsViewState.Loading)
     val state: StateFlow<SessionsViewState> = _state.asStateFlow()
@@ -99,8 +112,14 @@ internal class SessionsViewModel(
     private var latestThreads: List<PlotThread> = emptyList()
     private var latestDocs: List<ReferenceDoc> = emptyList()
     private var latestWorldName: String = ""
+    private var latestWorldId: String? = null
     private var latestCampaignName: String = ""
     private var latestCalendar: WorldCalendar? = null
+    private var latestCatalog: WikilinkCatalog = WikilinkCatalog(emptyList())
+    private var latestBacklinks: List<WikilinkBacklink> = emptyList()
+    private var catalogJob: Job? = null
+    private var sceneWikilinkIndex: Int? = null
+    private var sceneWikilinkSuggestions: List<WikilinkTarget> = emptyList()
 
     init {
         observe()
@@ -125,11 +144,21 @@ internal class SessionsViewModel(
             is SessionsInteraction.LinkedQuestSelected -> {
                 _effects.tryEmit(SessionsViewEffect.OpenQuest(interaction.questId))
             }
+            is SessionsInteraction.WikilinkSelected -> {
+                _effects.tryEmit(SessionsViewEffect.OpenSearchHit(interaction.target.toSearchHit()))
+            }
+            is SessionsInteraction.BacklinkSelected -> {
+                _effects.tryEmit(SessionsViewEffect.OpenSearchHit(interaction.backlink.toSearchHit()))
+            }
+            is SessionsInteraction.EditorWikilinkSelected -> completeEditorWikilink(interaction.target)
             is SessionsInteraction.EditorNameChanged -> updateEditor { editor ->
                 editor?.copy(name = interaction.name, nameError = null)
             }
             is SessionsInteraction.EditorNotesChanged -> updateEditor { editor ->
-                editor?.copy(notes = interaction.notes)
+                editor?.copy(
+                    notes = interaction.notes,
+                    wikilinkSuggestions = suggestionsFor(interaction.notes),
+                )
             }
             is SessionsInteraction.EditorYearChanged -> updateEditor { editor ->
                 editor?.copy(yearText = interaction.year, dateError = null)
@@ -166,12 +195,34 @@ internal class SessionsViewModel(
                     },
                 )
             }
-            is SessionsInteraction.SceneNotesChanged -> mutateSelectedSession { session ->
-                session.copy(
-                    scenes = session.scenes.mapIndexed { index, scene ->
-                        if (index == interaction.index) scene.copy(notes = interaction.notes) else scene
-                    },
-                )
+            is SessionsInteraction.SceneNotesChanged -> {
+                sceneWikilinkIndex = interaction.index
+                sceneWikilinkSuggestions = suggestionsFor(interaction.notes)
+                mutateSelectedSession { session ->
+                    session.copy(
+                        scenes = session.scenes.mapIndexed { index, scene ->
+                            if (index == interaction.index) scene.copy(notes = interaction.notes) else scene
+                        },
+                    )
+                }
+            }
+            is SessionsInteraction.SceneNotesWikilinkSelected -> {
+                val currentNotes = latestSessions
+                    .firstOrNull { it.id == selectedSessionId }
+                    ?.scenes
+                    ?.getOrNull(interaction.index)
+                    ?.notes
+                    .orEmpty()
+                val completed = wikilinkCompleter.complete(currentNotes, interaction.target)
+                sceneWikilinkIndex = interaction.index
+                sceneWikilinkSuggestions = emptyList()
+                mutateSelectedSession { session ->
+                    session.copy(
+                        scenes = session.scenes.mapIndexed { index, scene ->
+                            if (index == interaction.index) scene.copy(notes = completed) else scene
+                        },
+                    )
+                }
             }
             is SessionsInteraction.SceneMoved -> mutateSelectedSession { session ->
                 session.copy(scenes = move(session.scenes, interaction.index, interaction.delta))
@@ -307,6 +358,7 @@ internal class SessionsViewModel(
         latestThreads = snapshot.support.threads
         latestDocs = snapshot.support.docs
         latestWorldName = world.name
+        latestWorldId = world.id
         latestCampaignName = campaign.name
         latestCalendar = snapshot.context.calendar
         val current = _state.value
@@ -318,6 +370,7 @@ internal class SessionsViewModel(
         }
         if (snapshot.context.sessions.isEmpty()) {
             selectedSessionId = null
+            refreshCatalogAndBacklinks(world.id, null)
             _state.value = SessionsViewState.Empty(
                 worldName = world.name,
                 campaignName = campaign.name,
@@ -327,6 +380,7 @@ internal class SessionsViewModel(
         }
         val selected = selectedFrom(snapshot.context.sessions) ?: snapshot.context.sessions.first()
         selectedSessionId = selected.id
+        refreshCatalogAndBacklinks(world.id, selected.id)
         _state.value = contentState(
             selected = selected,
             editor = editor,
@@ -364,6 +418,18 @@ internal class SessionsViewModel(
             threads = latestThreads,
             docs = latestDocs,
             personOptions = personOptions(),
+            notesSpans = selected?.let { session ->
+                wikilinkResolver.resolve(session.notes, latestCatalog)
+            }.orEmpty(),
+            recapSpans = selected?.let { session ->
+                wikilinkResolver.resolve(session.recap, latestCatalog)
+            }.orEmpty(),
+            scratchSpans = selected?.let { session ->
+                wikilinkResolver.resolve(session.scratchNotes, latestCatalog)
+            }.orEmpty(),
+            wikilinkBacklinks = latestBacklinks,
+            sceneWikilinkSuggestions = sceneWikilinkSuggestions,
+            sceneWikilinkIndex = sceneWikilinkIndex,
             editor = editor,
             threadEditor = overlays.threadEditor,
             docEditor = overlays.docEditor,
@@ -444,6 +510,7 @@ internal class SessionsViewModel(
             setActiveSession(sessionId)
         }
         refreshContent()
+        latestWorldId?.let { worldId -> refreshCatalogAndBacklinks(worldId, sessionId) }
     }
 
     private fun openCreateEditor() {
@@ -475,6 +542,7 @@ internal class SessionsViewModel(
                 datePreview = null,
                 dateError = null,
                 nameError = null,
+                wikilinkSuggestions = suggestionsFor(session.notes),
             )
         )
         when (val current = _state.value) {
@@ -941,6 +1009,44 @@ internal class SessionsViewModel(
         latestDocs = emptyList()
         latestCalendar = null
         selectedSessionId = null
+        latestWorldId = null
+        latestCatalog = WikilinkCatalog(emptyList())
+        latestBacklinks = emptyList()
+        sceneWikilinkIndex = null
+        sceneWikilinkSuggestions = emptyList()
+    }
+
+    private fun suggestionsFor(text: String): List<WikilinkTarget> {
+        val query = wikilinkParser.incompleteQuery(text) ?: return emptyList()
+        return latestCatalog.suggest(query)
+    }
+
+    private fun completeEditorWikilink(target: WikilinkTarget) {
+        updateEditor { editor ->
+            editor?.let { current ->
+                val completed = wikilinkCompleter.complete(current.notes, target)
+                current.copy(
+                    notes = completed,
+                    wikilinkSuggestions = emptyList(),
+                )
+            }
+        }
+    }
+
+    private fun refreshCatalogAndBacklinks(worldId: String, selectedId: String?) {
+        catalogJob?.cancel()
+        catalogJob = appScope.scope.launch {
+            latestCatalog = loadWikilinkCatalog(worldId)
+            latestBacklinks = if (selectedId == null) {
+                emptyList()
+            } else {
+                listWikilinkBacklinks(worldId, selectedId)
+            }
+            refreshContent()
+            updateEditor { editor ->
+                editor?.copy(wikilinkSuggestions = suggestionsFor(editor.notes))
+            }
+        }
     }
 
     private sealed interface DateParse {

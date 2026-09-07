@@ -35,12 +35,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kmbisset89.worldweaver.domain.AtmosphereMusicTrack
 import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
 
 @Composable
 internal fun AtmosphereScreen(
@@ -79,7 +83,7 @@ private fun AtmosphereContent(
                     color = TextPrimary,
                 )
                 Text(
-                    text = "Trigger Home Assistant, Philips Hue, and Govee lighting from one tray",
+                    text = "Trigger lighting and play linked music from one tray",
                     fontSize = 14.sp,
                     color = TextSecondary,
                 )
@@ -354,9 +358,29 @@ private fun AtmosphereContent(
                 }
             }
             item {
+                AtmosphereCard(title = "Music") {
+                    Text(
+                        text = "Link audio files on this computer. World Weaver plays them here and on Tonight. Files stay on disk; a Settings backup stores the paths only.",
+                        fontSize = 13.sp,
+                        color = TextSecondary,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    AtmosphereMusicComposeWidget(
+                        tracks = state.musicTracks,
+                        playingTrackId = state.playingTrackId,
+                        volume = state.musicVolume,
+                        loopEnabled = state.musicLoopEnabled,
+                        musicError = state.musicError,
+                        showLibraryActions = true,
+                        onInteraction = onInteraction,
+                        onAddFiles = { chooseMusicFiles(onInteraction) },
+                    )
+                }
+            }
+            item {
                 AtmosphereCard(title = "Scene mappings") {
                     Text(
-                        text = "Give the table a short name. Attach any combination of a Home Assistant scene, Hue lights with a Look (or a Hue scene), and Govee lights. This does not change Foundry or battle-map lighting.",
+                        text = "Give the table a short name. Attach any combination of a Home Assistant scene, Hue lights with a Look (or a Hue scene), and Govee lights. Optionally attach a music track so activating the scene also starts that file. This does not change Foundry or battle-map lighting.",
                         fontSize = 13.sp,
                         color = TextSecondary,
                     )
@@ -443,6 +467,28 @@ private fun AtmosphereContent(
                             }
                         }
                     }
+                    if (state.musicTracks.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Music for the next mapping (optional)",
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            state.musicTracks.forEach { track ->
+                                FilterChip(
+                                    selected = state.draftMusicTrackId == track.id,
+                                    onClick = {
+                                        onInteraction(
+                                            AtmosphereInteraction.DraftSceneMusicTrackSelected(track.id),
+                                        )
+                                    },
+                                    label = { Text(track.displayName) },
+                                )
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                     if (state.scenes.isEmpty()) {
                         Text(
@@ -452,40 +498,61 @@ private fun AtmosphereContent(
                         )
                     } else {
                         state.scenes.forEach { scene ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                                    Text(
-                                        text = scene.name,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = TextPrimary,
-                                    )
-                                    Text(
-                                        text = scene.targetSummary().ifBlank { "No targets" },
-                                        fontSize = 12.sp,
-                                        color = TextSecondary,
-                                    )
-                                }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            onInteraction(AtmosphereInteraction.SceneActivateSelected(scene.id))
-                                        },
-                                        enabled = !state.isActivating,
-                                    ) {
-                                        Text("Activate")
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = scene.name,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextPrimary,
+                                        )
+                                        Text(
+                                            text = scene.targetSummary().ifBlank { "No targets" },
+                                            fontSize = 12.sp,
+                                            color = TextSecondary,
+                                        )
                                     }
-                                    ActionIconButtonComposeWidget(
-                                        icon = Icons.Default.Delete,
-                                        tooltip = "Delete",
-                                        tint = ErrorRed,
-                                        onClick = {
-                                            onInteraction(AtmosphereInteraction.SceneDeleteSelected(scene.id))
-                                        },
-                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                onInteraction(AtmosphereInteraction.SceneActivateSelected(scene.id))
+                                            },
+                                            enabled = !state.isActivating,
+                                        ) {
+                                            Text("Activate")
+                                        }
+                                        ActionIconButtonComposeWidget(
+                                            icon = Icons.Default.Delete,
+                                            tooltip = "Delete",
+                                            tint = ErrorRed,
+                                            onClick = {
+                                                onInteraction(AtmosphereInteraction.SceneDeleteSelected(scene.id))
+                                            },
+                                        )
+                                    }
+                                }
+                                if (state.musicTracks.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        state.musicTracks.forEach { track ->
+                                            FilterChip(
+                                                selected = scene.musicTrackId == track.id,
+                                                onClick = {
+                                                    onInteraction(
+                                                        AtmosphereInteraction.SceneMusicTrackSelected(
+                                                            sceneId = scene.id,
+                                                            trackId = track.id,
+                                                        ),
+                                                    )
+                                                },
+                                                label = { Text(track.displayName) },
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -530,4 +597,21 @@ private fun AtmosphereCard(
             content()
         }
     }
+}
+
+private fun chooseMusicFiles(onInteraction: (AtmosphereInteraction) -> Unit) {
+    val dialog = FileDialog(null as Frame?, "Link music", FileDialog.LOAD)
+    dialog.isMultipleMode = true
+    dialog.setFilenameFilter { _, name -> AtmosphereMusicTrack.isSupported(name) }
+    dialog.isVisible = true
+    val files = dialog.files?.toList().orEmpty()
+    if (files.isNotEmpty()) {
+        onInteraction(AtmosphereInteraction.MusicFilesChosen(files.map(File::getAbsolutePath)))
+        return
+    }
+    val fileName = dialog.file ?: return
+    val directory = dialog.directory ?: return
+    onInteraction(
+        AtmosphereInteraction.MusicFilesChosen(listOf(File(directory, fileName).absolutePath)),
+    )
 }

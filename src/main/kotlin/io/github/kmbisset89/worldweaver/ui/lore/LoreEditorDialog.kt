@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.domain.LoreCategory
 import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkFieldComposeWidget
 
 @Composable
 internal fun LoreEditorDialog(
@@ -52,16 +53,19 @@ internal fun LoreEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                WikilinkFieldComposeWidget(
                     value = editor.content,
                     onValueChange = { onInteraction(LoreInteraction.EditorContentChanged(it)) },
-                    label = { Text("Content") },
+                    suggestions = editor.wikilinkSuggestions,
+                    onSuggestionSelected = { target ->
+                        onInteraction(LoreInteraction.EditorWikilinkSelected(target))
+                    },
+                    label = "Content",
+                    minLines = 4,
                     isError = editor.contentError != null,
                     supportingText = editor.contentError?.let { error ->
                         { Text(error) }
                     },
-                    minLines = 4,
-                    modifier = Modifier.fillMaxWidth()
                 )
                 Text("Category")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

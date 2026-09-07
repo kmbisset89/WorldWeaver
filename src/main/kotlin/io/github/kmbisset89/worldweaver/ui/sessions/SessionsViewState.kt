@@ -9,6 +9,9 @@ import io.github.kmbisset89.worldweaver.domain.RandomNpcDraft
 import io.github.kmbisset89.worldweaver.domain.ReferenceDoc
 import io.github.kmbisset89.worldweaver.domain.Session
 import io.github.kmbisset89.worldweaver.domain.SessionNpcDraftDestination
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
+import io.github.kmbisset89.worldweaver.domain.WikilinkDisplaySpan
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarMonth
 
 internal sealed class SessionsViewState {
@@ -41,6 +44,12 @@ internal sealed class SessionsViewState {
         val threads: List<PlotThread>,
         val docs: List<ReferenceDoc>,
         val personOptions: List<PersonOption>,
+        val notesSpans: List<WikilinkDisplaySpan> = emptyList(),
+        val recapSpans: List<WikilinkDisplaySpan> = emptyList(),
+        val scratchSpans: List<WikilinkDisplaySpan> = emptyList(),
+        val wikilinkBacklinks: List<WikilinkBacklink> = emptyList(),
+        val sceneWikilinkSuggestions: List<WikilinkTarget> = emptyList(),
+        val sceneWikilinkIndex: Int? = null,
         val editor: SessionEditorState?,
         val threadEditor: ThreadEditorState?,
         val docEditor: DocEditorState?,
@@ -77,6 +86,7 @@ internal sealed class SessionsViewState {
         val datePreview: String?,
         val dateError: String?,
         val nameError: String?,
+        val wikilinkSuggestions: List<WikilinkTarget> = emptyList(),
     )
 
     data class ThreadEditorState(

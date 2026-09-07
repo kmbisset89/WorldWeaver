@@ -26,18 +26,21 @@ import io.github.kmbisset89.worldweaver.domain.Quest
 import io.github.kmbisset89.worldweaver.domain.QuestLinkKind
 import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkBacklinksComposeWidget
 
 @Composable
 internal fun QuestDetailPane(
     quest: Quest,
     locationName: String?,
     links: List<QuestsViewState.QuestLinkRow>,
+    wikilinkBacklinks: List<WikilinkBacklink>,
     onInteraction: (QuestsInteraction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -73,6 +76,12 @@ internal fun QuestDetailPane(
         }
         ObjectivesSection(quest = quest, onInteraction = onInteraction)
         LinksSection(links = links, onInteraction = onInteraction)
+        WikilinkBacklinksComposeWidget(
+            backlinks = wikilinkBacklinks,
+            onBacklinkSelected = { backlink ->
+                onInteraction(QuestsInteraction.BacklinkSelected(backlink))
+            },
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (quest.status == QuestStatus.Active) {
                 TextButton(

@@ -1,6 +1,7 @@
 package io.github.kmbisset89.worldweaver.ui.locations
 
 import io.github.kmbisset89.worldweaver.domain.LocationType
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 
 internal sealed interface LocationsInteraction {
     data object ScreenStarted : LocationsInteraction
@@ -34,6 +35,7 @@ internal sealed interface LocationsInteraction {
     data object OverlaySaved : LocationsInteraction
     data class AttachedLoreSelected(val loreId: String) : LocationsInteraction
     data class AttachedQuestSelected(val questId: String) : LocationsInteraction
+    data class BacklinkSelected(val backlink: WikilinkBacklink) : LocationsInteraction
     data class VoiceClipAttached(val path: String) : LocationsInteraction
     data object VoiceClipRecordToggled : LocationsInteraction
     data object VoiceClipPlayToggled : LocationsInteraction

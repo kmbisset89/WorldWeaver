@@ -12,11 +12,14 @@ import io.github.kmbisset89.worldweaver.domain.ActivateAtmosphereSceneUseCase
 import io.github.kmbisset89.worldweaver.domain.ApplyAtmosphereLookUseCase
 import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingEffect
 import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingLoop
+import io.github.kmbisset89.worldweaver.domain.AtmosphereMusicPlayer
 import io.github.kmbisset89.worldweaver.domain.AtmosphereSettings
 import io.github.kmbisset89.worldweaver.domain.AtmosphereSettingsStore
 import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereMoodUseCase
+import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereMusicTrackUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateAtmosphereSceneUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereMoodUseCase
+import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereMusicTrackUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteAtmosphereSceneUseCase
 import io.github.kmbisset89.worldweaver.domain.DiscoverHueBridgesUseCase
 import io.github.kmbisset89.worldweaver.domain.GoveeColorHexParser
@@ -32,6 +35,7 @@ import io.github.kmbisset89.worldweaver.domain.PlayAtmosphereLightingLoopUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHomeAssistantConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.SaveHueConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.ScanGoveeDevicesUseCase
+import io.github.kmbisset89.worldweaver.domain.SetAtmosphereSceneMusicUseCase
 import io.github.kmbisset89.worldweaver.domain.TestHomeAssistantConnectionUseCase
 import io.github.kmbisset89.worldweaver.domain.TestHueConnectionUseCase
 
@@ -55,6 +59,10 @@ internal class AtmosphereViewModel(
     private val applyLook: ApplyAtmosphereLookUseCase,
     private val playEffect: PlayAtmosphereLightingEffectUseCase,
     private val playLoop: PlayAtmosphereLightingLoopUseCase,
+    private val createMusicTrack: CreateAtmosphereMusicTrackUseCase,
+    private val deleteMusicTrack: DeleteAtmosphereMusicTrackUseCase,
+    private val setSceneMusic: SetAtmosphereSceneMusicUseCase,
+    private val musicPlayer: AtmosphereMusicPlayer,
     private val appScope: AppCoroutineScope,
 ) {
     private val _state = MutableStateFlow<AtmosphereViewState>(contentFrom(store.settings.value))
@@ -135,6 +143,17 @@ internal class AtmosphereViewModel(
             AtmosphereInteraction.SceneCreateSelected -> createMappedScene()
             is AtmosphereInteraction.SceneDeleteSelected -> deleteMappedScene(interaction.sceneId)
             is AtmosphereInteraction.SceneActivateSelected -> activateMappedScene(interaction.sceneId)
+            is AtmosphereInteraction.DraftSceneMusicTrackSelected -> toggleDraftMusicTrack(interaction.trackId)
+            is AtmosphereInteraction.SceneMusicTrackSelected -> attachSceneMusic(
+                sceneId = interaction.sceneId,
+                trackId = interaction.trackId,
+            )
+            is AtmosphereInteraction.MusicFilesChosen -> addMusicFiles(interaction.paths)
+            is AtmosphereInteraction.MusicTrackPlaySelected -> playTrack(interaction.trackId)
+            AtmosphereInteraction.MusicStopSelected -> stopMusic()
+            AtmosphereInteraction.MusicLoopToggled -> toggleMusicLoop()
+            is AtmosphereInteraction.MusicVolumeChanged -> changeMusicVolume(interaction.volume)
+            is AtmosphereInteraction.MusicTrackDeleteSelected -> deleteLinkedMusic(interaction.trackId)
             AtmosphereInteraction.FloatingOpened -> updateContent { current ->
                 current.copy(isFloatingOpen = true)
             }
@@ -790,6 +809,7 @@ internal class AtmosphereViewModel(
                 goveePowerOn = content.draftLookPowerOn,
                 goveeBrightness = brightness,
                 goveeColorHex = content.draftLookColorHex,
+                musicTrackId = content.draftMusicTrackId.orEmpty(),
             )
         ) {
             is CreateAtmosphereSceneUseCase.Result.Created -> updateContent { current ->
@@ -797,6 +817,7 @@ internal class AtmosphereViewModel(
                     scenes = store.settings.value.scenes,
                     draftSceneName = "",
                     draftEntityId = "",
+                    draftMusicTrackId = null,
                     selectedCatalogEntityId = null,
                     selectedHueSceneId = null,
                     sceneError = null,
@@ -820,6 +841,9 @@ internal class AtmosphereViewModel(
             CreateAtmosphereSceneUseCase.Result.DuplicateEntityId -> updateContent { current ->
                 current.copy(sceneError = "That Home Assistant scene is already mapped")
             }
+            CreateAtmosphereSceneUseCase.Result.InvalidMusicTrack -> updateContent { current ->
+                current.copy(sceneError = "That music file is no longer linked")
+            }
         }
     }
 
@@ -838,6 +862,7 @@ internal class AtmosphereViewModel(
         if (content.isActivating) {
             return
         }
+        val musicTrackId = store.settings.value.scenes.firstOrNull { it.id == sceneId }?.musicTrackId
         previewLookJob?.cancel()
         effectJob?.cancel()
         updateContent { current ->
@@ -867,6 +892,7 @@ internal class AtmosphereViewModel(
                             activationError = null,
                         )
                     }
+                    playSceneMusic(musicTrackId)
                 }
                 is ActivateAtmosphereSceneUseCase.Result.Partial -> {
                     rememberSceneLook(sceneId)
@@ -878,12 +904,17 @@ internal class AtmosphereViewModel(
                             activationError = result.message,
                         )
                     }
+                    playSceneMusic(musicTrackId)
                 }
                 ActivateAtmosphereSceneUseCase.Result.NotFound -> finishActivation("That scene is no longer mapped")
-                ActivateAtmosphereSceneUseCase.Result.NoTargets -> finishActivation(
-                    "That scene has no lights or Home Assistant target",
-                )
-                is ActivateAtmosphereSceneUseCase.Result.Failed -> finishActivation(result.message)
+                ActivateAtmosphereSceneUseCase.Result.NoTargets -> {
+                    finishActivation("That scene has no lights or Home Assistant target")
+                    playSceneMusic(musicTrackId)
+                }
+                is ActivateAtmosphereSceneUseCase.Result.Failed -> {
+                    finishActivation(result.message)
+                    playSceneMusic(musicTrackId)
+                }
             }
         }
     }
@@ -923,6 +954,135 @@ internal class AtmosphereViewModel(
         val next = !current.isAlwaysOnTop
         store.setAlwaysOnTop(next)
         updateContent { state -> state.copy(isAlwaysOnTop = next) }
+    }
+
+    private fun toggleDraftMusicTrack(trackId: String) {
+        updateContent { current ->
+            val next = if (current.draftMusicTrackId == trackId) null else trackId
+            current.copy(draftMusicTrackId = next, sceneError = null)
+        }
+    }
+
+    private fun attachSceneMusic(sceneId: String, trackId: String) {
+        val scene = store.settings.value.scenes.firstOrNull { it.id == sceneId } ?: return
+        val nextId = if (scene.musicTrackId == trackId) null else trackId
+        when (setSceneMusic(sceneId, nextId)) {
+            SetAtmosphereSceneMusicUseCase.Result.Updated -> updateContent { current ->
+                current.copy(scenes = store.settings.value.scenes, sceneError = null)
+            }
+            SetAtmosphereSceneMusicUseCase.Result.SceneNotFound -> updateContent { current ->
+                current.copy(sceneError = "That scene is no longer mapped")
+            }
+            SetAtmosphereSceneMusicUseCase.Result.TrackNotFound -> updateContent { current ->
+                current.copy(sceneError = "That music file is no longer linked")
+            }
+        }
+    }
+
+    private fun addMusicFiles(paths: List<String>) {
+        var lastError: String? = null
+        paths.forEach { path ->
+            when (createMusicTrack(path)) {
+                is CreateAtmosphereMusicTrackUseCase.Result.Created -> Unit
+                CreateAtmosphereMusicTrackUseCase.Result.DuplicatePath -> Unit
+                CreateAtmosphereMusicTrackUseCase.Result.InvalidPath ->
+                    lastError = "Choose a music file that still exists on this computer"
+                CreateAtmosphereMusicTrackUseCase.Result.UnsupportedFormat ->
+                    lastError = "Link mp3, wav, ogg, flac, m4a, aac, or aiff files"
+            }
+        }
+        updateContent { current ->
+            current.copy(
+                musicTracks = store.settings.value.musicTracks,
+                musicError = lastError,
+            )
+        }
+    }
+
+    private fun playSceneMusic(trackId: String?) {
+        if (trackId.isNullOrBlank()) {
+            return
+        }
+        playTrack(trackId)
+    }
+
+    private fun playTrack(trackId: String) {
+        val track = store.settings.value.musicTracks.firstOrNull { it.id == trackId }
+        if (track == null) {
+            updateContent { current ->
+                current.copy(musicError = "That music file is no longer linked", playingTrackId = null)
+            }
+            return
+        }
+        val content = currentContent() ?: return
+        when (
+            val result = musicPlayer.play(
+                path = track.path,
+                loop = content.musicLoopEnabled,
+                volume = content.musicVolume,
+                onFinished = {
+                    appScope.scope.launch {
+                        updateContent { current ->
+                            if (current.playingTrackId == trackId) {
+                                current.copy(playingTrackId = null)
+                            } else {
+                                current
+                            }
+                        }
+                    }
+                },
+            )
+        ) {
+            AtmosphereMusicPlayer.Result.Started -> updateContent { current ->
+                current.copy(playingTrackId = trackId, musicError = null)
+            }
+            is AtmosphereMusicPlayer.Result.Failed -> updateContent { current ->
+                current.copy(playingTrackId = null, musicError = result.message)
+            }
+        }
+    }
+
+    private fun stopMusic() {
+        musicPlayer.stop()
+        updateContent { current ->
+            current.copy(playingTrackId = null, musicError = null)
+        }
+    }
+
+    private fun toggleMusicLoop() {
+        val current = currentContent() ?: return
+        val next = !current.musicLoopEnabled
+        store.setMusicLoopEnabled(next)
+        musicPlayer.setLoop(next)
+        updateContent { state -> state.copy(musicLoopEnabled = next) }
+    }
+
+    private fun changeMusicVolume(volume: Int) {
+        val next = volume.coerceIn(0, 100)
+        store.setMusicVolume(next)
+        musicPlayer.setVolume(next)
+        updateContent { current -> current.copy(musicVolume = next) }
+    }
+
+    private fun deleteLinkedMusic(trackId: String) {
+        val playing = currentContent()?.playingTrackId == trackId
+        when (deleteMusicTrack(trackId)) {
+            DeleteAtmosphereMusicTrackUseCase.Result.Deleted -> {
+                if (playing) {
+                    musicPlayer.stop()
+                }
+                updateContent { current ->
+                    current.copy(
+                        musicTracks = store.settings.value.musicTracks,
+                        scenes = store.settings.value.scenes,
+                        playingTrackId = if (playing) null else current.playingTrackId,
+                        draftMusicTrackId = current.draftMusicTrackId.takeUnless { it == trackId },
+                        musicError = null,
+                    )
+                }
+            }
+            DeleteAtmosphereMusicTrackUseCase.Result.NotFound -> Unit
+        }
     }
 
     private fun failConnection(message: String) {
@@ -983,6 +1143,12 @@ internal class AtmosphereViewModel(
                 },
                 isAlwaysOnTop = settings.isAlwaysOnTop,
                 draftLookTransitionMs = settings.lookTransitionMs,
+                musicTracks = settings.musicTracks,
+                musicVolume = settings.musicVolume,
+                musicLoopEnabled = settings.musicLoopEnabled,
+                draftMusicTrackId = current.draftMusicTrackId?.takeIf { trackId ->
+                    settings.musicTracks.any { it.id == trackId }
+                },
             )
         }
     }
@@ -1024,10 +1190,12 @@ internal class AtmosphereViewModel(
                 goveeDevices = settings.goveeDevices,
                 scenes = settings.scenes,
                 moods = settings.moods,
+                musicTracks = settings.musicTracks,
                 catalog = emptyList(),
                 draftSceneName = "",
                 draftEntityId = "",
                 draftMoodName = "",
+                draftMusicTrackId = null,
                 selectedCatalogEntityId = null,
                 selectedHueSceneId = null,
                 selectedHueLightIds = settings.selectedHueLightIds.filter { id ->
@@ -1049,6 +1217,10 @@ internal class AtmosphereViewModel(
                 moodError = null,
                 sceneError = null,
                 activationError = null,
+                musicError = null,
+                playingTrackId = null,
+                musicVolume = settings.musicVolume,
+                musicLoopEnabled = settings.musicLoopEnabled,
                 lastActivatedSceneId = null,
                 isTestingConnection = false,
                 isLoadingCatalog = false,

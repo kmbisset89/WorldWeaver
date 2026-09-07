@@ -22,7 +22,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.Lore
+import io.github.kmbisset89.worldweaver.domain.WikilinkDisplaySpan
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
+import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
+import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
+import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
+import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkBacklinksComposeWidget
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkBodyComposeWidget
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
@@ -36,6 +45,8 @@ internal fun LoreDetailPane(
     observedOn: List<LoreViewState.ObservedOnLink>,
     attachedLocationName: String?,
     attachedCharacterName: String?,
+    contentSpans: List<WikilinkDisplaySpan>,
+    backlinks: List<WikilinkBacklink>,
     onInteraction: (LoreInteraction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -63,7 +74,12 @@ internal fun LoreDetailPane(
                 color = TextSecondary
             )
         }
-        Text(text = lore.content, fontSize = 14.sp, color = TextPrimary)
+        WikilinkBodyComposeWidget(
+            spans = contentSpans,
+            onTargetSelected = { target ->
+                onInteraction(LoreInteraction.WikilinkSelected(target))
+            },
+        )
         if (attachedLocationName != null) {
             DetailSection("Attached location", attachedLocationName)
         }
@@ -74,6 +90,12 @@ internal fun LoreDetailPane(
             ObservedOnSection(links = observedOn, onInteraction = onInteraction)
         }
         RelatedSection(relatedLinks = relatedLinks, onInteraction = onInteraction)
+        WikilinkBacklinksComposeWidget(
+            backlinks = backlinks,
+            onBacklinkSelected = { backlink ->
+                onInteraction(LoreInteraction.BacklinkSelected(backlink))
+            },
+        )
         SecretsSection(lore = lore, onInteraction = onInteraction)
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             ActionIconButtonComposeWidget(

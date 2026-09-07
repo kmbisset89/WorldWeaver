@@ -24,7 +24,6 @@ internal class LinksViewModel(
     private val appScope: AppCoroutineScope,
     private val observeRelationshipWeb: ObserveRelationshipWebUseCase,
     private val relationshipWebFactory: RelationshipWebFactory,
-    private val layoutFactory: RelationshipWebLayoutFactory,
 ) {
     private val _state = MutableStateFlow<LinksViewState>(LinksViewState.Loading)
     val state: StateFlow<LinksViewState> = _state.asStateFlow()
@@ -129,7 +128,6 @@ internal class LinksViewModel(
             campaignName = snapshot.details.campaign?.name,
             nodes = nodes,
             edges = edges,
-            positions = layoutFactory.create(nodes, edges),
             selectedNodeId = selectedNodeId,
             inspector = inspectorNode?.let { node -> inspectorFor(node, nodes, edges) },
             searchQuery = searchQuery,

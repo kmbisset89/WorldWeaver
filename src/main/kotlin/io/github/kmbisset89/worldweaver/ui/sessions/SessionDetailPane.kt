@@ -29,12 +29,18 @@ import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.PlotThread
 import io.github.kmbisset89.worldweaver.domain.ReferenceDoc
 import io.github.kmbisset89.worldweaver.domain.Session
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
+import io.github.kmbisset89.worldweaver.domain.WikilinkDisplaySpan
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
 import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkBacklinksComposeWidget
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkBodyComposeWidget
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkFieldComposeWidget
 
 @Composable
 internal fun SessionDetailPane(
@@ -45,6 +51,12 @@ internal fun SessionDetailPane(
     threads: List<PlotThread>,
     docs: List<ReferenceDoc>,
     personOptions: List<SessionsViewState.PersonOption>,
+    notesSpans: List<WikilinkDisplaySpan>,
+    recapSpans: List<WikilinkDisplaySpan>,
+    scratchSpans: List<WikilinkDisplaySpan>,
+    wikilinkBacklinks: List<WikilinkBacklink>,
+    sceneWikilinkSuggestions: List<WikilinkTarget>,
+    sceneWikilinkIndex: Int?,
     onInteraction: (SessionsInteraction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,7 +76,12 @@ internal fun SessionDetailPane(
             Text(text = dateLabel, fontSize = 14.sp, color = TextSecondary)
         }
         if (session.notes.isNotBlank()) {
-            Text(text = session.notes, fontSize = 14.sp, color = TextPrimary)
+            WikilinkBodyComposeWidget(
+                spans = notesSpans,
+                onTargetSelected = { target ->
+                    onInteraction(SessionsInteraction.WikilinkSelected(target))
+                },
+            )
         }
         if (session.recap.isNotBlank()) {
             Text(
@@ -73,7 +90,12 @@ internal fun SessionDetailPane(
                 fontWeight = FontWeight.SemiBold,
                 color = TextSecondary,
             )
-            Text(text = session.recap, fontSize = 14.sp, color = TextPrimary)
+            WikilinkBodyComposeWidget(
+                spans = recapSpans,
+                onTargetSelected = { target ->
+                    onInteraction(SessionsInteraction.WikilinkSelected(target))
+                },
+            )
         }
         if (session.scratchNotes.isNotBlank()) {
             Text(
@@ -82,17 +104,33 @@ internal fun SessionDetailPane(
                 fontWeight = FontWeight.SemiBold,
                 color = TextSecondary,
             )
-            Text(text = session.scratchNotes, fontSize = 14.sp, color = TextPrimary)
+            WikilinkBodyComposeWidget(
+                spans = scratchSpans,
+                onTargetSelected = { target ->
+                    onInteraction(SessionsInteraction.WikilinkSelected(target))
+                },
+            )
         }
         ChecklistSection(checklist = checklist)
         LinkedQuestsSection(linkedQuests = linkedQuests, onInteraction = onInteraction)
-        ScenesSection(session = session, onInteraction = onInteraction)
+        ScenesSection(
+            session = session,
+            sceneWikilinkSuggestions = sceneWikilinkSuggestions,
+            sceneWikilinkIndex = sceneWikilinkIndex,
+            onInteraction = onInteraction,
+        )
         ThreadsSection(sessionId = session.id, threads = threads, onInteraction = onInteraction)
         DocsSection(sessionId = session.id, docs = docs, onInteraction = onInteraction)
         MarchOrderSection(
             session = session,
             personOptions = personOptions,
             onInteraction = onInteraction,
+        )
+        WikilinkBacklinksComposeWidget(
+            backlinks = wikilinkBacklinks,
+            onBacklinkSelected = { backlink ->
+                onInteraction(SessionsInteraction.BacklinkSelected(backlink))
+            },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = { onInteraction(SessionsInteraction.GeneratorOpened) }) {
@@ -197,6 +235,8 @@ private fun LinkedQuestsSection(
 @Composable
 private fun ScenesSection(
     session: Session,
+    sceneWikilinkSuggestions: List<WikilinkTarget>,
+    sceneWikilinkIndex: Int?,
     onInteraction: (SessionsInteraction) -> Unit,
 ) {
     DetailCard(title = "Scene plan") {
@@ -210,14 +250,17 @@ private fun ScenesSection(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
             )
-            OutlinedTextField(
+            WikilinkFieldComposeWidget(
                 value = scene.notes,
                 onValueChange = {
                     onInteraction(SessionsInteraction.SceneNotesChanged(index, it))
                 },
-                label = { Text("Notes") },
+                suggestions = if (sceneWikilinkIndex == index) sceneWikilinkSuggestions else emptyList(),
+                onSuggestionSelected = { target ->
+                    onInteraction(SessionsInteraction.SceneNotesWikilinkSelected(index, target))
+                },
+                label = "Notes",
                 minLines = 2,
-                modifier = Modifier.fillMaxWidth()
             )
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 ActionIconButtonComposeWidget(

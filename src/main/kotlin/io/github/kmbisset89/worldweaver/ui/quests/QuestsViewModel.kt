@@ -17,6 +17,7 @@ import io.github.kmbisset89.worldweaver.domain.AwardPartyLevelUseCase
 import io.github.kmbisset89.worldweaver.domain.CreateQuestUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteQuestUseCase
 import io.github.kmbisset89.worldweaver.domain.Location
+import io.github.kmbisset89.worldweaver.domain.ListWikilinkBacklinksUseCase
 import io.github.kmbisset89.worldweaver.domain.LevelingMode
 import io.github.kmbisset89.worldweaver.domain.Lore
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
@@ -36,6 +37,7 @@ import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
 import io.github.kmbisset89.worldweaver.domain.Session
 import io.github.kmbisset89.worldweaver.domain.UpdateQuestUseCase
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 import io.github.kmbisset89.worldweaver.ui.advancement.AdvancementPrompt
 
 internal class QuestsViewModel(
@@ -51,6 +53,7 @@ internal class QuestsViewModel(
     private val deleteQuest: DeleteQuestUseCase,
     private val awardPartyLevel: AwardPartyLevelUseCase,
     private val awardPartyExperience: AwardPartyExperienceUseCase,
+    private val listWikilinkBacklinks: ListWikilinkBacklinksUseCase,
 ) {
     private val _state = MutableStateFlow<QuestsViewState>(QuestsViewState.Loading)
     val state: StateFlow<QuestsViewState> = _state.asStateFlow()
@@ -68,6 +71,9 @@ internal class QuestsViewModel(
     private var latestPeople: PeopleSnapshot = PeopleSnapshot(emptyList(), emptyList())
     private var latestSessions: List<Session> = emptyList()
     private var latestWorldName: String = ""
+    private var latestWorldId: String? = null
+    private var latestBacklinks: List<WikilinkBacklink> = emptyList()
+    private var backlinksJob: Job? = null
     private var latestCampaignName: String = ""
     private var latestCampaignId: String? = null
     private var latestLevelingMode = LevelingMode.Milestone
@@ -115,6 +121,9 @@ internal class QuestsViewModel(
             }
             is QuestsInteraction.LinkedLocationSelected -> {
                 _effects.tryEmit(QuestsViewEffect.OpenLocations)
+            }
+            is QuestsInteraction.BacklinkSelected -> {
+                _effects.tryEmit(QuestsViewEffect.OpenSearchHit(interaction.backlink.toSearchHit()))
             }
             is QuestsInteraction.EditorTitleChanged -> updateEditor { editor ->
                 editor?.copy(title = interaction.title, titleError = null)
@@ -267,6 +276,7 @@ internal class QuestsViewModel(
         latestPeople = snapshot.people
         latestSessions = snapshot.sessions
         latestWorldName = world.name
+        latestWorldId = world.id
         latestCampaignName = campaign.name
         latestCampaignId = campaign.id
         latestLevelingMode = campaign.levelingMode
@@ -288,6 +298,7 @@ internal class QuestsViewModel(
         }
         val selected = selectedFrom(snapshot.quests) ?: snapshot.quests.first()
         selectedQuestId = selected.id
+        refreshBacklinks(selected.id)
         _state.value = contentState(
             selected = selected,
             editor = editor,
@@ -326,6 +337,7 @@ internal class QuestsViewModel(
                 latestLocations.firstOrNull { it.id == locationId }?.name
             },
             links = linkRows(selected),
+            wikilinkBacklinks = latestBacklinks,
             editor = editor,
             pendingDelete = pendingDelete,
             advancementPrompt = advancementPrompt,
@@ -362,6 +374,7 @@ internal class QuestsViewModel(
         }
         selectedQuestId = questId
         refreshContent()
+        refreshBacklinks(questId)
     }
 
     private fun openCreateEditor() {
@@ -689,6 +702,19 @@ internal class QuestsViewModel(
                 amountText = "",
                 amountError = null,
             )
+        }
+    }
+
+    private fun refreshBacklinks(targetId: String?) {
+        val worldId = latestWorldId
+        if (worldId == null || targetId == null) {
+            latestBacklinks = emptyList()
+            return
+        }
+        backlinksJob?.cancel()
+        backlinksJob = appScope.scope.launch {
+            latestBacklinks = listWikilinkBacklinks(worldId, targetId)
+            refreshContent()
         }
     }
 

@@ -14,4 +14,6 @@ internal enum class SearchKind(
     CampaignPerson("People"),
     Quest("Quests"),
     Session("Sessions"),
+    RandomTable("Tables"),
+    Asset("Assets"),
 }

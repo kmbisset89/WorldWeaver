@@ -74,6 +74,12 @@ import io.github.kmbisset89.worldweaver.ui.sessions.SessionsViewEffect
 import io.github.kmbisset89.worldweaver.ui.sessions.SessionsViewModel
 import io.github.kmbisset89.worldweaver.ui.settings.SettingsViewEffect
 import io.github.kmbisset89.worldweaver.ui.settings.SettingsViewModel
+import io.github.kmbisset89.worldweaver.ui.tables.TablesInteraction
+import io.github.kmbisset89.worldweaver.ui.tables.TablesViewEffect
+import io.github.kmbisset89.worldweaver.ui.tables.TablesViewModel
+import io.github.kmbisset89.worldweaver.ui.assets.AssetsInteraction
+import io.github.kmbisset89.worldweaver.ui.assets.AssetsViewEffect
+import io.github.kmbisset89.worldweaver.ui.assets.AssetsViewModel
 import io.github.kmbisset89.worldweaver.ui.session.LocalUser
 import io.github.kmbisset89.worldweaver.ui.worlds.WorldsInteraction
 import io.github.kmbisset89.worldweaver.ui.worlds.WorldsViewEffect
@@ -93,6 +99,8 @@ internal class AppViewModel(
     val characterSheetViewModel: CharacterSheetViewModel,
     val questsViewModel: QuestsViewModel,
     val sessionsViewModel: SessionsViewModel,
+    val tablesViewModel: TablesViewModel,
+    val assetsViewModel: AssetsViewModel,
     val encountersViewModel: EncountersViewModel,
     val mapsViewModel: MapsViewModel,
     val worldMapViewModel: WorldMapViewModel,
@@ -186,6 +194,9 @@ internal class AppViewModel(
                         navigateToRoot(Screen.WORLD_MAP)
                         worldMapViewModel.onInteraction(WorldMapInteraction.MapOpened(effect.locationId))
                     }
+                    is LocationsViewEffect.OpenSearchHit -> openSearchHit(
+                        SearchViewEffect.RecordOpened(effect.hit)
+                    )
                 }
             }
         }
@@ -199,6 +210,9 @@ internal class AppViewModel(
                             CalendarInteraction.ObservanceOpened(effect.observanceId)
                         )
                     }
+                    is LoreViewEffect.OpenSearchHit -> openSearchHit(
+                        SearchViewEffect.RecordOpened(effect.hit)
+                    )
                 }
             }
         }
@@ -256,6 +270,9 @@ internal class AppViewModel(
                             CharacterSheetInteraction.SheetOpened(sheetKeyFrom(effect.key)),
                         )
                     }
+                    is CharactersViewEffect.OpenSearchHit -> openSearchHit(
+                        SearchViewEffect.RecordOpened(effect.hit)
+                    )
                 }
             }
         }
@@ -286,6 +303,9 @@ internal class AppViewModel(
                         navigateToRoot(Screen.SESSIONS)
                         sessionsViewModel.onInteraction(SessionsInteraction.SessionOpened(effect.sessionId))
                     }
+                    is QuestsViewEffect.OpenSearchHit -> openSearchHit(
+                        SearchViewEffect.RecordOpened(effect.hit)
+                    )
                 }
             }
         }
@@ -298,6 +318,25 @@ internal class AppViewModel(
                         navigateToRoot(Screen.QUESTS)
                         questsViewModel.onInteraction(QuestsInteraction.QuestOpened(effect.questId))
                     }
+                    is SessionsViewEffect.OpenSearchHit -> openSearchHit(
+                        SearchViewEffect.RecordOpened(effect.hit)
+                    )
+                }
+            }
+        }
+        appScope.scope.launch {
+            tablesViewModel.effects.collect { effect ->
+                when (effect) {
+                    TablesViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                }
+            }
+        }
+        appScope.scope.launch {
+            assetsViewModel.effects.collect { effect ->
+                when (effect) {
+                    AssetsViewEffect.OpenWorlds -> navigateToRoot(Screen.WORLDS)
+                    is AssetsViewEffect.OpenFile -> openAssetFile(effect.path)
+                    is AssetsViewEffect.Failed -> emitUiEvent(UiEvent.Error(effect.message))
                 }
             }
         }
@@ -509,6 +548,16 @@ internal class AppViewModel(
                     navigateToRoot(Screen.SESSIONS)
                     sessionsViewModel.onInteraction(SessionsInteraction.SessionOpened(hit.id))
                 }
+                SearchKind.RandomTable -> {
+                    hit.worldId?.let { setActiveWorld(it) }
+                    navigateToRoot(Screen.TABLES)
+                    tablesViewModel.onInteraction(TablesInteraction.TableOpened(hit.id))
+                }
+                SearchKind.Asset -> {
+                    hit.worldId?.let { setActiveWorld(it) }
+                    navigateToRoot(Screen.ASSETS)
+                    assetsViewModel.onInteraction(AssetsInteraction.AssetOpened(hit.id))
+                }
             }
         }
     }
@@ -585,9 +634,29 @@ internal class AppViewModel(
     }
 
     private fun openRecording(path: String) {
+        openExternalFile(
+            path = path,
+            missingMessage = "That recording is no longer available.",
+            failedMessage = "Could not open the recording.",
+        )
+    }
+
+    private fun openAssetFile(path: String) {
+        openExternalFile(
+            path = path,
+            missingMessage = "That file is no longer on disk.",
+            failedMessage = "Could not open the file.",
+        )
+    }
+
+    private fun openExternalFile(
+        path: String,
+        missingMessage: String,
+        failedMessage: String,
+    ) {
         val file = java.io.File(path)
         if (!file.isFile) {
-            emitUiEvent(UiEvent.Error("That recording is no longer available."))
+            emitUiEvent(UiEvent.Error(missingMessage))
             return
         }
         val opened = runCatching {
@@ -595,7 +664,7 @@ internal class AppViewModel(
             true
         }.getOrDefault(false)
         if (!opened) {
-            emitUiEvent(UiEvent.Error("Could not open the recording."))
+            emitUiEvent(UiEvent.Error(failedMessage))
         }
     }
 

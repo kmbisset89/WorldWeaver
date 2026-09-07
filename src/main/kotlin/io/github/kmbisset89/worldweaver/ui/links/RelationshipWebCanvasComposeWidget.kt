@@ -2,33 +2,28 @@ package io.github.kmbisset89.worldweaver.ui.links
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.sp
-import io.github.kmbisset89.worldweaver.domain.RelationshipType
-import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
+import androidx.compose.ui.unit.IntSize
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
-import io.github.kmbisset89.worldweaver.ui.theme.SuccessGreen
-import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
 import kotlin.math.hypot
@@ -37,7 +32,6 @@ import kotlin.math.hypot
 internal fun RelationshipWebCanvasComposeWidget(
     nodes: List<LinksViewState.Node>,
     edges: List<LinksViewState.Edge>,
-    positions: Map<String, LinksViewState.LayoutPoint>,
     selectedNodeId: String?,
     searchQuery: String,
     onNodeSelected: (String) -> Unit,
@@ -45,36 +39,139 @@ internal fun RelationshipWebCanvasComposeWidget(
     modifier: Modifier = Modifier,
 ) {
     val textMeasurer = rememberTextMeasurer()
-    val surface = SurfaceCard
-    val textPrimary = TextPrimary
-    val textSecondary = TextSecondary
-    val navy = NavyBlue
-    val factionFill = MaterialTheme.colorScheme.secondaryContainer
-    val factionStroke = MaterialTheme.colorScheme.secondary
-    val campaignFill = MaterialTheme.colorScheme.tertiaryContainer
-    val campaignStroke = MaterialTheme.colorScheme.tertiary
+    val drawer = remember { RelationshipWebCanvasDrawer() }
+    val layoutFactory = remember { RelationshipWebForceLayoutFactory() }
+    val gestureState = remember { CanvasGestureState() }
+    val background = MaterialTheme.colorScheme.background
+    val palette = RelationshipWebCanvasDrawer.Palette(
+        textPrimary = TextPrimary,
+        textSecondary = TextSecondary,
+        navy = NavyBlue,
+        factionFill = MaterialTheme.colorScheme.secondaryContainer,
+        factionStroke = MaterialTheme.colorScheme.secondary,
+        campaignFill = MaterialTheme.colorScheme.tertiaryContainer,
+        campaignStroke = MaterialTheme.colorScheme.tertiary,
+    )
     var pan by remember { mutableStateOf(Offset.Zero) }
     var scale by remember { mutableStateOf(1f) }
     var hoverPosition by remember { mutableStateOf<Offset?>(null) }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var positions by remember { mutableStateOf<Map<String, LinksViewState.LayoutPoint>>(emptyMap()) }
+    var pinnedNodeId by remember { mutableStateOf<String?>(null) }
+    var simTick by remember { mutableIntStateOf(0) }
+    val nodeKey = remember(nodes) { nodes.joinToString(separator = ",") { it.id } }
+    val edgeKey = remember(edges) { edges.joinToString(separator = ",") { it.id } }
+    val degrees = remember(nodes, edges) {
+        nodes.associate { node ->
+            node.id to edges.count { edge -> edge.fromId == node.id || edge.toId == node.id }
+        }
+    }
+    gestureState.pan = pan
+    gestureState.scale = scale
+    gestureState.positions = positions
+    gestureState.degrees = degrees
+    gestureState.canvasSize = canvasSize
+
+    LaunchedEffect(nodeKey, edgeKey) {
+        positions = layoutFactory.seed(nodes, edges, positions)
+        simTick += 1
+    }
+
+    LaunchedEffect(simTick) {
+        if (simTick == 0) {
+            return@LaunchedEffect
+        }
+        var frames = 0
+        while (true) {
+            val settled = withFrameNanos {
+                val pinned = setOfNotNull(pinnedNodeId)
+                val current = positions
+                val next = layoutFactory.step(current, nodes, edges, pinned)
+                positions = next
+                val count = nodes.size.coerceAtLeast(1)
+                pinned.isEmpty() && layoutFactory.energy(current, next, pinned) / count < SettleEnergy
+            }
+            frames += 1
+            if (settled || frames >= MaxSimFrames) {
+                break
+            }
+        }
+    }
 
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .background(surface)
-            .pointerInput(Unit) {
-                detectTransformGestures { _, panChange, zoomChange, _ ->
-                    scale = (scale * zoomChange).coerceIn(MinScale, MaxScale)
-                    pan += panChange
-                }
-            }
-            .pointerInput(nodes, positions, pan, scale) {
-                detectTapGestures { tap ->
-                    val world = screenToWorld(tap, pan, scale, size.width.toFloat(), size.height.toFloat())
-                    val hit = hitNode(world, nodes, positions)
-                    if (hit == null) {
-                        onSelectionCleared()
+            .background(background)
+            .onSizeChanged { canvasSize = it }
+            .pointerInput(nodes) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val world = screenToWorld(
+                        screen = down.position,
+                        pan = gestureState.pan,
+                        scale = gestureState.scale,
+                        width = size.width.toFloat(),
+                        height = size.height.toFloat(),
+                    )
+                    val hit = hitNode(
+                        world = world,
+                        nodes = nodes,
+                        positions = gestureState.positions,
+                        degrees = gestureState.degrees,
+                        drawer = drawer,
+                    )
+                    val start = down.position
+                    var last = down.position
+                    var dragged = false
+                    if (hit != null) {
+                        pinnedNodeId = hit
+                        simTick += 1
+                        drag(down.id) { change ->
+                            val nextWorld = screenToWorld(
+                                screen = change.position,
+                                pan = gestureState.pan,
+                                scale = gestureState.scale,
+                                width = size.width.toFloat(),
+                                height = size.height.toFloat(),
+                            )
+                            val nextPositions = gestureState.positions + (
+                                hit to LinksViewState.LayoutPoint(nextWorld.x, nextWorld.y)
+                                )
+                            gestureState.positions = nextPositions
+                            positions = nextPositions
+                            if (!dragged && hypot(
+                                    change.position.x - start.x,
+                                    change.position.y - start.y,
+                                ) > DragSlop
+                            ) {
+                                dragged = true
+                            }
+                            change.consume()
+                        }
+                        pinnedNodeId = null
+                        simTick += 1
                     } else {
-                        onNodeSelected(hit)
+                        drag(down.id) { change ->
+                            val nextPan = gestureState.pan + (change.position - last)
+                            last = change.position
+                            gestureState.pan = nextPan
+                            pan = nextPan
+                            if (!dragged && hypot(
+                                    change.position.x - start.x,
+                                    change.position.y - start.y,
+                                ) > DragSlop
+                            ) {
+                                dragged = true
+                            }
+                            change.consume()
+                        }
+                    }
+                    if (!dragged) {
+                        if (hit == null) {
+                            onSelectionCleared()
+                        } else {
+                            onNodeSelected(hit)
+                        }
                     }
                 }
             }
@@ -90,10 +187,24 @@ internal fun RelationshipWebCanvasComposeWidget(
                                 hoverPosition = null
                             }
                             PointerEventType.Scroll -> {
-                                val delta = event.changes.first().scrollDelta.y
-                                if (delta != 0f) {
+                                val change = event.changes.first()
+                                val delta = change.scrollDelta.y
+                                val width = gestureState.canvasSize.width.toFloat()
+                                val height = gestureState.canvasSize.height.toFloat()
+                                if (delta != 0f && width > 0f && height > 0f) {
                                     val factor = if (delta > 0f) 0.9f else 1.1f
-                                    scale = (scale * factor).coerceIn(MinScale, MaxScale)
+                                    val zoomed = zoomToward(
+                                        pointer = change.position,
+                                        pan = gestureState.pan,
+                                        scale = gestureState.scale,
+                                        factor = factor,
+                                        width = width,
+                                        height = height,
+                                    )
+                                    gestureState.scale = zoomed.scale
+                                    gestureState.pan = zoomed.pan
+                                    scale = zoomed.scale
+                                    pan = zoomed.pan
                                 }
                             }
                             else -> Unit
@@ -103,10 +214,6 @@ internal fun RelationshipWebCanvasComposeWidget(
             }
     ) {
         val origin = Offset(size.width / 2f + pan.x, size.height / 2f + pan.y)
-        fun toScreen(point: LinksViewState.LayoutPoint): Offset {
-            return Offset(origin.x + point.x * scale, origin.y + point.y * scale)
-        }
-
         val query = searchQuery.trim()
         val matchingIds = if (query.isEmpty()) {
             nodes.map { it.id }.toSet()
@@ -115,7 +222,7 @@ internal fun RelationshipWebCanvasComposeWidget(
         }
         val hoveredId = hoverPosition?.let { hover ->
             val world = screenToWorld(hover, pan, scale, size.width, size.height)
-            hitNode(world, nodes, positions)
+            hitNode(world, nodes, positions, degrees, drawer)
         }
         val hoveredEdgeId = if (hoveredId == null) {
             hoverPosition?.let { hover ->
@@ -125,158 +232,58 @@ internal fun RelationshipWebCanvasComposeWidget(
         } else {
             null
         }
-
-        edges.forEach { edge ->
-            val from = positions[edge.fromId] ?: return@forEach
-            val to = positions[edge.toId] ?: return@forEach
-            val dimmed = query.isNotEmpty() &&
-                edge.fromId !in matchingIds &&
-                edge.toId !in matchingIds
-            val selected = selectedNodeId == edge.fromId ||
-                selectedNodeId == edge.toId ||
-                hoveredEdgeId == edge.id
-            val color = edgeColor(edge).copy(alpha = if (dimmed) 0.18f else if (selected) 0.95f else 0.55f)
-            drawLine(
-                color = color,
-                start = toScreen(from),
-                end = toScreen(to),
-                strokeWidth = if (selected) 3.2f else 1.8f,
-                pathEffect = if (edge.kind == LinksViewState.EdgeKind.Membership) {
-                    PathEffect.dashPathEffect(floatArrayOf(10f, 7f))
-                } else {
-                    null
-                },
-            )
-        }
-
-        nodes.forEach { node ->
-            val point = positions[node.id] ?: return@forEach
-            val center = toScreen(point)
-            val radius = nodeRadius(node.kind) * scale
-            val dimmed = query.isNotEmpty() && node.id !in matchingIds
-            val selected = node.id == selectedNodeId || node.id == hoveredId
-            val fill = nodeFill(node.kind, navy, factionFill, campaignFill)
-                .copy(alpha = if (dimmed) 0.22f else 1f)
-            val stroke = nodeStroke(node.kind, navy, factionStroke, campaignStroke)
-                .copy(alpha = if (dimmed) 0.3f else 1f)
-            drawCircle(color = fill, radius = radius, center = center)
-            drawCircle(
-                color = stroke,
-                radius = radius,
-                center = center,
-                style = Stroke(width = if (selected) 4f else 2f),
-            )
-            val labelStyle = TextStyle(
-                color = textPrimary.copy(alpha = if (dimmed) 0.35f else 1f),
-                fontSize = 11.sp,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-            )
-            val measured = textMeasurer.measure(text = node.name, style = labelStyle)
-            drawText(
-                textMeasurer = textMeasurer,
-                text = node.name,
-                style = labelStyle,
-                topLeft = Offset(
-                    center.x - measured.size.width / 2f,
-                    center.y + radius + 6f,
-                ),
-            )
-        }
-
-        val labelEdge = edges.firstOrNull { edge ->
-            edge.id == hoveredEdgeId ||
-                (selectedNodeId != null && (edge.fromId == selectedNodeId || edge.toId == selectedNodeId) &&
-                    hoveredEdgeId == null && hoveredId == null)
-        }
-        if (labelEdge != null) {
-            val from = positions[labelEdge.fromId]
-            val to = positions[labelEdge.toId]
-            if (from != null && to != null) {
-                val mid = Offset(
-                    (toScreen(from).x + toScreen(to).x) / 2f,
-                    (toScreen(from).y + toScreen(to).y) / 2f,
-                )
-                val style = TextStyle(
-                    color = textSecondary,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-                val measured = textMeasurer.measure(text = labelEdge.label, style = style)
-                drawText(
-                    textMeasurer = textMeasurer,
-                    text = labelEdge.label,
-                    style = style,
-                    topLeft = Offset(
-                        mid.x - measured.size.width / 2f,
-                        mid.y - measured.size.height - 4f,
-                    ),
-                )
-            }
-        }
+        drawer.draw(
+            scope = this,
+            textMeasurer = textMeasurer,
+            request = RelationshipWebCanvasDrawer.Request(
+                nodes = nodes,
+                edges = edges,
+                positions = positions,
+                degrees = degrees,
+                origin = origin,
+                scale = scale,
+                selectedNodeId = selectedNodeId,
+                hoveredNodeId = hoveredId,
+                hoveredEdgeId = hoveredEdgeId,
+                matchingIds = matchingIds,
+                searchActive = query.isNotEmpty(),
+                palette = palette,
+            ),
+        )
     }
 }
 
-private fun nodeRadius(kind: LinksViewState.NodeKind): Float {
-    return when (kind) {
-        LinksViewState.NodeKind.Faction -> 28f
-        LinksViewState.NodeKind.WorldPerson,
-        LinksViewState.NodeKind.CampaignPerson,
-        -> 16f
-    }
+private class CanvasGestureState {
+    var pan: Offset = Offset.Zero
+    var scale: Float = 1f
+    var positions: Map<String, LinksViewState.LayoutPoint> = emptyMap()
+    var degrees: Map<String, Int> = emptyMap()
+    var canvasSize: IntSize = IntSize.Zero
 }
 
-private fun nodeFill(
-    kind: LinksViewState.NodeKind,
-    navy: Color,
-    factionFill: Color,
-    campaignFill: Color,
-): Color {
-    return when (kind) {
-        LinksViewState.NodeKind.Faction -> factionFill
-        LinksViewState.NodeKind.CampaignPerson -> campaignFill
-        LinksViewState.NodeKind.WorldPerson -> navy.copy(alpha = 0.22f)
-    }
+private fun zoomToward(
+    pointer: Offset,
+    pan: Offset,
+    scale: Float,
+    factor: Float,
+    width: Float,
+    height: Float,
+): ZoomedView {
+    val world = screenToWorld(pointer, pan, scale, width, height)
+    val nextScale = (scale * factor).coerceIn(MinScale, MaxScale)
+    return ZoomedView(
+        scale = nextScale,
+        pan = Offset(
+            x = pointer.x - width / 2f - world.x * nextScale,
+            y = pointer.y - height / 2f - world.y * nextScale,
+        ),
+    )
 }
 
-private fun nodeStroke(
-    kind: LinksViewState.NodeKind,
-    navy: Color,
-    factionStroke: Color,
-    campaignStroke: Color,
-): Color {
-    return when (kind) {
-        LinksViewState.NodeKind.Faction -> factionStroke
-        LinksViewState.NodeKind.CampaignPerson -> campaignStroke
-        LinksViewState.NodeKind.WorldPerson -> navy
-    }
-}
-
-private fun edgeColor(edge: LinksViewState.Edge): Color {
-    return when (edge.kind) {
-        LinksViewState.EdgeKind.Membership -> Color(0xFF64748B)
-        LinksViewState.EdgeKind.Relationship -> relationshipColor(edge.relationshipType)
-    }
-}
-
-private fun relationshipColor(type: RelationshipType?): Color {
-    return when (type) {
-        RelationshipType.Parent,
-        RelationshipType.Child,
-        RelationshipType.Sibling,
-        RelationshipType.Spouse,
-        RelationshipType.Ancestor,
-        RelationshipType.Descendant,
-        -> Color(0xFF8B5CF6)
-        RelationshipType.Mentor,
-        RelationshipType.Student,
-        -> Color(0xFF0EA5E9)
-        RelationshipType.Ally -> SuccessGreen
-        RelationshipType.Rival,
-        RelationshipType.Enemy,
-        -> ErrorRed
-        RelationshipType.Other, null -> Color(0xFF94A3B8)
-    }
-}
+private data class ZoomedView(
+    val scale: Float,
+    val pan: Offset,
+)
 
 private fun screenToWorld(
     screen: Offset,
@@ -297,11 +304,13 @@ private fun hitNode(
     world: Offset,
     nodes: List<LinksViewState.Node>,
     positions: Map<String, LinksViewState.LayoutPoint>,
+    degrees: Map<String, Int>,
+    drawer: RelationshipWebCanvasDrawer,
 ): String? {
     return nodes
         .mapNotNull { node ->
             val point = positions[node.id] ?: return@mapNotNull null
-            val radius = nodeRadius(node.kind) + 8f
+            val radius = drawer.radius(node.kind, degrees[node.id] ?: 0) + 8f
             val distance = hypot(world.x - point.x, world.y - point.y)
             if (distance <= radius) node.id to distance else null
         }
@@ -342,3 +351,6 @@ private fun distanceToSegment(point: Offset, start: Offset, end: Offset): Float 
 
 private const val MinScale = 0.3f
 private const val MaxScale = 4f
+private const val DragSlop = 6f
+private const val SettleEnergy = 0.08f
+private const val MaxSimFrames = 360

@@ -11,6 +11,7 @@ import io.github.kmbisset89.worldweaver.domain.PersonSheet
 import io.github.kmbisset89.worldweaver.domain.RandomNpcDraft
 import io.github.kmbisset89.worldweaver.domain.RelationshipType
 import io.github.kmbisset89.worldweaver.domain.SrdMonsterEntry
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 
 internal sealed class CharactersViewState {
     data object Loading : CharactersViewState()
@@ -87,6 +88,7 @@ internal sealed class CharactersViewState {
         val companions: List<CompanionRow>,
         val attachedLore: List<AttachedLore>,
         val attachedQuests: List<AttachedQuest>,
+        val wikilinkBacklinks: List<WikilinkBacklink> = emptyList(),
         val relationshipTargets: List<RelationshipTarget>,
         val avatarPath: String?,
         val voiceClipPath: String?,

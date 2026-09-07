@@ -13,6 +13,7 @@ internal class CreateAtmosphereSceneUseCase(
         data object NoTargets : Result
         data object DuplicateName : Result
         data object DuplicateEntityId : Result
+        data object InvalidMusicTrack : Result
     }
 
     operator fun invoke(
@@ -25,6 +26,7 @@ internal class CreateAtmosphereSceneUseCase(
         goveePowerOn: Boolean = true,
         goveeBrightness: Int = 80,
         goveeColorHex: String = "",
+        musicTrackId: String = "",
     ): Result {
         val trimmedName = name.trim()
         val trimmedEntityId = entityId.trim()
@@ -33,6 +35,7 @@ internal class CreateAtmosphereSceneUseCase(
         val lights = hueLightIds.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
         val trimmedColor = goveeColorHex.trim()
         val devices = goveeDeviceIds.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        val trimmedMusicTrackId = musicTrackId.trim()
         if (trimmedName.isEmpty()) {
             return Result.InvalidName
         }
@@ -57,6 +60,11 @@ internal class CreateAtmosphereSceneUseCase(
         if (trimmedEntityId.isNotEmpty() && existing.any { it.entityId == trimmedEntityId }) {
             return Result.DuplicateEntityId
         }
+        if (trimmedMusicTrackId.isNotEmpty() &&
+            store.settings.value.musicTracks.none { it.id == trimmedMusicTrackId }
+        ) {
+            return Result.InvalidMusicTrack
+        }
         val scene = AtmosphereScene(
             id = entityIdFactory.create(),
             name = trimmedName,
@@ -69,6 +77,7 @@ internal class CreateAtmosphereSceneUseCase(
             goveePowerOn = goveePowerOn,
             goveeBrightness = goveeBrightness.coerceIn(1, 100),
             goveeColorHex = trimmedColor,
+            musicTrackId = trimmedMusicTrackId,
         )
         store.setScenes(existing + scene)
         return Result.Created(scene)

@@ -104,6 +104,21 @@ internal class WorldBundleUseCaseTest {
         assertNotEquals(source.world.id, newWorld.id)
         assertNotEquals(source.worldPerson.id, worldPerson.id)
         assertNotEquals(source.battleMap.id, newMap.id)
+        val weather = harness.randomTables.getByWorld(newWorld.id).first { it.name == "Weather" }
+        val loot = harness.randomTables.getByWorld(newWorld.id).first { it.name == "Chest loot" }
+        assertEquals("Harbor skies", weather.notes)
+        assertEquals(loot.id, weather.rows.single().nestedTableId)
+        assertEquals("Potion", loot.rows.single().label)
+        assertNotEquals("tbl-weather", weather.id)
+        assertNotEquals("tbl-loot", loot.id)
+        val sketch = harness.assets.getByWorld(newWorld.id).single()
+        assertEquals("Harbor sketch", sketch.displayName)
+        assertEquals("Maybe the docks", sketch.notes)
+        assertNotEquals("asset-1", sketch.id)
+        assertEquals(
+            byteArrayOf(1, 2, 3, 4).toList(),
+            harness.assetFileStore.read(sketch.id, sketch.originalFileName)?.toList(),
+        )
     }
 
     @Test
@@ -325,6 +340,8 @@ internal class WorldBundleUseCaseTest {
         val observances = FakeWorldCalendarObservanceRepository()
         val celestialBodies = FakeWorldCelestialBodyRepository()
         val factions = FakeFactionRepository()
+        val randomTables = FakeRandomTableRepository()
+        val assets = FakeAssetRepository()
         val memberships = FakeFactionMembershipRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
@@ -345,6 +362,7 @@ internal class WorldBundleUseCaseTest {
         val worldMaps = FakeWorldMapRepository()
         val worldMapFileStore = WorldMapFileStore(File(tempDir, "world_maps"))
         val voiceClipFileStore = VoiceClipFileStore(File(tempDir, "voices"))
+        val assetFileStore = AssetFileStore(File(tempDir, "assets"))
         private val instant = InstantProvider { now }
         private var nextId = 0
         private val ids = EntityIdFactory { "new-${++nextId}" }
@@ -358,6 +376,8 @@ internal class WorldBundleUseCaseTest {
             locationRepository = locations,
             loreRepository = lore,
             factionRepository = factions,
+            randomTableRepository = randomTables,
+            assetRepository = assets,
             factionMembershipRepository = memberships,
             worldPersonRepository = worldPeople,
             campaignPersonRepository = campaignPeople,
@@ -377,6 +397,7 @@ internal class WorldBundleUseCaseTest {
             worldMapRepository = worldMaps,
             worldMapFileStore = worldMapFileStore,
             voiceClipFileStore = voiceClipFileStore,
+            assetFileStore = assetFileStore,
             instantProvider = instant,
         )
         private val archiveConverter = WorldBundleArchiveConverter()
@@ -394,6 +415,8 @@ internal class WorldBundleUseCaseTest {
             locationRepository = locations,
             loreRepository = lore,
             factionRepository = factions,
+            randomTableRepository = randomTables,
+            assetRepository = assets,
             factionMembershipRepository = memberships,
             worldPersonRepository = worldPeople,
             campaignPersonRepository = campaignPeople,
@@ -413,6 +436,7 @@ internal class WorldBundleUseCaseTest {
             worldMapRepository = worldMaps,
             worldMapFileStore = worldMapFileStore,
             voiceClipFileStore = voiceClipFileStore,
+            assetFileStore = assetFileStore,
             setActiveWorld = setActiveWorld,
         )
 
@@ -678,6 +702,42 @@ internal class WorldBundleUseCaseTest {
                 factionId = null,
             )
             relationships.insert(relationship)
+            val lootTable = RandomTable(
+                id = "tbl-loot",
+                worldId = world.id,
+                name = "Chest loot",
+                notes = "",
+                rows = listOf(
+                    RandomTableRow(id = "row-potion", label = "Potion", weight = 1, nestedTableId = null),
+                ),
+                createdAt = now,
+                updatedAt = now,
+            )
+            val weatherTable = RandomTable(
+                id = "tbl-weather",
+                worldId = world.id,
+                name = "Weather",
+                notes = "Harbor skies",
+                rows = listOf(
+                    RandomTableRow(id = "row-clear", label = "Clear", weight = 2, nestedTableId = lootTable.id),
+                ),
+                createdAt = now,
+                updatedAt = now,
+            )
+            randomTables.insert(lootTable)
+            randomTables.insert(weatherTable)
+            val asset = Asset(
+                id = "asset-1",
+                worldId = world.id,
+                displayName = "Harbor sketch",
+                originalFileName = "sketch.png",
+                notes = "Maybe the docks",
+                byteSize = 4,
+                createdAt = now,
+                updatedAt = now,
+            )
+            assets.insert(asset)
+            assetFileStore.write(asset.id, asset.originalFileName, byteArrayOf(1, 2, 3, 4))
             return SourceGraph(
                 world = world,
                 worldPerson = worldPerson,

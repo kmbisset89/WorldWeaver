@@ -39,6 +39,14 @@ internal sealed interface AtmosphereInteraction {
     data object SceneCreateSelected : AtmosphereInteraction
     data class SceneDeleteSelected(val sceneId: String) : AtmosphereInteraction
     data class SceneActivateSelected(val sceneId: String) : AtmosphereInteraction
+    data class DraftSceneMusicTrackSelected(val trackId: String) : AtmosphereInteraction
+    data class SceneMusicTrackSelected(val sceneId: String, val trackId: String) : AtmosphereInteraction
+    data class MusicFilesChosen(val paths: List<String>) : AtmosphereInteraction
+    data class MusicTrackPlaySelected(val trackId: String) : AtmosphereInteraction
+    data object MusicStopSelected : AtmosphereInteraction
+    data object MusicLoopToggled : AtmosphereInteraction
+    data class MusicVolumeChanged(val volume: Int) : AtmosphereInteraction
+    data class MusicTrackDeleteSelected(val trackId: String) : AtmosphereInteraction
     data object FloatingOpened : AtmosphereInteraction
     data object FloatingClosed : AtmosphereInteraction
     data object AlwaysOnTopToggled : AtmosphereInteraction

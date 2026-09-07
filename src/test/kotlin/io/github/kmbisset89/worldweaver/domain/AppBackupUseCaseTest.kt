@@ -63,6 +63,11 @@ internal class AppBackupUseCaseTest {
                 selectedGoveeDeviceIds = listOf("AA:BB"),
                 isAlwaysOnTop = true,
                 lookTransitionMs = 1_200,
+                musicTracks = listOf(
+                    AtmosphereMusicTrack("t1", "Tavern", "/tmp/tavern.mp3", 0),
+                ),
+                musicVolume = 40,
+                musicLoopEnabled = false,
             ),
         )
         val dest = File(tempDir, "app.wwbackup")
@@ -139,6 +144,12 @@ internal class AppBackupUseCaseTest {
         )
         assertEquals(listOf("light-1"), harness.atmosphere.settings.value.selectedHueLightIds)
         assertEquals(listOf("AA:BB"), harness.atmosphere.settings.value.selectedGoveeDeviceIds)
+        assertEquals(
+            listOf(AtmosphereMusicTrack("t1", "Tavern", "/tmp/tavern.mp3", 0)),
+            harness.atmosphere.settings.value.musicTracks,
+        )
+        assertEquals(40, harness.atmosphere.settings.value.musicVolume)
+        assertEquals(false, harness.atmosphere.settings.value.musicLoopEnabled)
         assertTrue(harness.closed)
     }
 

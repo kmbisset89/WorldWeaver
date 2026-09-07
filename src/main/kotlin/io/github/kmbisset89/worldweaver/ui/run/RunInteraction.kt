@@ -2,6 +2,7 @@ package io.github.kmbisset89.worldweaver.ui.run
 
 import io.github.kmbisset89.worldweaver.domain.SearchHit
 import io.github.kmbisset89.worldweaver.domain.SessionRecordingKind
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
 import io.github.kmbisset89.worldweaver.ui.characters.PersonMembership
 
 internal sealed interface RunInteraction {
@@ -21,6 +22,9 @@ internal sealed interface RunInteraction {
     ) : RunInteraction
     data class SessionNotesChanged(val value: String) : RunInteraction
     data class ScratchNotesChanged(val value: String) : RunInteraction
+    data class SessionNotesWikilinkSelected(val target: WikilinkTarget) : RunInteraction
+    data class ScratchNotesWikilinkSelected(val target: WikilinkTarget) : RunInteraction
+    data class WikilinkSelected(val target: WikilinkTarget) : RunInteraction
     data class LookupQueryChanged(val query: String) : RunInteraction
     data class LookupResultSelected(val hit: SearchHit) : RunInteraction
     data object LookupPeekDismissed : RunInteraction
@@ -30,6 +34,7 @@ internal sealed interface RunInteraction {
     data object ClockCreateSelected : RunInteraction
     data class ClockFilledSelected(val clockId: String, val filledCount: Int) : RunInteraction
     data class ClockDeleteSelected(val clockId: String) : RunInteraction
+    data class TableRollSelected(val tableId: String) : RunInteraction
     data class TimerMinutesChanged(val value: String) : RunInteraction
     data class TimerPresetSelected(val minutes: Int) : RunInteraction
     data object TimerStartSelected : RunInteraction

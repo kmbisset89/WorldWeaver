@@ -38,8 +38,11 @@ import androidx.room.RoomDatabase
         BattleMapEntity::class,
         BattleMapSituationEntity::class,
         WorldMapEntity::class,
+        RandomTableEntity::class,
+        RandomTableRowEntity::class,
+        AssetEntity::class,
     ],
-    version = 25,
+    version = 27,
     exportSchema = true,
 )
 internal abstract class WorldWeaverDatabase : RoomDatabase() {
@@ -76,4 +79,7 @@ internal abstract class WorldWeaverDatabase : RoomDatabase() {
     abstract fun battleMapDao(): BattleMapDao
     abstract fun battleMapSituationDao(): BattleMapSituationDao
     abstract fun worldMapDao(): WorldMapDao
+    abstract fun randomTableDao(): RandomTableDao
+    abstract fun randomTableRowDao(): RandomTableRowDao
+    abstract fun assetDao(): AssetDao
 }

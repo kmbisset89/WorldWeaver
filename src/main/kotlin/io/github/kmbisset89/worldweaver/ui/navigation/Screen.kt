@@ -14,6 +14,8 @@ internal enum class Screen {
     CHARACTERS,
     QUESTS,
     SESSIONS,
+    TABLES,
+    ASSETS,
     ENCOUNTERS,
     MAPS,
     RUN,

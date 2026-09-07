@@ -162,6 +162,11 @@ private fun RunContent(
                             clockError = state.clockError,
                             onInteraction = onInteraction,
                         )
+                        RunTablesComposeWidget(
+                            tables = state.tables,
+                            lastRoll = state.lastTableRoll,
+                            onInteraction = onInteraction,
+                        )
                         RunTimerComposeWidget(
                             minutesText = state.timerMinutesText,
                             timerLabel = state.timerLabel,
@@ -198,6 +203,9 @@ private fun RunContent(
                             sessionNotes = state.sessionNotes,
                             scratchNotes = state.scratchNotes,
                             recap = state.recap,
+                            recapSpans = state.recapSpans,
+                            notesSuggestions = state.notesSuggestions,
+                            scratchSuggestions = state.scratchSuggestions,
                             onInteraction = onInteraction,
                         )
                     }
@@ -232,6 +240,11 @@ private fun RunContent(
                         clockError = state.clockError,
                         onInteraction = onInteraction,
                     )
+                    RunTablesComposeWidget(
+                        tables = state.tables,
+                        lastRoll = state.lastTableRoll,
+                        onInteraction = onInteraction,
+                    )
                     RunTimerComposeWidget(
                         minutesText = state.timerMinutesText,
                         timerLabel = state.timerLabel,
@@ -262,6 +275,9 @@ private fun RunContent(
                         sessionNotes = state.sessionNotes,
                         scratchNotes = state.scratchNotes,
                         recap = state.recap,
+                        recapSpans = state.recapSpans,
+                        notesSuggestions = state.notesSuggestions,
+                        scratchSuggestions = state.scratchSuggestions,
                         onInteraction = onInteraction,
                     )
                     RunPartyComposeWidget(party = state.party, onInteraction = onInteraction)

@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
 import java.util.prefs.Preferences
 
 /**
- * Persists atmosphere provider credentials, scene mappings, and custom moods on this computer.
+ * Persists atmosphere provider credentials, scene mappings, custom moods, and linked music on this computer.
  */
 internal class AtmosphereSettingsStore(
     private val preferences: Preferences,
@@ -70,6 +70,25 @@ internal class AtmosphereSettingsStore(
         _settings.value = _settings.value.copy(lookTransitionMs = duration)
     }
 
+    fun setMusicTracks(tracks: List<AtmosphereMusicTrack>) {
+        preferences.put(
+            KEY_MUSIC_TRACKS,
+            json.encodeToString(ListSerializer(AtmosphereMusicTrack.serializer()), tracks),
+        )
+        _settings.value = _settings.value.copy(musicTracks = tracks.sortedBy { it.sortOrder })
+    }
+
+    fun setMusicVolume(volume: Int) {
+        val next = volume.coerceIn(0, 100)
+        preferences.putInt(KEY_MUSIC_VOLUME, next)
+        _settings.value = _settings.value.copy(musicVolume = next)
+    }
+
+    fun setMusicLoopEnabled(enabled: Boolean) {
+        preferences.putBoolean(KEY_MUSIC_LOOP, enabled)
+        _settings.value = _settings.value.copy(musicLoopEnabled = enabled)
+    }
+
     fun replaceAll(settings: AtmosphereSettings) {
         preferences.put(KEY_BASE_URL, settings.connection.baseUrl)
         preferences.put(KEY_TOKEN, settings.connection.token)
@@ -86,7 +105,16 @@ internal class AtmosphereSettingsStore(
             KEY_LOOK_TRANSITION_MS,
             settings.lookTransitionMs.coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS),
         )
-        _settings.value = settings
+        preferences.put(
+            KEY_MUSIC_TRACKS,
+            json.encodeToString(ListSerializer(AtmosphereMusicTrack.serializer()), settings.musicTracks),
+        )
+        preferences.putInt(KEY_MUSIC_VOLUME, settings.musicVolume.coerceIn(0, 100))
+        preferences.putBoolean(KEY_MUSIC_LOOP, settings.musicLoopEnabled)
+        _settings.value = settings.copy(
+            musicTracks = settings.musicTracks.sortedBy { it.sortOrder },
+            musicVolume = settings.musicVolume.coerceIn(0, 100),
+        )
     }
 
     private fun read(): AtmosphereSettings {
@@ -110,7 +138,21 @@ internal class AtmosphereSettingsStore(
                 KEY_LOOK_TRANSITION_MS,
                 LightingTransitionCalculator.DEFAULT_DURATION_MS,
             ).coerceIn(0, LightingTransitionCalculator.MAX_DURATION_MS),
+            musicTracks = readMusicTracks(),
+            musicVolume = preferences.getInt(KEY_MUSIC_VOLUME, AtmosphereSettings.DEFAULT_MUSIC_VOLUME)
+                .coerceIn(0, 100),
+            musicLoopEnabled = preferences.getBoolean(KEY_MUSIC_LOOP, AtmosphereSettings.DEFAULT_MUSIC_LOOP),
         )
+    }
+
+    private fun readMusicTracks(): List<AtmosphereMusicTrack> {
+        val raw = preferences.get(KEY_MUSIC_TRACKS, "[]")
+        return try {
+            json.decodeFromString(ListSerializer(AtmosphereMusicTrack.serializer()), raw)
+                .sortedBy { it.sortOrder }
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     private fun readScenes(): List<AtmosphereScene> {
@@ -174,6 +216,9 @@ internal class AtmosphereSettingsStore(
         private const val KEY_SELECTED_GOVEE_DEVICES = "selected_govee_device_ids"
         private const val KEY_ALWAYS_ON_TOP = "atmosphere_always_on_top"
         private const val KEY_LOOK_TRANSITION_MS = "atmosphere_look_transition_ms"
+        private const val KEY_MUSIC_TRACKS = "atmosphere_music_tracks"
+        private const val KEY_MUSIC_VOLUME = "atmosphere_music_volume"
+        private const val KEY_MUSIC_LOOP = "atmosphere_music_loop"
 
         private val json = Json {
             ignoreUnknownKeys = true

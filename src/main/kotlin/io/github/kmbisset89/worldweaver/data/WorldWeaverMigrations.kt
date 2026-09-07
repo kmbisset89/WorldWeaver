@@ -1122,6 +1122,73 @@ internal object WorldWeaverMigrations {
         }
     }
 
+    val MIGRATION_25_26 = object : Migration(25, 26) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `random_tables` (
+                    `id` TEXT NOT NULL,
+                    `worldId` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `notes` TEXT NOT NULL,
+                    `createdAtEpochMillis` INTEGER NOT NULL,
+                    `updatedAtEpochMillis` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`worldId`) REFERENCES `worlds`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_random_tables_worldId` ON `random_tables` (`worldId`)"
+            )
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `random_table_rows` (
+                    `id` TEXT NOT NULL,
+                    `tableId` TEXT NOT NULL,
+                    `sortIndex` INTEGER NOT NULL,
+                    `label` TEXT NOT NULL,
+                    `weight` INTEGER NOT NULL,
+                    `nestedTableId` TEXT,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`tableId`) REFERENCES `random_tables`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(`nestedTableId`) REFERENCES `random_tables`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_random_table_rows_tableId` ON `random_table_rows` (`tableId`)"
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_random_table_rows_nestedTableId` ON `random_table_rows` (`nestedTableId`)"
+            )
+        }
+    }
+
+    val MIGRATION_26_27 = object : Migration(26, 27) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `assets` (
+                    `id` TEXT NOT NULL,
+                    `worldId` TEXT NOT NULL,
+                    `displayName` TEXT NOT NULL,
+                    `originalFileName` TEXT NOT NULL,
+                    `notes` TEXT NOT NULL,
+                    `byteSize` INTEGER NOT NULL,
+                    `createdAtEpochMillis` INTEGER NOT NULL,
+                    `updatedAtEpochMillis` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`worldId`) REFERENCES `worlds`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            connection.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_assets_worldId` ON `assets` (`worldId`)"
+            )
+        }
+    }
+
     private val DEFAULT_MONTHS = listOf(
         "January" to 31,
         "February" to 28,

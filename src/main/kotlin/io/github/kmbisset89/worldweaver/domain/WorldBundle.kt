@@ -14,6 +14,8 @@ internal data class WorldBundle(
     val observances: List<WorldCalendarObservance> = emptyList(),
     val celestialBodies: List<WorldCelestialBody> = emptyList(),
     val factions: List<Faction> = emptyList(),
+    val randomTables: List<RandomTable> = emptyList(),
+    val assets: List<Asset> = emptyList(),
     val memberships: List<FactionMembership> = emptyList(),
     val worldPeople: List<WorldPerson>,
     val campaignPeople: List<CampaignPerson>,
@@ -33,6 +35,7 @@ internal data class WorldBundle(
     val mapFiles: List<MapFile>,
     val worldMapFiles: List<WorldMapFile> = emptyList(),
     val voiceFiles: List<VoiceFile> = emptyList(),
+    val assetFiles: List<AssetFile> = emptyList(),
 ) {
     data class AvatarFile(
         val ref: PersonRef,
@@ -56,6 +59,12 @@ internal data class WorldBundle(
         val wav: ByteArray,
     )
 
+    data class AssetFile(
+        val assetId: String,
+        val originalFileName: String,
+        val bytes: ByteArray,
+    )
+
     fun toManifest(): Manifest {
         return Manifest(
             formatVersion = formatVersion,
@@ -74,6 +83,8 @@ internal data class WorldBundle(
             observances = observances.map(WorldCalendarObservanceRecord::from),
             celestialBodies = celestialBodies.map(WorldCelestialBodyRecord::from),
             factions = factions.map(FactionRecord::from),
+            randomTables = randomTables.map(RandomTableRecord::from),
+            assets = assets.map(AssetRecord::from),
             memberships = memberships.map(FactionMembershipRecord::from),
             worldPeople = worldPeople.map(WorldPersonRecord::from),
             campaignPeople = campaignPeople.map(CampaignPersonRecord::from),
@@ -106,6 +117,7 @@ internal data class WorldBundle(
             mapFiles: List<MapFile>,
             worldMapFiles: List<WorldMapFile> = emptyList(),
             voiceFiles: List<VoiceFile> = emptyList(),
+            assetFiles: List<AssetFile> = emptyList(),
         ): WorldBundle {
             val (factions, relationships) = resolveLegacyFactions(
                 payload = payload,
@@ -122,6 +134,8 @@ internal data class WorldBundle(
                 observances = payload.observances.map { it.toDomain() },
                 celestialBodies = payload.celestialBodies.map { it.toDomain() },
                 factions = factions,
+                randomTables = payload.randomTables.map { it.toDomain() },
+                assets = payload.assets.map { it.toDomain() },
                 memberships = payload.memberships.map { it.toDomain() },
                 worldPeople = payload.worldPeople.map { it.toDomain() },
                 campaignPeople = payload.campaignPeople.map { it.toDomain() },
@@ -143,6 +157,7 @@ internal data class WorldBundle(
                 mapFiles = mapFiles,
                 worldMapFiles = worldMapFiles,
                 voiceFiles = voiceFiles,
+                assetFiles = assetFiles,
             )
         }
 
@@ -205,6 +220,8 @@ internal data class WorldBundle(
         val observances: List<WorldCalendarObservanceRecord> = emptyList(),
         val celestialBodies: List<WorldCelestialBodyRecord> = emptyList(),
         val factions: List<FactionRecord> = emptyList(),
+        val randomTables: List<RandomTableRecord> = emptyList(),
+        val assets: List<AssetRecord> = emptyList(),
         val memberships: List<FactionMembershipRecord> = emptyList(),
         val worldPeople: List<WorldPersonRecord>,
         val campaignPeople: List<CampaignPersonRecord>,
@@ -1850,6 +1867,111 @@ internal data class WorldBundle(
                     notes = faction.notes,
                     createdAtEpochMillis = faction.createdAt.toEpochMilli(),
                     updatedAtEpochMillis = faction.updatedAt.toEpochMilli(),
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class RandomTableRecord(
+        val id: String,
+        val worldId: String,
+        val name: String,
+        val notes: String,
+        val rows: List<RandomTableRowRecord> = emptyList(),
+        val createdAtEpochMillis: Long,
+        val updatedAtEpochMillis: Long,
+    ) {
+        fun toDomain(): RandomTable {
+            return RandomTable(
+                id = id,
+                worldId = worldId,
+                name = name,
+                notes = notes,
+                rows = rows.map { it.toDomain() },
+                createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+                updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+            )
+        }
+
+        companion object {
+            fun from(table: RandomTable): RandomTableRecord {
+                return RandomTableRecord(
+                    id = table.id,
+                    worldId = table.worldId,
+                    name = table.name,
+                    notes = table.notes,
+                    rows = table.rows.map(RandomTableRowRecord::from),
+                    createdAtEpochMillis = table.createdAt.toEpochMilli(),
+                    updatedAtEpochMillis = table.updatedAt.toEpochMilli(),
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class RandomTableRowRecord(
+        val id: String,
+        val label: String,
+        val weight: Int,
+        val nestedTableId: String? = null,
+    ) {
+        fun toDomain(): RandomTableRow {
+            return RandomTableRow(
+                id = id,
+                label = label,
+                weight = weight,
+                nestedTableId = nestedTableId,
+            )
+        }
+
+        companion object {
+            fun from(row: RandomTableRow): RandomTableRowRecord {
+                return RandomTableRowRecord(
+                    id = row.id,
+                    label = row.label,
+                    weight = row.weight,
+                    nestedTableId = row.nestedTableId,
+                )
+            }
+        }
+    }
+
+    @Serializable
+    data class AssetRecord(
+        val id: String,
+        val worldId: String,
+        val displayName: String,
+        val originalFileName: String,
+        val notes: String,
+        val byteSize: Long,
+        val createdAtEpochMillis: Long,
+        val updatedAtEpochMillis: Long,
+    ) {
+        fun toDomain(): Asset {
+            return Asset(
+                id = id,
+                worldId = worldId,
+                displayName = displayName,
+                originalFileName = originalFileName,
+                notes = notes,
+                byteSize = byteSize,
+                createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+                updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+            )
+        }
+
+        companion object {
+            fun from(asset: Asset): AssetRecord {
+                return AssetRecord(
+                    id = asset.id,
+                    worldId = asset.worldId,
+                    displayName = asset.displayName,
+                    originalFileName = asset.originalFileName,
+                    notes = asset.notes,
+                    byteSize = asset.byteSize,
+                    createdAtEpochMillis = asset.createdAt.toEpochMilli(),
+                    updatedAtEpochMillis = asset.updatedAt.toEpochMilli(),
                 )
             }
         }
