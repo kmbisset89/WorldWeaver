@@ -7,6 +7,7 @@ import io.github.kmbisset89.worldweaver.domain.QuestLinkKind
 import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
 import io.github.kmbisset89.worldweaver.domain.Session
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 import io.github.kmbisset89.worldweaver.ui.advancement.AdvancementPrompt
 
 internal sealed class QuestsViewState {
@@ -35,6 +36,7 @@ internal sealed class QuestsViewState {
         val statusFilter: QuestStatus?,
         val locationName: String?,
         val links: List<QuestLinkRow>,
+        val wikilinkBacklinks: List<WikilinkBacklink> = emptyList(),
         val editor: QuestEditorState?,
         val pendingDelete: PendingDelete?,
         val advancementPrompt: AdvancementPrompt?,

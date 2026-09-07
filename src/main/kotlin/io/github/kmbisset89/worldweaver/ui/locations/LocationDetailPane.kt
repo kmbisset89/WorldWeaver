@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kmbisset89.worldweaver.domain.Location
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
 import io.github.kmbisset89.worldweaver.ui.theme.ErrorRed
 import io.github.kmbisset89.worldweaver.ui.theme.NavyBlue
@@ -34,6 +35,7 @@ import io.github.kmbisset89.worldweaver.ui.voice.chooseWavPath
 import io.github.kmbisset89.worldweaver.ui.theme.SurfaceCard
 import io.github.kmbisset89.worldweaver.ui.theme.TextPrimary
 import io.github.kmbisset89.worldweaver.ui.theme.TextSecondary
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkBacklinksComposeWidget
 
 @Composable
 internal fun LocationDetailPane(
@@ -43,6 +45,7 @@ internal fun LocationDetailPane(
     campaignName: String?,
     attachedLore: List<LocationsViewState.AttachedLore>,
     attachedQuests: List<LocationsViewState.AttachedQuest>,
+    wikilinkBacklinks: List<WikilinkBacklink>,
     voiceClipPath: String?,
     isRecordingVoice: Boolean,
     isPlayingVoice: Boolean,
@@ -121,6 +124,12 @@ internal fun LocationDetailPane(
         )
         AttachedLoreSection(attachedLore = attachedLore, onInteraction = onInteraction)
         AttachedQuestSection(attachedQuests = attachedQuests, onInteraction = onInteraction)
+        WikilinkBacklinksComposeWidget(
+            backlinks = wikilinkBacklinks,
+            onBacklinkSelected = { backlink ->
+                onInteraction(LocationsInteraction.BacklinkSelected(backlink))
+            },
+        )
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(

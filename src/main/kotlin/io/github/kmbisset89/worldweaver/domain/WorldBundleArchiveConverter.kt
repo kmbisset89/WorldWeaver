@@ -42,6 +42,11 @@ internal class WorldBundleArchiveConverter {
                 zip.write(file.wav)
                 zip.closeEntry()
             }
+            bundle.assetFiles.forEach { file ->
+                zip.putNextEntry(ZipEntry(assetEntryPath(file.assetId, file.originalFileName)))
+                zip.write(file.bytes)
+                zip.closeEntry()
+            }
         }
     }
 
@@ -62,6 +67,7 @@ internal class WorldBundleArchiveConverter {
                 val mapFiles = mutableListOf<WorldBundle.MapFile>()
                 val worldMapFiles = mutableListOf<WorldBundle.WorldMapFile>()
                 val voiceFiles = mutableListOf<WorldBundle.VoiceFile>()
+                val assetFiles = mutableListOf<WorldBundle.AssetFile>()
                 zip.entries().asSequence().forEach { entry ->
                     if (entry.isDirectory) {
                         return@forEach
@@ -99,6 +105,14 @@ internal class WorldBundleArchiveConverter {
                             val ref = voiceRefFromPath(entry.name) ?: return@forEach
                             voiceFiles += WorldBundle.VoiceFile(ref = ref, wav = zip.readBytes(entry))
                         }
+                        entry.name.startsWith(ASSETS_PREFIX) -> {
+                            val parsed = assetFromPath(entry.name) ?: return@forEach
+                            assetFiles += WorldBundle.AssetFile(
+                                assetId = parsed.first,
+                                originalFileName = parsed.second,
+                                bytes = zip.readBytes(entry),
+                            )
+                        }
                     }
                 }
                 ReadResult.Ready(
@@ -109,6 +123,7 @@ internal class WorldBundleArchiveConverter {
                         mapFiles = mapFiles,
                         worldMapFiles = worldMapFiles,
                         voiceFiles = voiceFiles,
+                        assetFiles = assetFiles,
                     )
                 )
             }
@@ -151,6 +166,24 @@ internal class WorldBundleArchiveConverter {
         return "$VOICES_PREFIX$folder/${ref.id}.wav"
     }
 
+    private fun assetEntryPath(assetId: String, originalFileName: String): String {
+        return "$ASSETS_PREFIX$assetId/${File(originalFileName).name}"
+    }
+
+    private fun assetFromPath(path: String): Pair<String, String>? {
+        val remainder = path.removePrefix(ASSETS_PREFIX)
+        val slash = remainder.indexOf('/')
+        if (slash <= 0 || slash == remainder.lastIndex) {
+            return null
+        }
+        val assetId = remainder.substring(0, slash)
+        val fileName = remainder.substring(slash + 1)
+        if (fileName.contains('/')) {
+            return null
+        }
+        return assetId to fileName
+    }
+
     private fun voiceRefFromPath(path: String): VoiceClipRef? {
         val remainder = path.removePrefix(VOICES_PREFIX)
         val parts = remainder.split('/')
@@ -187,6 +220,7 @@ internal class WorldBundleArchiveConverter {
         const val MAPS_PREFIX = "maps/"
         const val WORLD_MAPS_PREFIX = "world_maps/"
         const val VOICES_PREFIX = "voices/"
+        const val ASSETS_PREFIX = "assets/"
 
         val json = Json {
             prettyPrint = true

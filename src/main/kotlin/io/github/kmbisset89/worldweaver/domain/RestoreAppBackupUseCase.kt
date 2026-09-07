@@ -63,6 +63,10 @@ internal class RestoreAppBackupUseCase(
                 dest = dataDirectory.srdDir,
                 source = File(archive.extractedDataDir, WorldWeaverDataDirectory.SRD_DIR_NAME),
             )
+            replaceDirectory(
+                dest = dataDirectory.assetsDir,
+                source = File(archive.extractedDataDir, WorldWeaverDataDirectory.ASSETS_DIR_NAME),
+            )
             applyPrefs(archive.prefs)
             Result.Restored
         } catch (error: Exception) {
@@ -105,6 +109,9 @@ internal class RestoreAppBackupUseCase(
                     0,
                     LightingTransitionCalculator.MAX_DURATION_MS,
                 ),
+                musicTracks = prefs.atmosphereMusicTracks,
+                musicVolume = prefs.atmosphereMusicVolume.coerceIn(0, 100),
+                musicLoopEnabled = prefs.atmosphereMusicLoopEnabled,
             ),
         )
     }

@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kmbisset89.worldweaver.ui.components.ActionIconButtonComposeWidget
+import io.github.kmbisset89.worldweaver.ui.wikilink.WikilinkFieldComposeWidget
 
 @Composable
 internal fun SessionEditorDialog(
@@ -41,12 +42,15 @@ internal fun SessionEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                WikilinkFieldComposeWidget(
                     value = editor.notes,
                     onValueChange = { onInteraction(SessionsInteraction.EditorNotesChanged(it)) },
-                    label = { Text("Notes") },
+                    suggestions = editor.wikilinkSuggestions,
+                    onSuggestionSelected = { target ->
+                        onInteraction(SessionsInteraction.EditorWikilinkSelected(target))
+                    },
+                    label = "Notes",
                     minLines = 4,
-                    modifier = Modifier.fillMaxWidth()
                 )
                 if (editor.months.isEmpty()) {
                     Text("Set months on the Calendar screen to stamp an in-world date.")

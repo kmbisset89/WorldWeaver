@@ -122,6 +122,30 @@ internal class CreateAtmosphereSceneUseCaseTest {
         assertIs<CreateAtmosphereSceneUseCase.Result.DuplicateEntityId>(useCase("Other", "scene.tavern"))
     }
 
+    @Test
+    fun storesOptionalMusicTrack() {
+        val store = AtmosphereSettingsStore(preferences)
+        store.setMusicTracks(
+            listOf(AtmosphereMusicTrack("t1", "Tavern", "/tmp/tavern.mp3", 0)),
+        )
+        val useCase = CreateAtmosphereSceneUseCase(store, EntityIdFactory { "scene-1" })
+        val created = assertIs<CreateAtmosphereSceneUseCase.Result.Created>(
+            useCase("Tavern", "scene.tavern", musicTrackId = "t1"),
+        )
+        assertEquals("t1", created.scene.musicTrackId)
+    }
+
+    @Test
+    fun rejectsUnknownMusicTrack() {
+        val useCase = CreateAtmosphereSceneUseCase(
+            AtmosphereSettingsStore(preferences),
+            EntityIdFactory { "scene-1" },
+        )
+        assertIs<CreateAtmosphereSceneUseCase.Result.InvalidMusicTrack>(
+            useCase("Tavern", "scene.tavern", musicTrackId = "missing"),
+        )
+    }
+
     private companion object {
         const val TEST_NODE = "io.github.kmbisset89.worldweaver.test.atmosphere.create"
     }

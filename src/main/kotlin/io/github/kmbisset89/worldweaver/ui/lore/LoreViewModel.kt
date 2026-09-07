@@ -14,6 +14,8 @@ import io.github.kmbisset89.worldweaver.core.AppCoroutineScope
 import io.github.kmbisset89.worldweaver.domain.ActiveContextDetails
 import io.github.kmbisset89.worldweaver.domain.CreateLoreUseCase
 import io.github.kmbisset89.worldweaver.domain.DeleteLoreUseCase
+import io.github.kmbisset89.worldweaver.domain.ListWikilinkBacklinksUseCase
+import io.github.kmbisset89.worldweaver.domain.LoadWikilinkCatalogUseCase
 import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.Lore
 import io.github.kmbisset89.worldweaver.domain.LoreCategory
@@ -28,6 +30,12 @@ import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorl
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarObservancesForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.PeopleSnapshot
 import io.github.kmbisset89.worldweaver.domain.UpdateLoreUseCase
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
+import io.github.kmbisset89.worldweaver.domain.WikilinkCatalog
+import io.github.kmbisset89.worldweaver.domain.WikilinkDraftCompleter
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
+import io.github.kmbisset89.worldweaver.domain.WikilinkTextParser
+import io.github.kmbisset89.worldweaver.domain.WikilinkTextResolver
 import io.github.kmbisset89.worldweaver.domain.WorldCalendar
 import io.github.kmbisset89.worldweaver.domain.WorldCalendarObservance
 import io.github.kmbisset89.worldweaver.domain.WorldDateFormatter
@@ -43,7 +51,12 @@ internal class LoreViewModel(
     private val createLore: CreateLoreUseCase,
     private val updateLore: UpdateLoreUseCase,
     private val deleteLore: DeleteLoreUseCase,
+    private val loadWikilinkCatalog: LoadWikilinkCatalogUseCase,
+    private val listWikilinkBacklinks: ListWikilinkBacklinksUseCase,
     private val dateFormatter: WorldDateFormatter = WorldDateFormatter(),
+    private val wikilinkParser: WikilinkTextParser = WikilinkTextParser(),
+    private val wikilinkResolver: WikilinkTextResolver = WikilinkTextResolver(),
+    private val wikilinkCompleter: WikilinkDraftCompleter = WikilinkDraftCompleter(),
 ) {
     private val _state = MutableStateFlow<LoreViewState>(LoreViewState.Loading)
     val state: StateFlow<LoreViewState> = _state.asStateFlow()
@@ -61,6 +74,11 @@ internal class LoreViewModel(
     private var latestLocations: List<Location> = emptyList()
     private var latestPeople: PeopleSnapshot = PeopleSnapshot(emptyList(), emptyList())
     private var latestWorldName: String = ""
+    private var latestWorldId: String? = null
+    private var latestCatalog: WikilinkCatalog = WikilinkCatalog(emptyList())
+    private var latestBacklinks: List<WikilinkBacklink> = emptyList()
+    private var catalogJob: Job? = null
+    private var backlinksJob: Job? = null
 
     init {
         observe()
@@ -80,6 +98,13 @@ internal class LoreViewModel(
             is LoreInteraction.ObservedOnSelected -> {
                 _effects.tryEmit(LoreViewEffect.OpenCalendar(interaction.observanceId))
             }
+            is LoreInteraction.WikilinkSelected -> {
+                _effects.tryEmit(LoreViewEffect.OpenSearchHit(interaction.target.toSearchHit()))
+            }
+            is LoreInteraction.BacklinkSelected -> {
+                _effects.tryEmit(LoreViewEffect.OpenSearchHit(interaction.backlink.toSearchHit()))
+            }
+            is LoreInteraction.EditorWikilinkSelected -> completeEditorWikilink(interaction.target)
             is LoreInteraction.LoreOpened -> selectLore(interaction.loreId)
             is LoreInteraction.EditLoreSelected -> openEditEditor(interaction.loreId)
             is LoreInteraction.DeleteLoreSelected -> requestDelete(interaction.loreId)
@@ -94,7 +119,11 @@ internal class LoreViewModel(
                 editor?.copy(title = interaction.title, titleError = null)
             }
             is LoreInteraction.EditorContentChanged -> updateEditor { editor ->
-                editor?.copy(content = interaction.content, contentError = null)
+                editor?.copy(
+                    content = interaction.content,
+                    contentError = null,
+                    wikilinkSuggestions = suggestionsFor(interaction.content),
+                )
             }
             is LoreInteraction.EditorCategorySelected -> updateEditor { editor ->
                 editor?.copy(category = interaction.category)
@@ -228,6 +257,9 @@ internal class LoreViewModel(
             latestCalendar = null
             latestLocations = emptyList()
             latestPeople = PeopleSnapshot(emptyList(), emptyList())
+            latestCatalog = WikilinkCatalog(emptyList())
+            latestBacklinks = emptyList()
+            latestWorldId = null
             selectedLoreId = null
             _state.value = LoreViewState.NoActiveWorld
             return
@@ -238,6 +270,7 @@ internal class LoreViewModel(
         latestLocations = locations
         latestPeople = people
         latestWorldName = world.name
+        latestWorldId = world.id
         val current = _state.value
         val editor = if (openCreateOnNextLoad) {
             openCreateOnNextLoad = false
@@ -247,6 +280,7 @@ internal class LoreViewModel(
         }
         if (lore.isEmpty()) {
             selectedLoreId = null
+            refreshCatalogAndBacklinks(world.id, null)
             _state.value = LoreViewState.Empty(
                 worldName = world.name,
                 editor = editor,
@@ -255,6 +289,7 @@ internal class LoreViewModel(
         }
         val selected = selectedFrom(lore) ?: lore.first()
         selectedLoreId = selected.id
+        refreshCatalogAndBacklinks(world.id, selected.id)
         _state.value = contentState(
             selected = selected,
             editor = editor,
@@ -295,6 +330,10 @@ internal class LoreViewModel(
             attachedCharacterName = selected?.characterId?.let { characterId ->
                 characterName(characterId)
             },
+            contentSpans = selected?.let { entry ->
+                wikilinkResolver.resolve(entry.content, latestCatalog)
+            }.orEmpty(),
+            backlinks = latestBacklinks,
             categoryFilter = categoryFilter,
             editor = editor,
             pendingDelete = pendingDelete,
@@ -356,6 +395,7 @@ internal class LoreViewModel(
         }
         selectedLoreId = loreId
         refreshContent()
+        latestWorldId?.let { worldId -> refreshCatalogAndBacklinks(worldId, loreId) }
     }
 
     private fun openCreateEditor() {
@@ -513,6 +553,7 @@ internal class LoreViewModel(
             secrets = emptyList(),
             titleError = null,
             contentError = null,
+            wikilinkSuggestions = emptyList(),
         )
     }
 
@@ -691,6 +732,39 @@ internal class LoreViewModel(
         latestPeople.worldPeople.firstOrNull { it.id == characterId }?.let { return it.name }
         latestPeople.campaignPeople.firstOrNull { it.id == characterId }?.let { return it.name }
         return null
+    }
+
+    private fun suggestionsFor(text: String): List<WikilinkTarget> {
+        val query = wikilinkParser.incompleteQuery(text) ?: return emptyList()
+        return latestCatalog.suggest(query)
+    }
+
+    private fun completeEditorWikilink(target: WikilinkTarget) {
+        updateEditor { editor ->
+            editor?.let { current ->
+                val completed = wikilinkCompleter.complete(current.content, target)
+                current.copy(
+                    content = completed,
+                    wikilinkSuggestions = emptyList(),
+                )
+            }
+        }
+    }
+
+    private fun refreshCatalogAndBacklinks(worldId: String, selectedId: String?) {
+        catalogJob?.cancel()
+        catalogJob = appScope.scope.launch {
+            latestCatalog = loadWikilinkCatalog(worldId)
+            if (selectedId == null) {
+                latestBacklinks = emptyList()
+            } else {
+                latestBacklinks = listWikilinkBacklinks(worldId, selectedId)
+            }
+            refreshContent()
+            updateEditor { editor ->
+                editor?.copy(wikilinkSuggestions = suggestionsFor(editor.content))
+            }
+        }
     }
 
     private data class LoadedSnapshot(

@@ -3,6 +3,9 @@ package io.github.kmbisset89.worldweaver.ui.lore
 import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.Lore
 import io.github.kmbisset89.worldweaver.domain.LoreCategory
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
+import io.github.kmbisset89.worldweaver.domain.WikilinkDisplaySpan
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
 
 internal sealed class LoreViewState {
     data object Loading : LoreViewState()
@@ -27,6 +30,8 @@ internal sealed class LoreViewState {
         val observedOn: List<ObservedOnLink>,
         val attachedLocationName: String?,
         val attachedCharacterName: String?,
+        val contentSpans: List<WikilinkDisplaySpan>,
+        val backlinks: List<WikilinkBacklink>,
         val categoryFilter: LoreCategory?,
         val editor: LoreEditorState?,
         val pendingDelete: PendingDelete?,
@@ -64,6 +69,7 @@ internal sealed class LoreViewState {
         val secrets: List<SecretEditorState>,
         val titleError: String?,
         val contentError: String?,
+        val wikilinkSuggestions: List<WikilinkTarget> = emptyList(),
     )
 
     data class SecretEditorState(

@@ -32,6 +32,13 @@ internal class AtmosphereSettingsStoreTest {
         store.setSelectedGoveeDeviceIds(listOf("AA:BB"))
         store.setAlwaysOnTop(true)
         store.setLookTransitionMs(1_200)
+        store.setMusicTracks(
+            listOf(
+                AtmosphereMusicTrack("t1", "Tavern", "/tmp/tavern.mp3", 0),
+            ),
+        )
+        store.setMusicVolume(55)
+        store.setMusicLoopEnabled(false)
 
         val reloaded = AtmosphereSettingsStore(preferences).settings.value
         assertEquals("http://ha.local:8123", reloaded.connection.baseUrl)
@@ -49,6 +56,12 @@ internal class AtmosphereSettingsStoreTest {
         assertEquals(listOf("AA:BB"), reloaded.selectedGoveeDeviceIds)
         assertEquals(true, reloaded.isAlwaysOnTop)
         assertEquals(1_200, reloaded.lookTransitionMs)
+        assertEquals(
+            listOf(AtmosphereMusicTrack("t1", "Tavern", "/tmp/tavern.mp3", 0)),
+            reloaded.musicTracks,
+        )
+        assertEquals(55, reloaded.musicVolume)
+        assertEquals(false, reloaded.musicLoopEnabled)
     }
 
     @Test
@@ -63,6 +76,9 @@ internal class AtmosphereSettingsStoreTest {
         assertEquals(emptyList(), settings.selectedGoveeDeviceIds)
         assertFalse(settings.isAlwaysOnTop)
         assertEquals(LightingTransitionCalculator.DEFAULT_DURATION_MS, settings.lookTransitionMs)
+        assertEquals(emptyList(), settings.musicTracks)
+        assertEquals(AtmosphereSettings.DEFAULT_MUSIC_VOLUME, settings.musicVolume)
+        assertEquals(AtmosphereSettings.DEFAULT_MUSIC_LOOP, settings.musicLoopEnabled)
     }
 
     private companion object {

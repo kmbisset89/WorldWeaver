@@ -246,6 +246,8 @@ private fun LoreContent(
                     observedOn = state.observedOn,
                     attachedLocationName = state.attachedLocationName,
                     attachedCharacterName = state.attachedCharacterName,
+                    contentSpans = state.contentSpans,
+                    backlinks = state.backlinks,
                     onInteraction = onInteraction,
                     modifier = detailModifier,
                 )

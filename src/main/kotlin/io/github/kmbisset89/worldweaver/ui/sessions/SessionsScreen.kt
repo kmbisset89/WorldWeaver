@@ -227,6 +227,12 @@ private fun SessionsContent(
                     threads = state.threads,
                     docs = state.docs,
                     personOptions = state.personOptions,
+                    notesSpans = state.notesSpans,
+                    recapSpans = state.recapSpans,
+                    scratchSpans = state.scratchSpans,
+                    wikilinkBacklinks = state.wikilinkBacklinks,
+                    sceneWikilinkSuggestions = state.sceneWikilinkSuggestions,
+                    sceneWikilinkIndex = state.sceneWikilinkIndex,
                     onInteraction = onInteraction,
                     modifier = detailModifier,
                 )

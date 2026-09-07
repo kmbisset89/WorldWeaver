@@ -31,6 +31,7 @@ import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalog
 import io.github.kmbisset89.worldweaver.domain.FifthEditionPickerCatalogResolver
 import io.github.kmbisset89.worldweaver.domain.GameSystem
 import io.github.kmbisset89.worldweaver.domain.LevelingMode
+import io.github.kmbisset89.worldweaver.domain.ListWikilinkBacklinksUseCase
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2EFeat
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2EReference
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESheet
@@ -82,6 +83,7 @@ import io.github.kmbisset89.worldweaver.domain.PersonSpell
 import io.github.kmbisset89.worldweaver.domain.RelationshipType
 import io.github.kmbisset89.worldweaver.domain.UpdateCampaignPersonUseCase
 import io.github.kmbisset89.worldweaver.domain.UpdateWorldPersonUseCase
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 import io.github.kmbisset89.worldweaver.domain.WorldPerson
 import io.github.kmbisset89.worldweaver.domain.WorldPersonDraft
 
@@ -119,6 +121,7 @@ internal class CharactersViewModel(
     private val deleteFactionMembership: DeleteFactionMembershipUseCase,
     private val createPersonCompanion: CreatePersonCompanionUseCase,
     private val deletePersonCompanion: DeletePersonCompanionUseCase,
+    private val listWikilinkBacklinks: ListWikilinkBacklinksUseCase,
 ) {
     private val _state = MutableStateFlow<CharactersViewState>(CharactersViewState.Loading)
     val state: StateFlow<CharactersViewState> = _state.asStateFlow()
@@ -144,6 +147,9 @@ internal class CharactersViewModel(
         FifthEditionPickerCatalogResolver().resolve(null)
     private var srdMonsterPickerOpen = false
     private var latestWorldName: String = ""
+    private var latestWorldId: String? = null
+    private var latestBacklinks: List<WikilinkBacklink> = emptyList()
+    private var backlinksJob: Job? = null
     private var latestCampaignName: String? = null
     private var hasActiveCampaign = false
     private var latestWorldSystem = GameSystem.FifthEdition
@@ -175,6 +181,7 @@ internal class CharactersViewModel(
                 }
                 selectedKey = nextKey
                 refreshContent()
+                refreshBacklinks(nextKey.id)
             }
             is CharactersInteraction.SheetSelected -> {
                 _effects.tryEmit(CharactersViewEffect.OpenSheet(interaction.key))
@@ -212,6 +219,9 @@ internal class CharactersViewModel(
             CharactersInteraction.OverlaySaved -> saveOverlay()
             is CharactersInteraction.AttachedLoreSelected -> {
                 _effects.tryEmit(CharactersViewEffect.OpenLore(interaction.loreId))
+            }
+            is CharactersInteraction.BacklinkSelected -> {
+                _effects.tryEmit(CharactersViewEffect.OpenSearchHit(interaction.backlink.toSearchHit()))
             }
             is CharactersInteraction.AttachedQuestSelected -> {
                 _effects.tryEmit(CharactersViewEffect.OpenQuest(interaction.questId))
@@ -919,6 +929,7 @@ internal class CharactersViewModel(
         latestMemberships = memberships
         latestPickerCatalog = pickerCatalog
         latestWorldName = world.name
+        latestWorldId = world.id
         latestCampaignName = details.campaign?.name
         latestWorldSystem = world.defaultGameSystem
         latestCampaignSystem = details.campaign?.resolvedGameSystem(world.defaultGameSystem)
@@ -978,6 +989,7 @@ internal class CharactersViewModel(
             pendingDelete = pendingDeleteFrom(current),
             blockDeleteReason = blockReasonFrom(current),
         )
+        refreshBacklinks(selectedKey?.id)
     }
 
     private fun refreshContent() {
@@ -1119,6 +1131,7 @@ internal class CharactersViewModel(
                         worldPersonId = person.id,
                         campaignPersonId = null,
                     ),
+                    wikilinkBacklinks = latestBacklinks,
                     relationshipTargets = relationshipTargets(key),
                     avatarPath = avatarFileStore.pathIfPresent(PersonRef.World(person.id)),
                     voiceClipPath = voiceClipFileStore.pathIfPresent(VoiceClipRef.WorldPerson(person.id)),
@@ -1147,6 +1160,7 @@ internal class CharactersViewModel(
                         worldPersonId = person.worldPersonId,
                         campaignPersonId = person.id,
                     ),
+                    wikilinkBacklinks = latestBacklinks,
                     relationshipTargets = relationshipTargets(key),
                     avatarPath = avatarPathForCampaign(person),
                     voiceClipPath = voicePathForCampaign(person),
@@ -3425,6 +3439,19 @@ internal class CharactersViewModel(
         val memberships: List<FactionMembership>,
         val pickerCatalog: FifthEditionPickerCatalog,
     )
+
+    private fun refreshBacklinks(targetId: String?) {
+        val worldId = latestWorldId
+        if (worldId == null || targetId == null) {
+            latestBacklinks = emptyList()
+            return
+        }
+        backlinksJob?.cancel()
+        backlinksJob = appScope.scope.launch {
+            latestBacklinks = listWikilinkBacklinks(worldId, targetId)
+            refreshContent()
+        }
+    }
 
     private data class PendingWizard(
         val fifthEdition: CharactersViewState.CreationWizardState?,

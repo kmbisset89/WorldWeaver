@@ -28,6 +28,7 @@ internal class AppBackupArchiveConverter {
         worldMapsDir: File,
         voicesDir: File,
         srdDir: File,
+        assetsDir: File,
     ) {
         destFile.parentFile?.mkdirs()
         ZipOutputStream(destFile.outputStream().buffered()).use { zip ->
@@ -41,6 +42,7 @@ internal class AppBackupArchiveConverter {
             zip.writeTree(WORLD_MAPS_PREFIX, worldMapsDir)
             zip.writeTree(VOICES_PREFIX, voicesDir)
             zip.writeTree(SRD_PREFIX, srdDir)
+            zip.writeTree(ASSETS_PREFIX, assetsDir)
         }
     }
 
@@ -86,7 +88,8 @@ internal class AppBackupArchiveConverter {
                             entry.name.startsWith(MAPS_PREFIX) ||
                             entry.name.startsWith(WORLD_MAPS_PREFIX) ||
                             entry.name.startsWith(VOICES_PREFIX) ||
-                            entry.name.startsWith(SRD_PREFIX) -> {
+                            entry.name.startsWith(SRD_PREFIX) ||
+                            entry.name.startsWith(ASSETS_PREFIX) -> {
                             val relative = entry.name.removePrefix(DATA_PREFIX)
                             val dest = File(extractTo, relative)
                             writeExtractedFile(extractTo, dest, zip.readBytes(entry))
@@ -163,6 +166,7 @@ internal class AppBackupArchiveConverter {
         const val WORLD_MAPS_PREFIX = "${DATA_PREFIX}world_maps/"
         const val VOICES_PREFIX = "${DATA_PREFIX}voices/"
         const val SRD_PREFIX = "${DATA_PREFIX}srd/"
+        const val ASSETS_PREFIX = "${DATA_PREFIX}assets/"
 
         val json = Json {
             prettyPrint = true

@@ -2,6 +2,8 @@ package io.github.kmbisset89.worldweaver.ui.run
 
 import io.github.kmbisset89.worldweaver.domain.SearchHit
 import io.github.kmbisset89.worldweaver.domain.SessionClock
+import io.github.kmbisset89.worldweaver.domain.WikilinkDisplaySpan
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
 import io.github.kmbisset89.worldweaver.domain.SessionMicrophoneDevice
 import io.github.kmbisset89.worldweaver.domain.SessionRecordingKind
 import io.github.kmbisset89.worldweaver.domain.SessionReferencePeek
@@ -33,6 +35,11 @@ internal sealed class RunViewState {
         val sessionNotes: String,
         val scratchNotes: String,
         val recap: String,
+        val sessionNotesSpans: List<WikilinkDisplaySpan> = emptyList(),
+        val scratchNotesSpans: List<WikilinkDisplaySpan> = emptyList(),
+        val recapSpans: List<WikilinkDisplaySpan> = emptyList(),
+        val notesSuggestions: List<WikilinkTarget> = emptyList(),
+        val scratchSuggestions: List<WikilinkTarget> = emptyList(),
         val inWorldDateLabel: String?,
         val calendarTodayLabel: String?,
         val observanceNames: List<String>,
@@ -66,6 +73,8 @@ internal sealed class RunViewState {
         val recordings: List<RecordingLine>,
         val recordingError: String?,
         val cameraNeedsPermission: Boolean,
+        val tables: List<TableLine> = emptyList(),
+        val lastTableRoll: String? = null,
     ) : RunViewState() {
         val timerLabel: String
             get() {
@@ -113,6 +122,11 @@ internal sealed class RunViewState {
             filledCount = clock.filledCount,
         )
     }
+
+    data class TableLine(
+        val tableId: String,
+        val name: String,
+    )
 
     data class EncounterLine(
         val name: String,

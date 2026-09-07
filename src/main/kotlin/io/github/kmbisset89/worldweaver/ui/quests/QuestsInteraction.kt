@@ -2,6 +2,7 @@ package io.github.kmbisset89.worldweaver.ui.quests
 
 import io.github.kmbisset89.worldweaver.domain.QuestObjectiveStatus
 import io.github.kmbisset89.worldweaver.domain.QuestStatus
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 
 internal sealed interface QuestsInteraction {
     data object ScreenStarted : QuestsInteraction
@@ -26,6 +27,7 @@ internal sealed interface QuestsInteraction {
     data class LinkedPersonSelected(val personId: String, val worldOwned: Boolean) : QuestsInteraction
     data class LinkedSessionSelected(val sessionId: String) : QuestsInteraction
     data class LinkedLocationSelected(val locationId: String) : QuestsInteraction
+    data class BacklinkSelected(val backlink: WikilinkBacklink) : QuestsInteraction
     data class EditorTitleChanged(val title: String) : QuestsInteraction
     data class EditorSummaryChanged(val summary: String) : QuestsInteraction
     data class EditorStatusSelected(val status: QuestStatus) : QuestsInteraction

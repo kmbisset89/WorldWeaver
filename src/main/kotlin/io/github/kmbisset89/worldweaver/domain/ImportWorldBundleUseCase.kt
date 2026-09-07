@@ -15,6 +15,8 @@ internal class ImportWorldBundleUseCase(
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
     private val factionRepository: FactionRepository,
+    private val randomTableRepository: RandomTableRepository,
+    private val assetRepository: AssetRepository,
     private val factionMembershipRepository: FactionMembershipRepository,
     private val worldPersonRepository: WorldPersonRepository,
     private val campaignPersonRepository: CampaignPersonRepository,
@@ -34,6 +36,7 @@ internal class ImportWorldBundleUseCase(
     private val worldMapRepository: WorldMapRepository,
     private val worldMapFileStore: WorldMapFileStore,
     private val voiceClipFileStore: VoiceClipFileStore,
+    private val assetFileStore: AssetFileStore,
     private val setActiveWorld: SetActiveWorldUseCase,
 ) {
     sealed interface Result {
@@ -74,6 +77,13 @@ internal class ImportWorldBundleUseCase(
             bundle.observances.forEach { observanceRepository.insert(it) }
             bundle.celestialBodies.forEach { celestialBodyRepository.insert(it) }
             bundle.factions.forEach { factionRepository.insert(it) }
+            bundle.randomTables.forEach { table ->
+                randomTableRepository.insert(table.copy(rows = emptyList()))
+            }
+            bundle.randomTables.forEach { table ->
+                randomTableRepository.update(table)
+            }
+            bundle.assets.forEach { assetRepository.insert(it) }
             bundle.campaigns.forEach { campaignRepository.insert(it) }
             bundle.campaignPeople.forEach { campaignPersonRepository.insert(it) }
             bundle.locationOverlays.forEach { locationOverlayRepository.upsert(it) }
@@ -111,6 +121,9 @@ internal class ImportWorldBundleUseCase(
             }
         bundle.voiceFiles.forEach { file ->
             voiceClipFileStore.write(file.ref, file.wav)
+        }
+        bundle.assetFiles.forEach { file ->
+            assetFileStore.write(file.assetId, file.originalFileName, file.bytes)
         }
     }
 

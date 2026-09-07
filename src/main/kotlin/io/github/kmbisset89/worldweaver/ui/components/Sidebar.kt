@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lightbulb
@@ -41,6 +42,7 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SettingsBrightness
+import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -255,6 +257,8 @@ private enum class NavDestination(
     Characters(Screen.CHARACTERS, Icons.Default.Groups, "Characters", "Navigate to Characters"),
     Quests(Screen.QUESTS, Icons.AutoMirrored.Filled.Assignment, "Quests", "Navigate to Quests"),
     Sessions(Screen.SESSIONS, Icons.Default.Event, "Sessions", "Navigate to Sessions"),
+    Tables(Screen.TABLES, Icons.Default.ViewList, "Tables", "Navigate to Tables"),
+    Assets(Screen.ASSETS, Icons.Default.FolderOpen, "Assets", "Navigate to Assets"),
     Tonight(Screen.RUN, Icons.Default.NightsStay, "Tonight", "Navigate to Tonight"),
     Encounters(Screen.ENCOUNTERS, Icons.Default.Security, "Encounters", "Navigate to Encounters"),
     Maps(Screen.MAPS, Icons.Default.Map, "Maps", "Navigate to Maps"),

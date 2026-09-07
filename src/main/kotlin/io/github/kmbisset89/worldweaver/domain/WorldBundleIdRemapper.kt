@@ -14,6 +14,9 @@ internal class WorldBundleIdRemapper(
         val observanceIds = remapIds(bundle.observances.map { it.id })
         val celestialBodyIds = remapIds(bundle.celestialBodies.map { it.id })
         val factionIds = remapIds(bundle.factions.map { it.id })
+        val randomTableIds = remapIds(bundle.randomTables.map { it.id })
+        val randomTableRowIds = remapIds(bundle.randomTables.flatMap { table -> table.rows.map { it.id } })
+        val assetIds = remapIds(bundle.assets.map { it.id })
         val membershipIds = remapIds(bundle.memberships.map { it.id })
         val campaignIds = remapIds(bundle.campaigns.map { it.id })
         val campaignPersonIds = remapIds(bundle.campaignPeople.map { it.id })
@@ -91,6 +94,24 @@ internal class WorldBundleIdRemapper(
             factions = bundle.factions.map { faction ->
                 faction.copy(
                     id = factionIds.getValue(faction.id),
+                    worldId = worldId,
+                )
+            },
+            randomTables = bundle.randomTables.map { table ->
+                table.copy(
+                    id = randomTableIds.getValue(table.id),
+                    worldId = worldId,
+                    rows = table.rows.map { row ->
+                        row.copy(
+                            id = randomTableRowIds.getValue(row.id),
+                            nestedTableId = row.nestedTableId?.let(randomTableIds::get),
+                        )
+                    },
+                )
+            },
+            assets = bundle.assets.map { asset ->
+                asset.copy(
+                    id = assetIds.getValue(asset.id),
                     worldId = worldId,
                 )
             },
@@ -242,6 +263,9 @@ internal class WorldBundleIdRemapper(
                 file.copy(
                     ref = remapVoiceRef(file.ref, locationIds, worldPersonIds, campaignPersonIds),
                 )
+            },
+            assetFiles = bundle.assetFiles.map { file ->
+                file.copy(assetId = assetIds.getValue(file.assetId))
             },
         )
     }

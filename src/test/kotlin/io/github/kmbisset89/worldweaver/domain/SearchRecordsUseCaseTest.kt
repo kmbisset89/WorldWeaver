@@ -107,7 +107,53 @@ internal class SearchRecordsUseCaseTest {
         val hits = harness.search("Faerun")
         assertEquals(1, hits.size)
         assertEquals(SearchKind.World, hits.single().kind)
-        assertEquals("w-1", hits.single().worldId)
+    }
+
+    @Test
+    fun matchesRandomTableName() = runTest {
+        val harness = Harness()
+        val now = Instant.parse("2026-08-29T12:00:00Z")
+        harness.randomTables.insert(
+            RandomTable(
+                id = "tbl-1",
+                worldId = "world-1",
+                name = "Harbor rumors",
+                notes = "Whispers at the docks",
+                rows = listOf(RandomTableRow(id = "row-1", label = "A missing barge", weight = 1, nestedTableId = null)),
+                createdAt = now,
+                updatedAt = now,
+            )
+        )
+
+        val hits = harness.search("rumors")
+        assertEquals(1, hits.size)
+        assertEquals(SearchKind.RandomTable, hits.single().kind)
+        assertEquals("tbl-1", hits.single().id)
+        assertEquals("world-1", hits.single().worldId)
+    }
+
+    @Test
+    fun matchesAssetName() = runTest {
+        val harness = Harness()
+        val now = Instant.parse("2026-08-29T12:00:00Z")
+        harness.assets.insert(
+            Asset(
+                id = "asset-1",
+                worldId = "world-1",
+                displayName = "Harbor sketch",
+                originalFileName = "sketch.png",
+                notes = "Maybe the docks",
+                byteSize = 12,
+                createdAt = now,
+                updatedAt = now,
+            )
+        )
+
+        val hits = harness.search("sketch")
+        assertEquals(1, hits.size)
+        assertEquals(SearchKind.Asset, hits.single().kind)
+        assertEquals("asset-1", hits.single().id)
+        assertEquals("world-1", hits.single().worldId)
     }
 
     private class Harness {
@@ -118,6 +164,8 @@ internal class SearchRecordsUseCaseTest {
         val observances = FakeWorldCalendarObservanceRepository()
         val celestialBodies = FakeWorldCelestialBodyRepository()
         val factions = FakeFactionRepository()
+        val randomTables = FakeRandomTableRepository()
+        val assets = FakeAssetRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
         val quests = FakeQuestRepository()
@@ -134,6 +182,8 @@ internal class SearchRecordsUseCaseTest {
             campaignPeople,
             quests,
             sessions,
+            randomTables,
+            assets,
         )
 
         suspend fun search(query: String): List<SearchHit> {

@@ -2,6 +2,7 @@ package io.github.kmbisset89.worldweaver.ui.locations
 
 import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.LocationType
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 
 internal sealed class LocationsViewState {
     data object Loading : LocationsViewState()
@@ -31,6 +32,7 @@ internal sealed class LocationsViewState {
         val overlay: OverlayState?,
         val attachedLore: List<AttachedLore>,
         val attachedQuests: List<AttachedQuest>,
+        val wikilinkBacklinks: List<WikilinkBacklink> = emptyList(),
         val voiceClipPath: String?,
         val isRecordingVoice: Boolean,
         val isPlayingVoice: Boolean,

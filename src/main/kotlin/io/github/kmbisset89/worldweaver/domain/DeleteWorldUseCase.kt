@@ -12,6 +12,8 @@ internal class DeleteWorldUseCase(
     private val personRelationshipRepository: PersonRelationshipRepository,
     private val deleteWorldPerson: DeleteWorldPersonUseCase,
     private val voiceClipFileStore: VoiceClipFileStore,
+    private val assetRepository: AssetRepository,
+    private val assetFileStore: AssetFileStore,
     private val activeContextRepository: ActiveContextRepository,
 ) {
     sealed interface Result {
@@ -38,6 +40,9 @@ internal class DeleteWorldUseCase(
             factionMembershipRepository.deleteByFaction(faction.id)
             personRelationshipRepository.deleteByFaction(faction.id)
             factionRepository.delete(faction.id)
+        }
+        assetRepository.getByWorld(worldId).forEach { asset ->
+            assetFileStore.delete(asset.id)
         }
         worldRepository.delete(worldId)
         val context = activeContextRepository.get()

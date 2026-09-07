@@ -59,6 +59,9 @@ internal class ExportAppBackupUseCase(
                     atmosphereSelectedHueLightIds = atmosphere.selectedHueLightIds,
                     atmosphereSelectedGoveeDeviceIds = atmosphere.selectedGoveeDeviceIds,
                     atmosphereLookTransitionMs = atmosphere.lookTransitionMs,
+                    atmosphereMusicTracks = atmosphere.musicTracks,
+                    atmosphereMusicVolume = atmosphere.musicVolume,
+                    atmosphereMusicLoopEnabled = atmosphere.musicLoopEnabled,
                 ),
                 databaseFile = snapshotDb,
                 avatarsDir = dataDirectory.avatarsDir,
@@ -66,6 +69,7 @@ internal class ExportAppBackupUseCase(
                 worldMapsDir = dataDirectory.worldMapsDir,
                 voicesDir = dataDirectory.voicesDir,
                 srdDir = dataDirectory.srdDir,
+                assetsDir = dataDirectory.assetsDir,
             )
             Result.Written
         } catch (error: Exception) {

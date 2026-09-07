@@ -275,6 +275,7 @@ private fun LocationsContent(
                         campaignName = state.campaignName,
                         attachedLore = state.attachedLore,
                         attachedQuests = state.attachedQuests,
+                        wikilinkBacklinks = state.wikilinkBacklinks,
                         voiceClipPath = state.voiceClipPath,
                         isRecordingVoice = state.isRecordingVoice,
                         isPlayingVoice = state.isPlayingVoice,

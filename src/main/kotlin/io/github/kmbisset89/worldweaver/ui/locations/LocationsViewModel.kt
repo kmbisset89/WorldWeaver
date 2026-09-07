@@ -19,6 +19,7 @@ import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.LocationDraft
 import io.github.kmbisset89.worldweaver.domain.LocationOverlay
 import io.github.kmbisset89.worldweaver.domain.LocationType
+import io.github.kmbisset89.worldweaver.domain.ListWikilinkBacklinksUseCase
 import io.github.kmbisset89.worldweaver.domain.Lore
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationOverlaysForActiveCampaignUseCase
@@ -35,6 +36,7 @@ import io.github.kmbisset89.worldweaver.domain.VoiceClipPlayer
 import io.github.kmbisset89.worldweaver.domain.VoiceClipRecorder
 import io.github.kmbisset89.worldweaver.domain.VoiceClipRef
 import io.github.kmbisset89.worldweaver.domain.WorldMap
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 
 internal class LocationsViewModel(
     private val appScope: AppCoroutineScope,
@@ -53,6 +55,7 @@ internal class LocationsViewModel(
     private val voiceClipFileStore: VoiceClipFileStore,
     private val voiceClipRecorder: VoiceClipRecorder,
     private val voiceClipPlayer: VoiceClipPlayer,
+    private val listWikilinkBacklinks: ListWikilinkBacklinksUseCase,
 ) {
     private val _state = MutableStateFlow<LocationsViewState>(LocationsViewState.Loading)
     val state: StateFlow<LocationsViewState> = _state.asStateFlow()
@@ -73,6 +76,9 @@ internal class LocationsViewModel(
     private var latestWorldMaps: List<WorldMap> = emptyList()
     private var latestCampaignName: String? = null
     private var latestWorldName: String = ""
+    private var latestWorldId: String? = null
+    private var latestBacklinks: List<WikilinkBacklink> = emptyList()
+    private var backlinksJob: Job? = null
     private var isRecordingVoice = false
     private var isPlayingVoice = false
 
@@ -151,6 +157,9 @@ internal class LocationsViewModel(
             is LocationsInteraction.AttachedQuestSelected -> {
                 _effects.tryEmit(LocationsViewEffect.OpenQuest(interaction.questId))
             }
+            is LocationsInteraction.BacklinkSelected -> {
+                _effects.tryEmit(LocationsViewEffect.OpenSearchHit(interaction.backlink.toSearchHit()))
+            }
             is LocationsInteraction.VoiceClipAttached -> saveVoiceClip(interaction.path)
             LocationsInteraction.VoiceClipRecordToggled -> toggleVoiceRecord()
             LocationsInteraction.VoiceClipPlayToggled -> toggleVoicePlay()
@@ -226,6 +235,7 @@ internal class LocationsViewModel(
         latestWorldMaps = worldMaps
         latestCampaignName = details.campaign?.name
         latestWorldName = world.name
+        latestWorldId = world.id
         val current = _state.value
         val editor = if (openCreateOnNextLoad) {
             openCreateOnNextLoad = false
@@ -251,6 +261,7 @@ internal class LocationsViewModel(
                 overlayNotesDraft = null
             }
         }
+        refreshBacklinks(selected.id)
         _state.value = contentState(
             worldName = world.name,
             campaignName = details.campaign?.name,
@@ -334,6 +345,7 @@ internal class LocationsViewModel(
                         )
                     }
             }.orEmpty(),
+            wikilinkBacklinks = latestBacklinks,
             voiceClipPath = selected?.let { location ->
                 voiceClipFileStore.pathIfPresent(VoiceClipRef.Location(location.id))
             },
@@ -368,6 +380,7 @@ internal class LocationsViewModel(
         selectedLocationId = locationId
         overlayNotesDraft = null
         refreshContent()
+        refreshBacklinks(locationId)
     }
 
     private fun saveVoiceClip(path: String) {
@@ -797,6 +810,19 @@ internal class LocationsViewModel(
 
     private fun blockReasonFrom(state: LocationsViewState): String? {
         return (state as? LocationsViewState.Content)?.blockDeleteReason
+    }
+
+    private fun refreshBacklinks(targetId: String?) {
+        val worldId = latestWorldId
+        if (worldId == null || targetId == null) {
+            latestBacklinks = emptyList()
+            return
+        }
+        backlinksJob?.cancel()
+        backlinksJob = appScope.scope.launch {
+            latestBacklinks = listWikilinkBacklinks(worldId, targetId)
+            refreshContent()
+        }
     }
 
     private data class LoadedSnapshot(

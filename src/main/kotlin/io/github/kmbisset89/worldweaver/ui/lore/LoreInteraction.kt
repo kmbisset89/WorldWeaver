@@ -1,6 +1,8 @@
 package io.github.kmbisset89.worldweaver.ui.lore
 
 import io.github.kmbisset89.worldweaver.domain.LoreCategory
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
+import io.github.kmbisset89.worldweaver.domain.WikilinkTarget
 
 internal sealed interface LoreInteraction {
     data object ScreenStarted : LoreInteraction
@@ -16,6 +18,9 @@ internal sealed interface LoreInteraction {
     data class CategoryFilterSelected(val category: LoreCategory?) : LoreInteraction
     data class RelatedLoreSelected(val loreId: String) : LoreInteraction
     data class ObservedOnSelected(val observanceId: String) : LoreInteraction
+    data class WikilinkSelected(val target: WikilinkTarget) : LoreInteraction
+    data class BacklinkSelected(val backlink: WikilinkBacklink) : LoreInteraction
+    data class EditorWikilinkSelected(val target: WikilinkTarget) : LoreInteraction
     data class HintRevealToggled(val secretId: String, val hintId: String) : LoreInteraction
     data class EditorTitleChanged(val title: String) : LoreInteraction
     data class EditorContentChanged(val content: String) : LoreInteraction

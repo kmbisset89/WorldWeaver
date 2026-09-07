@@ -248,6 +248,7 @@ private fun QuestsContent(
                     quest = state.selectedQuest,
                     locationName = state.locationName,
                     links = state.links,
+                    wikilinkBacklinks = state.wikilinkBacklinks,
                     onInteraction = onInteraction,
                     modifier = detailModifier,
                 )

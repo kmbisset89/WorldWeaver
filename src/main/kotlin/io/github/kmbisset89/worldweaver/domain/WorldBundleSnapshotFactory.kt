@@ -9,6 +9,8 @@ internal class WorldBundleSnapshotFactory(
     private val locationRepository: LocationRepository,
     private val loreRepository: LoreRepository,
     private val factionRepository: FactionRepository,
+    private val randomTableRepository: RandomTableRepository,
+    private val assetRepository: AssetRepository,
     private val factionMembershipRepository: FactionMembershipRepository,
     private val worldPersonRepository: WorldPersonRepository,
     private val campaignPersonRepository: CampaignPersonRepository,
@@ -28,6 +30,7 @@ internal class WorldBundleSnapshotFactory(
     private val worldMapRepository: WorldMapRepository,
     private val worldMapFileStore: WorldMapFileStore,
     private val voiceClipFileStore: VoiceClipFileStore,
+    private val assetFileStore: AssetFileStore,
     private val instantProvider: InstantProvider,
 ) {
     suspend fun create(worldId: String): WorldBundle? {
@@ -41,6 +44,7 @@ internal class WorldBundleSnapshotFactory(
         val worldMaps = worldMapRepository.getByWorld(worldId)
         val locations = locationRepository.getByWorld(worldId)
         val sessions = campaignIds.flatMap { sessionRepository.getByCampaign(it) }
+        val assets = assetRepository.getByWorld(worldId)
         return WorldBundle(
             formatVersion = WorldBundle.FORMAT_VERSION,
             exportedAt = instantProvider.now(),
@@ -52,6 +56,8 @@ internal class WorldBundleSnapshotFactory(
             observances = observanceRepository.getByWorld(worldId),
             celestialBodies = celestialBodyRepository.getByWorld(worldId),
             factions = factionRepository.getByWorld(worldId),
+            randomTables = randomTableRepository.getByWorld(worldId),
+            assets = assets,
             memberships = factionMembershipRepository.getAll().filter { membership ->
                 containsPerson(membership.person, personIds)
             },
@@ -77,6 +83,7 @@ internal class WorldBundleSnapshotFactory(
             mapFiles = collectMapFiles(battleMaps),
             worldMapFiles = collectWorldMapFiles(worldMaps),
             voiceFiles = collectVoiceFiles(locations, worldPeople, campaignPeople),
+            assetFiles = collectAssetFiles(assets),
         )
     }
 
@@ -144,6 +151,17 @@ internal class WorldBundleSnapshotFactory(
             files += WorldBundle.VoiceFile(ref = ref, wav = wav)
         }
         return files
+    }
+
+    private fun collectAssetFiles(assets: List<Asset>): List<WorldBundle.AssetFile> {
+        return assets.mapNotNull { asset ->
+            val bytes = assetFileStore.read(asset.id, asset.originalFileName) ?: return@mapNotNull null
+            WorldBundle.AssetFile(
+                assetId = asset.id,
+                originalFileName = asset.originalFileName,
+                bytes = bytes,
+            )
+        }
     }
 
     private fun containsPerson(ref: PersonRef, personIds: Set<String>): Boolean {

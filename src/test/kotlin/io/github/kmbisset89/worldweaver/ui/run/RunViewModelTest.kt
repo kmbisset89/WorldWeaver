@@ -37,6 +37,8 @@ import io.github.kmbisset89.worldweaver.domain.FakeLocationOverlayRepository
 import io.github.kmbisset89.worldweaver.domain.FakeLocationRepository
 import io.github.kmbisset89.worldweaver.domain.FakeLoreRepository
 import io.github.kmbisset89.worldweaver.domain.FakeQuestRepository
+import io.github.kmbisset89.worldweaver.domain.FakeRandomTableRepository
+import io.github.kmbisset89.worldweaver.domain.FakeAssetRepository
 import io.github.kmbisset89.worldweaver.domain.FakeSessionClockRepository
 import io.github.kmbisset89.worldweaver.domain.FakeSessionRepository
 import io.github.kmbisset89.worldweaver.domain.FakeWorldCalendarObservanceRepository
@@ -48,6 +50,8 @@ import io.github.kmbisset89.worldweaver.domain.FakeFactionRepository
 import io.github.kmbisset89.worldweaver.domain.GameSystem
 import io.github.kmbisset89.worldweaver.domain.InstantProvider
 import io.github.kmbisset89.worldweaver.domain.LoadSessionReferencePeekUseCase
+import io.github.kmbisset89.worldweaver.domain.LoadWikilinkCatalogUseCase
+import io.github.kmbisset89.worldweaver.domain.RollRandomTableUseCase
 import io.github.kmbisset89.worldweaver.domain.Location
 import io.github.kmbisset89.worldweaver.domain.LocationType
 import io.github.kmbisset89.worldweaver.domain.ObserveActiveContextDetailsUseCase
@@ -57,6 +61,7 @@ import io.github.kmbisset89.worldweaver.domain.ObserveLocationOverlaysForActiveC
 import io.github.kmbisset89.worldweaver.domain.ObserveLocationsForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObservePeopleForActiveContextUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveQuestsForActiveCampaignUseCase
+import io.github.kmbisset89.worldweaver.domain.ObserveRandomTablesForActiveWorldUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionClocksForActiveSessionUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveSessionsForActiveCampaignUseCase
 import io.github.kmbisset89.worldweaver.domain.ObserveWorldCalendarForActiveWorldUseCase
@@ -306,6 +311,8 @@ internal class RunViewModelTest {
         val lore = FakeLoreRepository()
         val celestialBodies = FakeWorldCelestialBodyRepository()
         val factions = FakeFactionRepository()
+        val randomTables = FakeRandomTableRepository()
+        val assets = FakeAssetRepository()
         val recordings = SessionRecordingFileStore(Files.createTempDirectory("ww-recordings").toFile())
         val recordingCapture = FakeSessionRecordingCapture()
         var cameraSettingsCommands: List<String>? = null
@@ -364,6 +371,8 @@ internal class RunViewModelTest {
                 campaignPeople,
                 quests,
                 sessions,
+                randomTables,
+                assets,
             )
             return RunViewModel(
                 appScope = AppCoroutineScope(),
@@ -378,6 +387,7 @@ internal class RunViewModelTest {
                 observeOverlays = ObserveLocationOverlaysForActiveCampaignUseCase(overlays, context),
                 observeLocations = ObserveLocationsForActiveWorldUseCase(locations, context),
                 observeClocks = ObserveSessionClocksForActiveSessionUseCase(clocks, context),
+                observeTables = ObserveRandomTablesForActiveWorldUseCase(randomTables, context),
                 updateRunnerNotes = UpdateSessionRunnerNotesUseCase(sessions, instant),
                 createClock = CreateSessionClockUseCase(clocks, sessions, context, ids),
                 updateClock = UpdateSessionClockUseCase(clocks),
@@ -421,6 +431,17 @@ internal class RunViewModelTest {
                     },
                 ),
                 deleteRecording = DeleteSessionRecordingUseCase(recordings),
+                loadWikilinkCatalog = LoadWikilinkCatalogUseCase(
+                    campaigns,
+                    locations,
+                    lore,
+                    factions,
+                    worldPeople,
+                    campaignPeople,
+                    quests,
+                    sessions,
+                ),
+                rollTable = RollRandomTableUseCase(randomTables),
             )
         }
     }

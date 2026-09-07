@@ -13,12 +13,12 @@ World Weaver is built with [Compose Multiplatform](https://www.jetbrains.com/com
 - **Worlds and campaigns** — Maintain a library of settings, each with one or more play-throughs. Choose **5E** or **PF2E** per world (campaigns can override).
 - **One-shot wizard** — Walk through identity, hook, places, people, conflict, and table plan, then generate a starter world and campaign.
 - **Places and world maps** — Nest continents, areas, cities, and places. Import PNG maps, pin child locations, and drill into nested cartography.
-- **Lore, calendar, factions, and links** — Write setting entries (including DM-only secrets), keep an in-world calendar with holidays and important days, track factions, and browse a relationship web.
+- **Lore, calendar, factions, tables, assets, and links** — Write setting entries (including DM-only secrets), keep an in-world calendar with holidays and important days, track factions, roll weighted random tables, stash files you might use later, and browse a relationship web. Type `[[` in lore, session notes, and Tonight notes to link people, places, and other records.
 - **People and sheets** — Create PCs, NPCs, and monsters. Open a dedicated character sheet window with HP, abilities, spells, and gear. Optional 5E SRD import fills race, class, spell, and monster pickers.
-- **Sessions and tonight** — Plan recaps, scenes, and plot threads. **Tonight** is the live session runner: notes, scratch pad, lookup, progress clocks, a table timer, session recording (mic or camera), atmosphere, party, and objectives. Open it from the sidebar or Home (**Continue tonight**).
+- **Sessions and tonight** — Plan recaps, scenes, and plot threads. **Tonight** is the live session runner: notes, scratch pad, lookup, progress clocks, random-table rolls, a table timer, session recording (mic or camera), atmosphere, party, and objectives. Open it from the sidebar or Home (**Continue tonight**).
 - **Battle maps and combat** — Import grid maps, measure, paint fog of war, place tokens, and open a **Player view** window for the table. Run initiative, HP, conditions, and death saves from Encounters.
 - **Dice** — Roll digital dice (including advantage/disadvantage) or log table faces. Pop the tray out and keep it always on top.
-- **Search** — Find worlds, campaigns, locations, lore, factions, people, quests, and sessions from the top bar.
+- **Search** — Find worlds, campaigns, locations, lore, factions, people, quests, sessions, tables, and assets from the top bar.
 - **Backup** — Export or restore a `.wwbackup` of this machine’s data. Share a single world as a `.wwbundle`.
 
 ## Install

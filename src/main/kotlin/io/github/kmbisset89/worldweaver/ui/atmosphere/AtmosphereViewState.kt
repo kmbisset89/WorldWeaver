@@ -3,6 +3,7 @@ package io.github.kmbisset89.worldweaver.ui.atmosphere
 import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingEffect
 import io.github.kmbisset89.worldweaver.domain.AtmosphereLightingLoop
 import io.github.kmbisset89.worldweaver.domain.AtmosphereMood
+import io.github.kmbisset89.worldweaver.domain.AtmosphereMusicTrack
 import io.github.kmbisset89.worldweaver.domain.AtmosphereScene
 import io.github.kmbisset89.worldweaver.domain.GoveeDevice
 import io.github.kmbisset89.worldweaver.domain.HueBridge
@@ -26,9 +27,11 @@ internal sealed class AtmosphereViewState {
         val goveeDevices: List<GoveeDevice>,
         val scenes: List<AtmosphereScene>,
         val moods: List<AtmosphereMood>,
+        val musicTracks: List<AtmosphereMusicTrack>,
         val catalog: List<HomeAssistantScene>,
         val draftSceneName: String,
         val draftEntityId: String,
+        val draftMusicTrackId: String?,
         val draftMoodName: String,
         val selectedCatalogEntityId: String?,
         val selectedHueSceneId: String?,
@@ -47,6 +50,10 @@ internal sealed class AtmosphereViewState {
         val moodError: String?,
         val sceneError: String?,
         val activationError: String?,
+        val musicError: String?,
+        val playingTrackId: String?,
+        val musicVolume: Int,
+        val musicLoopEnabled: Boolean,
         val lastActivatedSceneId: String?,
         val isTestingConnection: Boolean,
         val isLoadingCatalog: Boolean,

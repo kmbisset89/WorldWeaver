@@ -6,6 +6,7 @@ import io.github.kmbisset89.worldweaver.domain.CreatureSize
 import io.github.kmbisset89.worldweaver.domain.Pathfinder2ESkillRank
 import io.github.kmbisset89.worldweaver.domain.PersonKind
 import io.github.kmbisset89.worldweaver.domain.RelationshipType
+import io.github.kmbisset89.worldweaver.domain.WikilinkBacklink
 
 internal sealed interface CharactersInteraction {
     data object ScreenStarted : CharactersInteraction
@@ -37,6 +38,7 @@ internal sealed interface CharactersInteraction {
     data object OverlaySaved : CharactersInteraction
     data class AttachedLoreSelected(val loreId: String) : CharactersInteraction
     data class AttachedQuestSelected(val questId: String) : CharactersInteraction
+    data class BacklinkSelected(val backlink: WikilinkBacklink) : CharactersInteraction
     data object RelationshipEditorOpened : CharactersInteraction
     data object RelationshipEditorDismissed : CharactersInteraction
     data class RelationshipTargetSelected(val key: CharactersViewState.PersonKey) : CharactersInteraction

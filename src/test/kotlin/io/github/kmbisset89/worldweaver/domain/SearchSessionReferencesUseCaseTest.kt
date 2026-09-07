@@ -59,6 +59,8 @@ internal class SearchSessionReferencesUseCaseTest {
         val observances = FakeWorldCalendarObservanceRepository()
         val celestialBodies = FakeWorldCelestialBodyRepository()
         val factions = FakeFactionRepository()
+        val randomTables = FakeRandomTableRepository()
+        val assets = FakeAssetRepository()
         val worldPeople = FakeWorldPersonRepository()
         val campaignPeople = FakeCampaignPersonRepository()
         val quests = FakeQuestRepository()
@@ -76,6 +78,8 @@ internal class SearchSessionReferencesUseCaseTest {
                 campaignPeople,
                 quests,
                 sessions,
+                randomTables,
+                assets,
             )
         )
 
